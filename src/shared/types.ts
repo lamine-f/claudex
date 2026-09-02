@@ -68,3 +68,22 @@ export interface DoctorCheck {
   /** Correctif applicable depuis l'écran de diagnostic, s'il en existe un. */
   fix?: { label: string; action: 'applySettingsFix' }
 }
+
+/** Une entrée de l'arborescence de fichiers. */
+export interface Entree {
+  nom: string
+  chemin: string
+  dossier: boolean
+  octets: number
+  /** Vrai pour les entrées masquées par convention (nom commençant par un point). */
+  discrete: boolean
+}
+
+/**
+ * Aperçu d'un fichier. Les deux cas de refus sont explicites plutôt que silencieux :
+ * l'utilisateur doit savoir pourquoi il ne voit pas son fichier.
+ */
+export type Apercu =
+  | { type: 'texte'; contenu: string; langage: string; octets: number }
+  | { type: 'trop-gros'; octets: number }
+  | { type: 'binaire'; octets: number }

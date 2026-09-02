@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { registerIpc } from './ipc'
+import { arreterVeilleurs } from './ipc/fs'
 import * as pty from './services/pty'
 import * as store from './services/store'
 import * as tmux from './services/tmux'
@@ -52,6 +53,7 @@ if (!app.requestSingleInstanceLock()) {
     // Les pty sont de simples clients tmux : les détacher laisse les sessions
     // — et tout ce qui y tourne — intactes pour la prochaine ouverture.
     pty.detachAll()
+    arreterVeilleurs()
 
     // Filet de sécurité : une écriture qui s'éternise ne doit pas rendre
     // l'application impossible à fermer.

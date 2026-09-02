@@ -150,3 +150,22 @@ describe("commande d'amorçage", () => {
     expect(info?.commande).toMatch(/sh|zsh|bash|fish/)
   })
 })
+
+describe('configuration du serveur', () => {
+  const session = `cdx_conf_${process.pid}`
+
+  afterAll(async () => {
+    await killSession(session)
+  })
+
+  it("désactive la barre de statut, même sur un serveur déjà démarré", async () => {
+    configurer(resolve('resources/tmux.conf'))
+    // Le cas qui compte : un serveur tmux lancé plus tôt, dont les options ne
+    // viennent pas de notre configuration. `-f` seul ne suffirait pas.
+    await run('tmux', ['-L', 'claudex', 'set-option', '-g', 'status', 'on']).catch(() => undefined)
+    await ensureSession(session, '/tmp', 100, 30)
+
+    const { stdout } = await run('tmux', ['-L', 'claudex', 'show-options', '-g', 'status'])
+    expect(stdout.trim()).toBe('status off')
+  })
+})

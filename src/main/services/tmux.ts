@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -16,6 +17,26 @@ let cheminConf = ''
  */
 export function configurer(chemin: string): void {
   cheminConf = chemin
+  if (!existsSync(chemin)) {
+    console.error(`[tmux] configuration introuvable : ${chemin}`)
+  }
+}
+
+/**
+ * Applique la configuration au serveur en place.
+ *
+ * L'option `-f` n'est lue qu'au démarrage du serveur tmux : si celui-ci tournait
+ * déjà — lancé par une session précédente, un test, ou un plantage antérieur —
+ * les réglages seraient purement et simplement ignorés, et la barre de statut de
+ * tmux réapparaîtrait au bas de l'interface.
+ */
+async function appliquerConfiguration(): Promise<void> {
+  if (!cheminConf || !existsSync(cheminConf)) return
+  try {
+    await tmux('source-file', cheminConf)
+  } catch (erreur) {
+    console.error('[tmux] configuration non appliquée :', erreur)
+  }
 }
 
 /** Arguments communs à toute invocation : socket et configuration isolés. */
@@ -93,9 +114,14 @@ export async function ensureSession(
     // d'existence avant que l'une n'ait créé la session. tmux tranche alors
     // lui-même : le perdant reçoit « duplicate session », ce qui est exactement
     // le résultat recherché.
-    if (String(erreur).includes('duplicate session')) return { preexistante: true }
+    if (String(erreur).includes('duplicate session')) {
+      await appliquerConfiguration()
+      return { preexistante: true }
+    }
     throw erreur
   }
+
+  await appliquerConfiguration()
   return { preexistante: false }
 }
 

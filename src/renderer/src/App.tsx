@@ -4,6 +4,7 @@ import { useShortcuts } from '@renderer/hooks/useShortcuts'
 import { useStore } from '@renderer/state/store'
 import { Diagnostic } from './components/layout/Diagnostic'
 import { TitleBar } from './components/layout/TitleBar'
+import { FilePreview } from './components/files/FilePreview'
 import { FileTree } from './components/files/FileTree'
 import { TerminalPane } from './components/terminal/TerminalPane'
 import { WorkspaceList } from './components/workspaces/WorkspaceList'
@@ -45,6 +46,7 @@ export default function App(): React.JSX.Element {
           Chargement…
         </div>
       )}
+      <FilePreview />
       <Diagnostic />
     </div>
   )

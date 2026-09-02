@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { AppState, ClaudeSession, DoctorCheck, Tab, Workspace } from '@shared/types'
+import type {
+  Apercu,
+  AppState,
+  ClaudeSession,
+  DoctorCheck,
+  Entree,
+  Tab,
+  Workspace
+} from '@shared/types'
 
 interface EtatUi {
   workspaces: Workspace[]
@@ -19,6 +27,12 @@ interface EtatUi {
   /** Workspaces dont la liste de sessions est entièrement déroulée. */
   toutAfficher: Record<string, boolean>
 
+  /** Contenu des dossiers déjà lus, indexé par chemin. */
+  arbre: Record<string, Entree[]>
+  dossiersOuverts: string[]
+  fichierChoisi?: string
+  apercu?: Apercu
+
   charger: () => Promise<void>
   ajouterWorkspace: () => Promise<void>
   retirerWorkspace: (id: string) => Promise<void>
@@ -32,6 +46,11 @@ interface EtatUi {
     uuid?: string
   ) => Promise<void>
   deroulerTout: (workspaceId: string) => void
+  chargerDossier: (chemin: string) => Promise<void>
+  basculerDossier: (chemin: string) => Promise<void>
+  choisirFichier: (chemin: string) => Promise<void>
+  fermerApercu: () => void
+  rafraichirArbre: (racine: string) => Promise<void>
   nouvelOnglet: () => Promise<void>
   choisirOnglet: (id: string) => void
   fermerOnglet: (id: string) => Promise<void>
@@ -51,6 +70,8 @@ export const useStore = create<EtatUi>((set, get) => ({
   sessions: {},
   sessionsEnCours: {},
   toutAfficher: {},
+  arbre: {},
+  dossiersOuverts: [],
 
   charger: async () => {
     const [etat, diagnostics] = await Promise.all([
@@ -66,7 +87,14 @@ export const useStore = create<EtatUi>((set, get) => ({
       diagnosticOuvert: diagnostics.some((d) => d.severity !== 'ok'),
       pret: true
     })
-    if (etat.activeWorkspaceId) await get().chargerOnglets(etat.activeWorkspaceId)
+    if (etat.activeWorkspaceId) {
+      await get().chargerOnglets(etat.activeWorkspaceId)
+      const courant = etat.workspaces.find((w) => w.id === etat.activeWorkspaceId)
+      if (courant) {
+        await get().chargerDossier(courant.path)
+        void window.claudex.fs.observer(courant.path)
+      }
+    }
     // Les sessions des projets déjà dépliés sont chargées d'emblée : la colonne
     // de gauche doit être utile dès l'ouverture, sans un clic de plus.
     await Promise.all(
@@ -102,8 +130,25 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   choisirWorkspace: async (id) => {
     if (get().activeWorkspaceId === id) return
-    set({ activeWorkspaceId: id })
+    const precedent = get().workspaces.find((w) => w.id === get().activeWorkspaceId)
+    if (precedent) void window.claudex.fs.cesserObservation(precedent.path)
+
+    set({
+      activeWorkspaceId: id,
+      // L'arbre appartient au projet qu'on quitte : le garder afficherait les
+      // fichiers du précédent sous le nom du nouveau.
+      arbre: {},
+      dossiersOuverts: [],
+      fichierChoisi: undefined,
+      apercu: undefined
+    })
     await window.claudex.state.setActiveWorkspace(id)
+
+    const courant = get().workspaces.find((w) => w.id === id)
+    if (courant) {
+      await get().chargerDossier(courant.path)
+      void window.claudex.fs.observer(courant.path)
+    }
     await get().chargerOnglets(id)
   },
 
@@ -138,6 +183,47 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   deroulerTout: (workspaceId) =>
     set({ toutAfficher: { ...get().toutAfficher, [workspaceId]: true } }),
+
+  chargerDossier: async (chemin) => {
+    try {
+      const entrees = await window.claudex.fs.lireDossier(chemin)
+      set({ arbre: { ...get().arbre, [chemin]: entrees } })
+    } catch {
+      // Dossier disparu ou illisible : on l'oublie plutôt que de casser l'arbre.
+      const arbre = { ...get().arbre }
+      delete arbre[chemin]
+      set({ arbre })
+    }
+  },
+
+  basculerDossier: async (chemin) => {
+    const ouverts = get().dossiersOuverts
+    if (ouverts.includes(chemin)) {
+      set({ dossiersOuverts: ouverts.filter((d) => d !== chemin) })
+      return
+    }
+    set({ dossiersOuverts: [...ouverts, chemin] })
+    if (!get().arbre[chemin]) await get().chargerDossier(chemin)
+  },
+
+  choisirFichier: async (chemin) => {
+    set({ fichierChoisi: chemin, apercu: undefined })
+    try {
+      const apercu = await window.claudex.fs.lireApercu(chemin)
+      // Une lecture lente ne doit pas écraser un choix plus récent.
+      if (get().fichierChoisi === chemin) set({ apercu })
+    } catch {
+      if (get().fichierChoisi === chemin) set({ apercu: undefined })
+    }
+  },
+
+  fermerApercu: () => set({ fichierChoisi: undefined, apercu: undefined }),
+
+  /** Relit les dossiers déjà ouverts sous une racine, après un changement disque. */
+  rafraichirArbre: async (racine) => {
+    const aRelire = Object.keys(get().arbre).filter((d) => d === racine || d.startsWith(`${racine}/`))
+    await Promise.all(aRelire.map((d) => get().chargerDossier(d)))
+  },
 
   nouvelOnglet: async () => {
     const workspaceId = get().activeWorkspaceId

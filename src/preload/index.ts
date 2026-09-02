@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AppState, ClaudeSession, DoctorCheck, Tab, Workspace } from '@shared/types'
+import type {
+  Apercu,
+  AppState,
+  ClaudeSession,
+  DoctorCheck,
+  Entree,
+  Tab,
+  Workspace
+} from '@shared/types'
 
 /**
  * Surface exposée au renderer. Volontairement étroite : le renderer n'a jamais
@@ -46,6 +54,19 @@ const api = {
       const ecouteur = (_e: unknown, tabId: string, code: number): void => rappel(tabId, code)
       ipcRenderer.on('term:exit', ecouteur)
       return () => ipcRenderer.removeListener('term:exit', ecouteur)
+    }
+  },
+  fs: {
+    lireDossier: (chemin: string): Promise<Entree[]> =>
+      ipcRenderer.invoke('fs:lireDossier', chemin),
+    lireApercu: (chemin: string): Promise<Apercu> => ipcRenderer.invoke('fs:lireApercu', chemin),
+    observer: (chemin: string): Promise<void> => ipcRenderer.invoke('fs:observer', chemin),
+    cesserObservation: (chemin: string): Promise<void> =>
+      ipcRenderer.invoke('fs:cesserObservation', chemin),
+    onChange: (rappel: (racine: string) => void): (() => void) => {
+      const ecouteur = (_e: unknown, racine: string): void => rappel(racine)
+      ipcRenderer.on('fs:change', ecouteur)
+      return () => ipcRenderer.removeListener('fs:change', ecouteur)
     }
   },
   claude: {

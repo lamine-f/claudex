@@ -1,5 +1,6 @@
 import { registerClaudeIpc } from './claude'
 import { registerDoctorIpc } from './doctor'
+import { registerFsIpc } from './fs'
 import { registerStateIpc } from './state'
 import { registerTerminalIpc } from './terminal'
 import { registerWorkspaceIpc } from './workspace'
@@ -9,5 +10,6 @@ export function registerIpc(): void {
   registerWorkspaceIpc()
   registerTerminalIpc()
   registerClaudeIpc()
+  registerFsIpc()
   registerDoctorIpc()
 }
