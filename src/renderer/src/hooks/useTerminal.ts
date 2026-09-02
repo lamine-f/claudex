@@ -80,9 +80,15 @@ export function useTerminal(
 
     // Le rendu WebGL est un confort, pas une nécessité : en cas d'échec (pilote,
     // machine virtuelle), le rendu canvas par défaut prend le relais.
-    void import('@xterm/addon-webgl')
-      .then(({ WebglAddon }) => terminal.loadAddon(new WebglAddon()))
-      .catch(() => undefined)
+    //
+    // Il peut aussi être écarté délibérément : une capture d'écran ne restitue
+    // pas un canvas WebGL, et le terminal en ressortirait vide.
+    const sansWebgl = (window as unknown as { __claudexSansWebgl?: boolean }).__claudexSansWebgl
+    if (!sansWebgl) {
+      void import('@xterm/addon-webgl')
+        .then(({ WebglAddon }) => terminal.loadAddon(new WebglAddon()))
+        .catch(() => undefined)
+    }
 
     let vivant = true
     fit.fit()
