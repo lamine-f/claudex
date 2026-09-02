@@ -56,7 +56,10 @@ export function useTerminal(
       letterSpacing: 0,
       scrollback: 0, // l'historique est tenu par tmux, pas par xterm
       theme: THEME,
-      macOptionIsMeta: true
+      // Option ne doit pas être détournée en Meta : sur un clavier français,
+      // c'est elle qui produit | \\ [ ] { }, indispensables au quotidien.
+      macOptionIsMeta: false,
+      macOptionClickForcesSelection: true
     })
 
     terminalRef.current = terminal

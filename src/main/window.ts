@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 
 export function createWindow(): BrowserWindow {
   const fenetre = new BrowserWindow({
@@ -20,7 +20,17 @@ export function createWindow(): BrowserWindow {
     }
   })
 
-  fenetre.once('ready-to-show', () => fenetre.show())
+  fenetre.once('ready-to-show', () => {
+    fenetre.show()
+
+    // Réclamer explicitement le focus système. Lancée depuis un processus détaché
+    // — un shell en arrière-plan, un script — l'application s'affiche et reçoit les
+    // clics, mais macOS ne lui donne pas le clavier : le terminal paraît alors mort
+    // alors que tout fonctionne dessous.
+    if (process.platform === 'darwin') app.focus({ steal: true })
+    fenetre.focus()
+    fenetre.webContents.focus()
+  })
 
   // Remontée des défaillances du renderer dans la sortie du processus main :
   // sans cela, un preload en échec se traduit par une fenêtre noire silencieuse.
@@ -44,6 +54,18 @@ export function createWindow(): BrowserWindow {
   })
   fenetre.webContents.on('will-navigate', (evenement, url) => {
     if (url !== fenetre.webContents.getURL()) evenement.preventDefault()
+  })
+
+  // Outils de développement à portée de main : sans eux, diagnostiquer un défaut
+  // dans le rendu revient à deviner.
+  fenetre.webContents.on('before-input-event', (evenement, saisie) => {
+    const bascule =
+      saisie.key === 'F12' ||
+      (saisie.meta && saisie.alt && saisie.key.toLowerCase() === 'i')
+    if (saisie.type === 'keyDown' && bascule) {
+      evenement.preventDefault()
+      fenetre.webContents.toggleDevTools()
+    }
   })
 
   const devServer = process.env.ELECTRON_RENDERER_URL

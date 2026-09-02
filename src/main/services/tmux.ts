@@ -189,9 +189,16 @@ export async function sendKeys(nom: string, ...touches: string[]): Promise<void>
   await tmux('send-keys', '-t', ciblePane(nom), ...touches)
 }
 
-/** Arguments d'attachement, passés tels quels à node-pty. */
+/**
+ * Arguments d'attachement, passés tels quels à node-pty.
+ *
+ * `-d` détache les autres clients de la session. Le modèle de Claudex est d'un
+ * client par onglet ; sans cette garantie, un client resté en vie — pty orphelin,
+ * réattachement concurrent — recevrait aussi l'écho de tmux et chaque caractère
+ * s'afficherait en double.
+ */
 export function attachArgs(nom: string): string[] {
-  return [...argsBase(), '-u', 'attach-session', '-t', `=${nom}`]
+  return [...argsBase(), '-u', 'attach-session', '-d', '-t', `=${nom}`]
 }
 
 /** Contenu visible et historique du pane, séquences ANSI comprises (`-e`). */

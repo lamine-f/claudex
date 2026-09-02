@@ -52,6 +52,14 @@ export function attach(
   })
 
   processus.onExit(({ exitCode }) => {
+    // Ne retirer l'entrée que si elle désigne encore CE processus.
+    //
+    // `kill()` est asynchrone : quand un onglet se rattache, la sortie de l'ancien
+    // pty survient après l'enregistrement du nouveau. Supprimer aveuglément
+    // effaçait donc le nouveau du registre — le terminal continuait d'afficher,
+    // puisque la sortie remonte par une autre voie, mais plus rien ne pouvait lui
+    // être écrit. Le clavier semblait mort.
+    if (attaches.get(tabId)?.processus !== processus) return
     attaches.delete(tabId)
     if (!destinataire.isDestroyed()) destinataire.send('term:exit', tabId, exitCode)
   })
@@ -83,6 +91,11 @@ export function detach(tabId: string): void {
   } catch {
     /* déjà mort */
   }
+}
+
+/** Processus actuellement attaché à un onglet, s'il y en a un. */
+export function processusDe(tabId: string): unknown {
+  return attaches.get(tabId)?.processus
 }
 
 export function detachAll(): void {
