@@ -62,8 +62,12 @@ export function WorkspaceItem({ workspace }: { workspace: Workspace }): React.JS
                   key={session.id}
                   session={session}
                   ouverte={ouvertes.has(session.id)}
-                  onOuvrir={() => void ouvrirSession(workspace.id, 'reprise', session.id)}
-                  onBifurquer={() => void ouvrirSession(workspace.id, 'bifurcation', session.id)}
+                  onOuvrir={() =>
+                    void ouvrirSession(workspace.id, 'reprise', session.id, session.titre)
+                  }
+                  onBifurquer={() =>
+                    void ouvrirSession(workspace.id, 'bifurcation', session.id, session.titre)
+                  }
                 />
               ))}
               {reste > 0 && (

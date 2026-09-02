@@ -75,8 +75,9 @@ const api = {
     ouvrir: (
       workspaceId: string,
       intention: 'nouvelle' | 'reprise' | 'bifurcation',
-      uuid?: string
-    ): Promise<Tab> => ipcRenderer.invoke('claude:ouvrir', workspaceId, intention, uuid)
+      uuid?: string,
+      titre?: string
+    ): Promise<Tab> => ipcRenderer.invoke('claude:ouvrir', workspaceId, intention, uuid, titre)
   },
   doctor: {
     check: (): Promise<DoctorCheck[]> => ipcRenderer.invoke('doctor:check'),

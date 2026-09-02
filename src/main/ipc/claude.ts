@@ -25,7 +25,12 @@ function workspaceDe(workspaceId: string): { path: string } {
  *                   restant intact. Cet identifiant est généré par Claude Code ;
  *                   c'est le veilleur de sessions qui le rattachera à l'onglet.
  */
-function creerOngletAgent(workspaceId: string, intention: Intention, uuid?: string): Tab {
+function creerOngletAgent(
+  workspaceId: string,
+  intention: Intention,
+  uuid?: string,
+  titreSession?: string
+): Tab {
   const workspace = workspaceDe(workspaceId)
   const id = randomUUID()
 
@@ -37,21 +42,23 @@ function creerOngletAgent(workspaceId: string, intention: Intention, uuid?: stri
     case 'nouvelle': {
       sessionId = randomUUID()
       commande = `claude --session-id ${sessionId}`
-      titre = 'Agent'
+      titre = titreSession ?? 'Nouvel agent'
       break
     }
     case 'reprise': {
       if (!uuid) throw new Error('Reprise sans identifiant de session')
       sessionId = uuid
       commande = `claude -r ${uuid}`
-      titre = 'Agent'
+      // Le titre de la conversation vaut mieux qu'un « Agent » indifférencié :
+      // avec plusieurs onglets ouverts, c'est le seul repère utile.
+      titre = titreSession ?? 'Agent'
       break
     }
     case 'bifurcation': {
       if (!uuid) throw new Error('Bifurcation sans identifiant de session')
       sessionId = undefined
       commande = `claude -r ${uuid} --fork-session`
-      titre = 'Agent (branche)'
+      titre = titreSession ? `${titreSession} ⑂` : 'Branche'
       break
     }
   }
@@ -86,7 +93,12 @@ export function registerClaudeIpc(): void {
 
   ipcMain.handle(
     'claude:ouvrir',
-    (_evenement, workspaceId: string, intention: Intention, uuid?: string): Tab =>
-      creerOngletAgent(workspaceId, intention, uuid)
+    (
+      _evenement,
+      workspaceId: string,
+      intention: Intention,
+      uuid?: string,
+      titre?: string
+    ): Tab => creerOngletAgent(workspaceId, intention, uuid, titre)
   )
 }

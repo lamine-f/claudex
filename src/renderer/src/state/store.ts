@@ -43,7 +43,8 @@ interface EtatUi {
   ouvrirSession: (
     workspaceId: string,
     intention: 'nouvelle' | 'reprise' | 'bifurcation',
-    uuid?: string
+    uuid?: string,
+    titre?: string
   ) => Promise<void>
   deroulerTout: (workspaceId: string) => void
   chargerDossier: (chemin: string) => Promise<void>
@@ -167,7 +168,7 @@ export const useStore = create<EtatUi>((set, get) => ({
     }
   },
 
-  ouvrirSession: async (workspaceId, intention, uuid) => {
+  ouvrirSession: async (workspaceId, intention, uuid, titre) => {
     // Une session déjà ouverte ne se dédouble pas : on bascule sur son onglet.
     if (intention === 'reprise' && uuid) {
       const existant = get().tabs.find((t) => t.claudeSessionId === uuid)
@@ -177,7 +178,7 @@ export const useStore = create<EtatUi>((set, get) => ({
       }
     }
     if (get().activeWorkspaceId !== workspaceId) await get().choisirWorkspace(workspaceId)
-    const tab = await window.claudex.claude.ouvrir(workspaceId, intention, uuid)
+    const tab = await window.claudex.claude.ouvrir(workspaceId, intention, uuid, titre)
     set({ tabs: [...get().tabs, tab], activeTabId: tab.id })
   },
 

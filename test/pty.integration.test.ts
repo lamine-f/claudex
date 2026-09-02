@@ -4,7 +4,12 @@ import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Destinataire } from '../src/main/services/pty'
 import * as pty from '../src/main/services/pty'
-import { configurer, ensureSession, hasSession, killSession } from '../src/main/services/tmux'
+import {
+  ensureSession,
+  hasSession,
+  killSession,
+  preparerConfiguration
+} from '../src/main/services/tmux'
 
 /** Destinataire de test : accumule ce que le pty envoie au renderer. */
 function faireDestinataire(): Destinataire & { recu: string; sorties: number[] } {
@@ -32,7 +37,7 @@ describe('intégration pty ↔ tmux', () => {
   let dossier = ''
 
   beforeAll(async () => {
-    configurer(resolve('resources/tmux.conf'))
+    await preparerConfiguration(join(tmpdir(), 'claudex-conf'))
     dossier = await mkdtemp(join(tmpdir(), 'claudex-pty-'))
     await ensureSession(session, dossier, 100, 30)
   })

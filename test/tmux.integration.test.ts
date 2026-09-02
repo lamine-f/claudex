@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   capturePane,
   commandeComplete,
-  configurer,
+  preparerConfiguration,
   ensureSession,
   hasSession,
   killSession,
@@ -27,7 +27,7 @@ describe('intégration tmux', () => {
   let dossier = ''
 
   beforeAll(async () => {
-    configurer(resolve('resources/tmux.conf'))
+    await preparerConfiguration(join(tmpdir(), 'claudex-conf'))
     dossier = await mkdtemp(join(tmpdir(), 'claudex-test-'))
   })
 
@@ -106,7 +106,7 @@ describe('création concurrente', () => {
   })
 
   it("ne casse pas quand deux ouvertures créent la même session en même temps", async () => {
-    configurer(resolve('resources/tmux.conf'))
+    await preparerConfiguration(join(tmpdir(), 'claudex-conf'))
     // Le cas se produit à chaque remontage React ou rechargement de la page.
     const resultats = await Promise.all([
       ensureSession(session, '/tmp', 100, 30),
@@ -127,7 +127,7 @@ describe("commande d'amorçage", () => {
   })
 
   it("joue la commande au lancement, sans dépendre d'une frappe simulée", async () => {
-    configurer(resolve('resources/tmux.conf'))
+    await preparerConfiguration(join(tmpdir(), 'claudex-conf'))
     // Une frappe envoyée après coup serait avalée par un shell encore en train de
     // démarrer ; la faire porter par la création de session supprime la course.
     await ensureSession(session, '/tmp', 100, 30, 'echo AMORCE_JOUEE')
@@ -159,7 +159,7 @@ describe('configuration du serveur', () => {
   })
 
   it("désactive la barre de statut, même sur un serveur déjà démarré", async () => {
-    configurer(resolve('resources/tmux.conf'))
+    await preparerConfiguration(join(tmpdir(), 'claudex-conf'))
     // Le cas qui compte : un serveur tmux lancé plus tôt, dont les options ne
     // viennent pas de notre configuration. `-f` seul ne suffirait pas.
     await run('tmux', ['-L', 'claudex', 'set-option', '-g', 'status', 'on']).catch(() => undefined)

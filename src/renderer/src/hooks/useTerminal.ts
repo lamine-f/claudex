@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -35,10 +35,13 @@ const THEME = {
  * Le démontage se contente de détacher : la session tmux — et tout ce qui y tourne —
  * survit à la fermeture de l'onglet à l'écran comme à celle de l'application.
  */
-export function useTerminal(tabId: string): {
-  conteneur: React.RefObject<HTMLDivElement | null>
-} {
+export function useTerminal(
+  tabId: string,
+  actif: boolean
+): { conteneur: React.RefObject<HTMLDivElement | null>; demarre: boolean } {
   const conteneur = useRef<HTMLDivElement | null>(null)
+  const terminalRef = useRef<Terminal | null>(null)
+  const [demarre, setDemarre] = useState(false)
 
   useEffect(() => {
     const hote = conteneur.current
@@ -55,6 +58,8 @@ export function useTerminal(tabId: string): {
       theme: THEME,
       macOptionIsMeta: true
     })
+
+    terminalRef.current = terminal
 
     const fit = new FitAddon()
     terminal.loadAddon(fit)
@@ -89,7 +94,10 @@ export function useTerminal(tabId: string): {
     )
     desabonnements.push(
       window.claudex.term.onData((id, donnees) => {
-        if (id === tabId && vivant) terminal.write(donnees)
+        if (id !== tabId || !vivant) return
+        terminal.write(donnees)
+        // Première sortie reçue : le shell parle, on peut lui écrire.
+        setDemarre(true)
       })
     )
 
@@ -125,6 +133,7 @@ export function useTerminal(tabId: string): {
 
     return () => {
       vivant = false
+      terminalRef.current = null
       delete ((window as unknown as Record<string, Record<string, unknown>>).__claudex ?? {})[tabId]
       if (frame) cancelAnimationFrame(frame)
       observateur.disconnect()
@@ -134,5 +143,11 @@ export function useTerminal(tabId: string): {
     }
   }, [tabId])
 
-  return { conteneur }
+  // Reprendre le focus quand l'onglet redevient actif : sans cela, revenir sur un
+  // terminal ne rend pas la main au clavier et l'on croit l'application figée.
+  useEffect(() => {
+    if (actif) terminalRef.current?.focus()
+  }, [actif])
+
+  return { conteneur, demarre }
 }

@@ -1,8 +1,48 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
+
+/**
+ * Configuration du serveur tmux de Claudex.
+ *
+ * Embarquée dans le code plutôt que lue depuis un fichier de ressources : selon
+ * la manière dont Electron est lancé — développement, application empaquetée,
+ * test de bout en bout — le chemin des ressources change, et une configuration
+ * introuvable se traduisait par la barre de statut de tmux au bas de l'interface,
+ * sans le moindre message.
+ */
+export const CONFIGURATION = `# Configuration tmux dédiée à Claudex.
+# Chargée via \`tmux -L claudex -f <ce fichier>\` : le socket et la conf sont isolés,
+# les sessions tmux personnelles de l'utilisateur ne sont ni lues ni modifiées.
+
+# L'app dessine sa propre UI : la barre de statut de tmux ferait doublon.
+set -g status off
+
+set -g mouse on
+set -g history-limit 100000
+set -g escape-time 0
+set -g focus-events on
+set -g default-terminal "tmux-256color"
+set -ga terminal-overrides ",xterm-256color:Tc"
+
+# Passthrough des séquences OSC : Claude Code s'en sert (titres, hyperliens, presse-papiers).
+set -g allow-passthrough on
+set -g set-clipboard on
+
+# Un seul client par session : la taille suit la fenêtre de l'app sans compromis.
+setw -g aggressive-resize on
+
+# Une session détruite ne doit pas entraîner la fermeture des autres clients.
+set -g detach-on-destroy off
+
+# Numérotation à partir de 1, plus lisible quand on inspecte avec \`tmux -L claudex ls\`.
+set -g base-index 1
+setw -g pane-base-index 1
+`
 
 /** Socket dédié : les sessions personnelles de l'utilisateur, sur le socket par
  *  défaut, ne sont ni listées ni modifiées par Claudex. */
@@ -15,11 +55,22 @@ let cheminConf = ''
  * par le processus main ; l'injecter plutôt que de le déduire d'`app` garde ce
  * service testable hors d'Electron.
  */
+/**
+ * Écrit la configuration dans `dossier` et l'adopte. À appeler une fois au
+ * démarrage, avant toute création de session.
+ */
+export async function preparerConfiguration(dossier: string): Promise<string> {
+  await mkdir(dossier, { recursive: true })
+  const chemin = join(dossier, 'tmux.conf')
+  await writeFile(chemin, CONFIGURATION, 'utf8')
+  cheminConf = chemin
+  return chemin
+}
+
+/** Adopte une configuration déjà écrite — utile aux tests. */
 export function configurer(chemin: string): void {
   cheminConf = chemin
-  if (!existsSync(chemin)) {
-    console.error(`[tmux] configuration introuvable : ${chemin}`)
-  }
+  if (!existsSync(chemin)) console.error(`[tmux] configuration introuvable : ${chemin}`)
 }
 
 /**

@@ -1,5 +1,4 @@
 import { app, BrowserWindow } from 'electron'
-import { join } from 'node:path'
 import { registerIpc } from './ipc'
 import { arreterVeilleurs } from './ipc/fs'
 import * as pty from './services/pty'
@@ -23,11 +22,7 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   void app.whenReady().then(async () => {
-    tmux.configurer(
-      app.isPackaged
-        ? join(process.resourcesPath, 'tmux.conf')
-        : join(app.getAppPath(), 'resources', 'tmux.conf')
-    )
+    await tmux.preparerConfiguration(app.getPath('userData'))
     await store.load()
     registerIpc()
     createWindow()

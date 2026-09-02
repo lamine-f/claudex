@@ -74,9 +74,12 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
     await fermer(ctx)
   })
 
+  const colonne = (): ReturnType<Contexte['page']['getByLabel']> =>
+    ctx.page.getByLabel('Workspaces')
+
   test('les conversations du dossier apparaissent avec leur titre', async () => {
-    await expect(ctx.page.getByText('Refonte facturation')).toBeVisible()
-    await expect(ctx.page.getByText('Migration DTO')).toBeVisible()
+    await expect(colonne().getByText('Refonte facturation')).toBeVisible()
+    await expect(colonne().getByText('Migration DTO')).toBeVisible()
   })
 
   test('les transcrits sans conversation sont écartés', async () => {
@@ -84,7 +87,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
   })
 
   test('un clic reprend la conversation dans un nouvel onglet', async () => {
-    await ctx.page.getByText('Refonte facturation').click()
+    await colonne().getByText('Refonte facturation').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // L'onglet porte l'identifiant de la conversation : c'est ce lien, que Claude
@@ -99,12 +102,18 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
   })
 
   test('rouvrir la même conversation bascule sur son onglet au lieu de le dédoubler', async () => {
-    await ctx.page.getByText('Refonte facturation').click()
+    await colonne().getByText('Refonte facturation').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
   })
 
+  test("l'onglet porte le titre de la conversation, pas un libellé générique", async () => {
+    // Avec plusieurs agents ouverts, « Agent » partout ne permet pas de s'y
+    // retrouver : c'est le titre de la conversation qui sert de repère.
+    await expect(ctx.page.getByRole('button', { name: 'Refonte facturation' }).last()).toBeVisible()
+  })
+
   test('une bifurcation ouvre un second onglet sans toucher à l’original', async () => {
-    await ctx.page.getByText('Refonte facturation').hover()
+    await colonne().getByText('Refonte facturation').hover()
     await ctx.page.getByTitle(/Bifurquer/).first().click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
 
