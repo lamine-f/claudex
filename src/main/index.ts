@@ -1,7 +1,9 @@
 import { app, BrowserWindow } from 'electron'
 import { registerIpc } from './ipc'
 import { arreterVeilleurs } from './ipc/fs'
+import { toutArreter } from './services/session-watcher'
 import * as pty from './services/pty'
+import * as scrollback from './services/scrollback'
 import * as store from './services/store'
 import * as tmux from './services/tmux'
 import { createWindow } from './window'
@@ -27,6 +29,13 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc()
     createWindow()
 
+    // Copie régulière de l'écran des terminaux. Elle ne sert qu'après un
+    // redémarrage de la machine, mais c'est précisément le moment où l'on ne peut
+    // plus la faire.
+    setInterval(() => {
+      void scrollback.sauvegarderTous(store.get().tabs)
+    }, 30_000)
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
@@ -49,16 +58,18 @@ if (!app.requestSingleInstanceLock()) {
     // — et tout ce qui y tourne — intactes pour la prochaine ouverture.
     pty.detachAll()
     arreterVeilleurs()
+    toutArreter()
 
     // Filet de sécurité : une écriture qui s'éternise ne doit pas rendre
     // l'application impossible à fermer.
     const secours = setTimeout(() => {
       pretAQuitter = true
       app.quit()
-    }, 2000)
+    }, 4000)
 
-    void store
-      .flush()
+    void scrollback
+      .sauvegarderTous(store.get().tabs)
+      .then(() => store.flush())
       .catch((erreur) => console.error('[store] échec de la sauvegarde finale :', erreur))
       .finally(() => {
         clearTimeout(secours)

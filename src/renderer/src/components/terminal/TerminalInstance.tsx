@@ -1,4 +1,6 @@
+import type { Tab } from '@shared/types'
 import { useTerminal } from '@renderer/hooks/useTerminal'
+import { RestoreBanner } from './RestoreBanner'
 
 /**
  * Une instance xterm par onglet. Les onglets inactifs restent montés mais masqués :
@@ -6,17 +8,29 @@ import { useTerminal } from '@renderer/hooks/useTerminal'
  * un redessin complet par tmux — à chaque bascule.
  */
 export function TerminalInstance({
-  tabId,
+  tab,
   actif
 }: {
-  tabId: string
+  tab: Tab
   actif: boolean
 }): React.JSX.Element {
-  const { conteneur, demarre } = useTerminal(tabId, actif)
+  const { conteneur, demarre, aRestaurer, ecrire, oublierRestauration } = useTerminal(
+    tab.id,
+    actif
+  )
+
+  const reprendre = (): void => {
+    if (tab.claudeSessionId) ecrire(`claude -r ${tab.claudeSessionId}`)
+    else if (tab.lastCommand) ecrire(tab.lastCommand)
+  }
 
   return (
     <div className={`absolute inset-0 ${actif ? 'visible' : 'invisible'}`} aria-hidden={!actif}>
       <div ref={conteneur} className="absolute inset-0 px-2 py-1" />
+
+      {aRestaurer && (
+        <RestoreBanner tab={tab} onReprendre={reprendre} onIgnorer={oublierRestauration} />
+      )}
 
       {/* Un shell met un instant à être prêt à lire, et un agent davantage encore.
           Sans ce repère, on tape dans le vide en croyant l'application figée. */}

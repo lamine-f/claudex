@@ -32,7 +32,11 @@ const api = {
     list: (workspaceId: string): Promise<Tab[]> => ipcRenderer.invoke('term:list', workspaceId),
     create: (workspaceId: string, options?: Partial<Tab>): Promise<Tab> =>
       ipcRenderer.invoke('term:create', workspaceId, options ?? {}),
-    open: (tabId: string, cols: number, rows: number): Promise<{ tab: Tab; reprise: boolean }> =>
+    open: (
+      tabId: string,
+      cols: number,
+      rows: number
+    ): Promise<{ tab: Tab; reprise: boolean; aRestaurer?: boolean }> =>
       ipcRenderer.invoke('term:open', tabId, cols, rows),
     input: (tabId: string, donnees: string): void =>
       ipcRenderer.send('term:input', tabId, donnees),
@@ -72,6 +76,11 @@ const api = {
   claude: {
     listSessions: (workspaceId: string): Promise<ClaudeSession[]> =>
       ipcRenderer.invoke('claude:listSessions', workspaceId),
+    onSessionDetectee: (rappel: (cheminWorkspace: string, uuid: string) => void): (() => void) => {
+      const ecouteur = (_e: unknown, chemin: string, uuid: string): void => rappel(chemin, uuid)
+      ipcRenderer.on('claude:sessionDetectee', ecouteur)
+      return () => ipcRenderer.removeListener('claude:sessionDetectee', ecouteur)
+    },
     ouvrir: (
       workspaceId: string,
       intention: 'nouvelle' | 'reprise' | 'bifurcation',

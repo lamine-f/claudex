@@ -1,5 +1,5 @@
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
 
@@ -65,6 +65,12 @@ export async function fermer(contexte: Contexte, options = { nettoyer: true }): 
   if (options.nettoyer) {
     await rm(contexte.donnees, { recursive: true, force: true })
     await rm(contexte.projet, { recursive: true, force: true })
+    // Déplier un projet fait créer son dossier de transcrits : les tests ne
+    // doivent rien laisser dans le vrai ~/.claude/projects.
+    await rm(
+      join(homedir(), '.claude', 'projects', contexte.projet.replace(/[^a-zA-Z0-9-]/g, '-')),
+      { recursive: true, force: true }
+    )
   }
 }
 
@@ -116,6 +122,15 @@ export async function taper(
   const onglet = await attendreInvite(page, index)
   const contenu = async (): Promise<string> =>
     (await lireTerminaux(page))[index]?.lignes.join('\n') ?? ''
+
+  // Sans attendu, on se contente d'envoyer la commande une fois.
+  if (!attendu) {
+    await page.evaluate(
+      ([id, texte]) => window.claudex.term.input(id!, `${texte!}\n`),
+      [onglet, commande] as const
+    )
+    return
+  }
 
   for (let essai = 0; essai < 5; essai++) {
     await page.evaluate(

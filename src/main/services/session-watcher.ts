@@ -1,0 +1,82 @@
+import { mkdir } from 'node:fs/promises'
+import { basename } from 'node:path'
+import chokidar, { type FSWatcher } from 'chokidar'
+import type { WebContents } from 'electron'
+import { claudeProjectPath } from '../util/paths'
+import * as store from './store'
+
+/** Un veilleur par dossier de transcrits surveillé. */
+const veilleurs = new Map<string, FSWatcher>()
+
+/**
+ * Surveille les conversations qui apparaissent dans les projets ouverts.
+ *
+ * Claudex connaît d'avance l'identifiant des sessions qu'il lance lui-même. Mais
+ * rien n'empêche de taper `claude` directement dans un terminal : sans cette
+ * veille, cette conversation-là ne serait rattachée à aucun onglet, et donc
+ * impossible à reprendre automatiquement au démarrage suivant.
+ */
+export async function surveiller(
+  cheminWorkspace: string,
+  destinataire: WebContents
+): Promise<void> {
+  const dossier = claudeProjectPath(cheminWorkspace)
+  if (veilleurs.has(dossier)) return
+
+  // Le dossier n'existe pas tant qu'aucune conversation n'y a eu lieu, et on ne
+  // peut pas surveiller ce qui n'est pas là. Le créer est sans conséquence :
+  // Claude Code le créerait lui-même à la première session ouverte ici.
+  await mkdir(dossier, { recursive: true }).catch(() => undefined)
+
+  const veilleur = chokidar.watch(dossier, {
+    ignoreInitial: true,
+    depth: 0,
+    // Un transcript s'écrit en continu : attendre qu'il soit posé évite de le
+    // rattacher avant même qu'il ne porte quoi que ce soit.
+    awaitWriteFinish: { stabilityThreshold: 400, pollInterval: 100 }
+  })
+
+  veilleur.on('add', (fichier) => {
+    if (!fichier.endsWith('.jsonl')) return
+    const uuid = basename(fichier, '.jsonl')
+    rattacher(cheminWorkspace, uuid)
+    if (!destinataire.isDestroyed()) destinataire.send('claude:sessionDetectee', cheminWorkspace, uuid)
+  })
+
+  veilleurs.set(dossier, veilleur)
+}
+
+/**
+ * Rattache une conversation à un onglet du projet qui n'en a pas encore.
+ *
+ * Le plus récemment actif est retenu : c'est celui où l'on vient de taper la
+ * commande.
+ */
+function rattacher(cheminWorkspace: string, uuid: string): void {
+  store.update((etat) => {
+    const workspace = etat.workspaces.find((w) => w.path === cheminWorkspace)
+    if (!workspace) return
+
+    const dejaPris = etat.tabs.some((t) => t.claudeSessionId === uuid)
+    if (dejaPris) return
+
+    const candidat = etat.tabs
+      .filter((t) => t.workspaceId === workspace.id && !t.claudeSessionId)
+      .sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]
+    if (!candidat) return
+
+    candidat.claudeSessionId = uuid
+    candidat.claudeProjectDir = claudeProjectPath(cheminWorkspace)
+  })
+}
+
+export function cesser(cheminWorkspace: string): void {
+  const dossier = claudeProjectPath(cheminWorkspace)
+  void veilleurs.get(dossier)?.close()
+  veilleurs.delete(dossier)
+}
+
+export function toutArreter(): void {
+  for (const veilleur of veilleurs.values()) void veilleur.close()
+  veilleurs.clear()
+}

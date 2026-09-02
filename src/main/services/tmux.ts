@@ -142,9 +142,7 @@ export async function ensureSession(
   // `exec $SHELL -l` rend la main à un shell interactif quand la commande se
   // termine, pour que la session survive à la sortie de l'agent.
   const shell = process.env.SHELL ?? '/bin/zsh'
-  const amorce = commandeInitiale
-    ? [`${commandeInitiale}; exec ${shell} -l`]
-    : []
+  const amorce = commandeInitiale ? [`${commandeInitiale}; exec ${shell} -l`] : []
 
   try {
     await tmux(
@@ -182,6 +180,11 @@ export async function killSession(nom: string): Promise<void> {
   } catch {
     // Session déjà absente : le résultat voulu est atteint.
   }
+}
+
+/** Protège une chaîne destinée à une ligne de commande shell. */
+export function proteger(valeur: string): string {
+  return `'${valeur.replaceAll("'", `'\\''`)}'`
 }
 
 /** Envoie des touches dans la fenêtre active de la session. */

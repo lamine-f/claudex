@@ -3,6 +3,7 @@ import { ipcMain } from 'electron'
 import type { Tab } from '@shared/types'
 import { tmuxSessionName } from '../util/paths'
 import * as pty from '../services/pty'
+import * as scrollback from '../services/scrollback'
 import * as store from '../services/store'
 import * as tmux from '../services/tmux'
 
@@ -10,6 +11,11 @@ interface OuvertureResultat {
   tab: Tab
   /** Vrai si la session tmux préexistait : l'app avait été fermée sans reboot. */
   reprise: boolean
+  /**
+   * Vrai quand la session a dû être recréée et que l'écran d'avant a été restitué :
+   * il y a alors quelque chose à reprendre.
+   */
+  aRestaurer?: boolean
 }
 
 function trouverTab(tabId: string): Tab | undefined {
@@ -28,17 +34,33 @@ function trouverTab(tabId: string): Tab | undefined {
  */
 const creationsEnCours = new Map<string, Promise<{ preexistante: boolean }>>()
 
+/**
+ * Commande jouée au lancement d'une session recréée.
+ *
+ * L'écran d'avant est restitué par la session elle-même, avec un `cat`. L'écrire
+ * dans xterm depuis le renderer ne tient pas : tmux efface l'écran à l'arrivée
+ * d'un client et emporterait tout. Passer par la session met le contenu dans
+ * l'historique de tmux, où il reste consultable et défilable.
+ */
+function amorce(tab: Tab, ecranPrecedent?: string): string | undefined {
+  const morceaux: string[] = []
+  if (ecranPrecedent) morceaux.push(`cat -- ${tmux.proteger(ecranPrecedent)}`)
+  if (tab.commandeInitiale) morceaux.push(tab.commandeInitiale)
+  return morceaux.length ? morceaux.join('; ') : undefined
+}
+
 function assurerSession(
   tabId: string,
   tab: Tab,
   cols: number,
-  rows: number
+  rows: number,
+  ecranPrecedent?: string
 ): Promise<{ preexistante: boolean }> {
   const enCours = creationsEnCours.get(tabId)
   if (enCours) return enCours
 
   const creation = tmux
-    .ensureSession(tab.tmuxSession, tab.cwd, cols, rows, tab.commandeInitiale)
+    .ensureSession(tab.tmuxSession, tab.cwd, cols, rows, amorce(tab, ecranPrecedent))
     .finally(() => creationsEnCours.delete(tabId))
 
   creationsEnCours.set(tabId, creation)
@@ -88,7 +110,13 @@ export function registerTerminalIpc(): void {
       const tab = trouverTab(tabId)
       if (!tab) throw new Error(`Onglet inconnu : ${tabId}`)
 
-      const { preexistante } = await assurerSession(tabId, tab, cols, rows)
+      // L'écran d'avant n'a de sens que si la session a disparu : tant qu'elle
+      // vit, tmux la redessine lui-même.
+      const fichierEcran = (await tmux.hasSession(tab.tmuxSession))
+        ? undefined
+        : await scrollback.chemin(tabId)
+
+      const { preexistante } = await assurerSession(tabId, tab, cols, rows, fichierEcran)
 
       // Toujours réattacher : tmux ne redessine le contenu qu'à l'arrivée d'un
       // client, et c'est ce redessin qui remplit le terminal à l'écran.
@@ -110,7 +138,9 @@ export function registerTerminalIpc(): void {
         etat.activeTabId = tabId
       })
 
-      return { tab, reprise: preexistante }
+      // La session recréée a déjà réaffiché l'écran d'avant ; le renderer n'a plus
+      // qu'à proposer la reprise de ce qui y tournait.
+      return { tab, reprise: preexistante, aRestaurer: !preexistante && Boolean(fichierEcran) }
     }
   )
 
@@ -132,6 +162,7 @@ export function registerTerminalIpc(): void {
     const tab = trouverTab(tabId)
     pty.detach(tabId)
     if (tab) await tmux.killSession(tab.tmuxSession)
+    await scrollback.oublier(tabId)
     store.update((etat) => {
       etat.tabs = etat.tabs.filter((t) => t.id !== tabId)
       if (etat.activeTabId === tabId) etat.activeTabId = etat.tabs.at(-1)?.id

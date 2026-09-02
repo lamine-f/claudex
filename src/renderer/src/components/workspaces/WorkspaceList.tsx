@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useStore } from '@renderer/state/store'
 import { Panneau } from '../ui/Panneau'
 import { WorkspaceItem } from './WorkspaceItem'
@@ -5,6 +6,18 @@ import { WorkspaceItem } from './WorkspaceItem'
 export function WorkspaceList(): React.JSX.Element {
   const workspaces = useStore((e) => e.workspaces)
   const ajouter = useStore((e) => e.ajouterWorkspace)
+  const chargerSessions = useStore((e) => e.chargerSessions)
+
+  // Une conversation lancée à la main dans un terminal doit apparaître ici sans
+  // qu'on ait à replier puis redéplier le projet.
+  useEffect(
+    () =>
+      window.claudex.claude.onSessionDetectee((chemin) => {
+        const cible = useStore.getState().workspaces.find((w) => w.path === chemin)
+        if (cible) void chargerSessions(cible.id)
+      }),
+    [chargerSessions]
+  )
 
   return (
     <Panneau

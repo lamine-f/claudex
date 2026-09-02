@@ -38,10 +38,18 @@ const THEME = {
 export function useTerminal(
   tabId: string,
   actif: boolean
-): { conteneur: React.RefObject<HTMLDivElement | null>; demarre: boolean } {
+): {
+  conteneur: React.RefObject<HTMLDivElement | null>
+  demarre: boolean
+  /** Vrai quand la session a dû être recréée : il y a quelque chose à reprendre. */
+  aRestaurer: boolean
+  ecrire: (commande: string) => void
+  oublierRestauration: () => void
+} {
   const conteneur = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const [demarre, setDemarre] = useState(false)
+  const [aRestaurer, setARestaurer] = useState(false)
 
   useEffect(() => {
     const hote = conteneur.current
@@ -130,8 +138,12 @@ export function useTerminal(
     })
     observateur.observe(hote)
 
-    void window.claudex.term.open(tabId, terminal.cols, terminal.rows).then(() => {
-      if (vivant) terminal.focus()
+    void window.claudex.term.open(tabId, terminal.cols, terminal.rows).then((resultat) => {
+      if (!vivant) return
+      // La session recréée a réaffiché l'écran d'avant elle-même ; il ne reste
+      // qu'à proposer de reprendre ce qui y tournait.
+      if (resultat.aRestaurer) setARestaurer(true)
+      terminal.focus()
     })
 
     return () => {
@@ -152,5 +164,17 @@ export function useTerminal(
     if (actif) terminalRef.current?.focus()
   }, [actif])
 
-  return { conteneur, demarre }
+  const ecrire = (commande: string): void => {
+    window.claudex.term.input(tabId, `${commande}\n`)
+    setARestaurer(false)
+    terminalRef.current?.focus()
+  }
+
+  return {
+    conteneur,
+    demarre,
+    aRestaurer,
+    ecrire,
+    oublierRestauration: () => setARestaurer(false)
+  }
 }

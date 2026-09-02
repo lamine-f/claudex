@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { ipcMain } from 'electron'
 import type { ClaudeSession, Tab } from '@shared/types'
 import { listerSessions } from '../services/claude-projects'
+import { surveiller } from '../services/session-watcher'
 import * as store from '../services/store'
 import { claudeProjectPath, tmuxSessionName } from '../util/paths'
 
@@ -87,8 +88,13 @@ function creerOngletAgent(
 export function registerClaudeIpc(): void {
   ipcMain.handle(
     'claude:listSessions',
-    (_evenement, workspaceId: string): Promise<ClaudeSession[]> =>
-      listerSessions(workspaceDe(workspaceId).path)
+    (evenement, workspaceId: string): Promise<ClaudeSession[]> => {
+      const chemin = workspaceDe(workspaceId).path
+      // Déplier un projet, c'est s'y intéresser : on se met dès lors à guetter les
+      // conversations qui y naissent, y compris celles lancées à la main.
+      void surveiller(chemin, evenement.sender)
+      return listerSessions(chemin)
+    }
   )
 
   ipcMain.handle(
