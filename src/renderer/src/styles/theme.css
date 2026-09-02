@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+/*
+ * Palette Claudex — sombre, dense, chrome minimal, accents chauds.
+ * Les valeurs sont volontairement peu saturées : c'est le contenu des terminaux
+ * qui doit porter la couleur, pas l'interface.
+ */
+@theme {
+  --color-fond: #0d0e12;
+  --color-fond-panneau: #121319;
+  --color-fond-eleve: #191b22;
+  --color-fond-survol: #21242d;
+  --color-bordure: #22242c;
+  --color-bordure-forte: #2f323c;
+
+  --color-texte: #e6e7ea;
+  --color-texte-doux: #9a9daa;
+  --color-texte-faible: #6b6e7b;
+
+  --color-accent: #e8825a;
+  --color-accent-doux: #7a4331;
+  --color-succes: #7ec96f;
+  --color-alerte: #e0c15a;
+  --color-erreur: #e05a5a;
+
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Menlo', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-fond);
+  color: var(--color-texte);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Barre de titre : la zone glissable de la fenêtre sans cadre. */
+.zone-glissable {
+  -webkit-app-region: drag;
+}
+.zone-glissable button,
+.zone-glissable input,
+.zone-glissable a {
+  -webkit-app-region: no-drag;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-bordure-forte);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #454956;
+  background-clip: content-box;
+}

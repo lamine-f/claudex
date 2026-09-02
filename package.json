@@ -1,0 +1,53 @@
+{
+  "name": "claudex",
+  "version": "0.1.0",
+  "description": "IDE desktop orienté vibe coding — workspaces, sessions Claude Code et terminaux tmux persistants",
+  "main": "./out/main/index.js",
+  "author": "lamine-f",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "npm run build && electron-builder --mac --arm64",
+    "dev:debug": "electron-vite dev -- --remote-debugging-port=9222",
+    "capture": "node scripts/cdp.mjs shot",
+    "test:e2e": "npm run build && playwright test",
+    "test:all": "npm run test && npm run test:e2e"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/xterm": "^6.0.0",
+    "chokidar": "^5.0.0",
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "react": "^19.2.8",
+    "react-arborist": "^3.16.0",
+    "react-dom": "^19.2.8",
+    "react-resizable-panels": "^4.12.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11",
+    "zustand": "^5.0.15"
+  }
+}

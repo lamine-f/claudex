@@ -1,0 +1,92 @@
+import { randomUUID } from 'node:crypto'
+import { ipcMain } from 'electron'
+import type { ClaudeSession, Tab } from '@shared/types'
+import { listerSessions } from '../services/claude-projects'
+import * as store from '../services/store'
+import { claudeProjectPath, tmuxSessionName } from '../util/paths'
+
+export type Intention = 'nouvelle' | 'reprise' | 'bifurcation'
+
+function workspaceDe(workspaceId: string): { path: string } {
+  const workspace = store.get().workspaces.find((w) => w.id === workspaceId)
+  if (!workspace) throw new Error(`Workspace inconnu : ${workspaceId}`)
+  return workspace
+}
+
+/**
+ * Crée un onglet destiné à porter une session d'agent, avec la commande qui
+ * l'amorcera dès que sa session tmux existera.
+ *
+ * - `nouvelle`    : Claudex impose l'identifiant, et le connaît donc avant même que
+ *                   Claude Code ne démarre — c'est ce qui rend la session
+ *                   reprenable plus tard sans passer par un sélecteur.
+ * - `reprise`     : rouvre une conversation existante avec tout son contexte.
+ * - `bifurcation` : repart du même contexte sous un nouvel identifiant, l'original
+ *                   restant intact. Cet identifiant est généré par Claude Code ;
+ *                   c'est le veilleur de sessions qui le rattachera à l'onglet.
+ */
+function creerOngletAgent(workspaceId: string, intention: Intention, uuid?: string): Tab {
+  const workspace = workspaceDe(workspaceId)
+  const id = randomUUID()
+
+  let sessionId: string | undefined
+  let commande: string
+  let titre: string
+
+  switch (intention) {
+    case 'nouvelle': {
+      sessionId = randomUUID()
+      commande = `claude --session-id ${sessionId}`
+      titre = 'Agent'
+      break
+    }
+    case 'reprise': {
+      if (!uuid) throw new Error('Reprise sans identifiant de session')
+      sessionId = uuid
+      commande = `claude -r ${uuid}`
+      titre = 'Agent'
+      break
+    }
+    case 'bifurcation': {
+      if (!uuid) throw new Error('Bifurcation sans identifiant de session')
+      sessionId = undefined
+      commande = `claude -r ${uuid} --fork-session`
+      titre = 'Agent (branche)'
+      break
+    }
+  }
+
+  const tab: Tab = {
+    id,
+    workspaceId,
+    title: titre,
+    cwd: workspace.path,
+    tmuxSession: tmuxSessionName(workspaceId, id),
+    claudeSessionId: sessionId,
+    claudeProjectDir: claudeProjectPath(workspace.path),
+    forkedFrom: intention === 'bifurcation' ? uuid : undefined,
+    commandeInitiale: commande,
+    lastActiveAt: Date.now()
+  }
+
+  store.update((etat) => {
+    etat.tabs.push(tab)
+    etat.activeTabId = id
+  })
+
+  return tab
+}
+
+export function registerClaudeIpc(): void {
+  ipcMain.handle(
+    'claude:listSessions',
+    (_evenement, workspaceId: string): Promise<ClaudeSession[]> =>
+      listerSessions(workspaceDe(workspaceId).path)
+  )
+
+  ipcMain.handle(
+    'claude:ouvrir',
+    (_evenement, workspaceId: string, intention: Intention, uuid?: string): Tab =>
+      creerOngletAgent(workspaceId, intention, uuid)
+  )
+}
