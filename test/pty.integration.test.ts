@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Destinataire } from '../src/main/services/pty'
 import * as pty from '../src/main/services/pty'
 import {
+  capturePane,
   ensureSession,
   hasSession,
   killSession,
@@ -114,9 +115,13 @@ describe('un seul client par session', () => {
     await attendre(() => second.recu.includes('SANS_DOUBLON'))
     await new Promise((r) => setTimeout(r, 600))
 
-    const occurrences = second.recu.split('SANS_DOUBLON').length - 1
-    // Une fois pour l'écho de la frappe, une fois pour la sortie de la commande.
-    expect(occurrences).toBeLessThanOrEqual(2)
+    // C'est l'écran qui fait foi, pas le flux : tmux retransmet légitimement le
+    // même contenu à chaque redessin. Le défaut cherché est un caractère tapé
+    // deux fois — « eecchhoo » —, ce que seul l'écran révèle.
+    const ecran = await capturePane(session, 200)
+    expect(ecran).toContain('SANS_DOUBLON')
+    expect(ecran).not.toContain('SSAANNSS')
+    expect(ecran).not.toContain('eecchhoo')
   })
 
   it('laisse la sortie au seul client encore attaché', async () => {
