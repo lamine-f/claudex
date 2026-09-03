@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { nommerBranche, racine } from '@shared/branches'
 
 interface Props {
   /** Titre de la conversation dont on part. */
@@ -26,7 +27,7 @@ export function DialogueBifurcation({ origine, onValider, onAnnuler }: Props): R
     champ.current?.focus()
   }, [])
 
-  const valider = (): void => onValider(`${origine} -- ${nom.trim() || 'branche'}`)
+  const valider = (): void => onValider(nommerBranche(origine, nom))
 
   return (
     <div
@@ -53,7 +54,7 @@ export function DialogueBifurcation({ origine, onValider, onAnnuler }: Props): R
           </label>
           <div className="mt-1.5 flex items-center rounded-md border border-separateur bg-fond-creux pl-3 focus-within:border-accent-tenu">
             <span className="shrink-0 truncate py-2 text-[13px] text-texte-tenu" aria-hidden>
-              {origine} --
+              {racine(origine)} --
             </span>
             <input
               id="nom-bifurcation"
