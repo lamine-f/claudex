@@ -42,18 +42,11 @@ export function TerminalPane(): React.JSX.Element {
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {tabs.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-5">
-            {/* Le logo suffit : écrire qu'il n'y a pas de terminal alors que
-                l'écran est vide et qu'un bouton propose d'en ouvrir un ne dit
-                rien que la vue ne montre déjà. */}
+          <div className="flex h-full items-center justify-center">
+            {/* Le logo seul : ouvrir un terminal se fait depuis l'en-tête, la
+                colonne des conversations ou ⌘T, et un bouton de plus au milieu
+                de l'écran ne faisait que répéter ces chemins. */}
             <img src="./logo.png" alt="" aria-hidden className="w-32 opacity-20" />
-            <button
-              type="button"
-              onClick={() => void nouvelOnglet()}
-              className="rounded-lg border border-bordure px-4 py-2 text-[13px] text-texte-doux transition-colors hover:border-accent-tenu hover:bg-fond-survol hover:text-accent"
-            >
-              Ouvrir un terminal
-            </button>
           </div>
         ) : (
           tabs.map((tab) => (

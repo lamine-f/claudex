@@ -13,7 +13,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('le premier terminal ouvert affiche son invite', async () => {
-    await ctx.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // Régression : le premier onglet restait muet, car l'attachement du client —

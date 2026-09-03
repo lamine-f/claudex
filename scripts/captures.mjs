@@ -73,7 +73,7 @@ if (await page.getByText("État de l'environnement").isVisible().catch(() => fal
 }
 
 // 2. Vue principale : sessions dépliées et un terminal actif
-await page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+await page.getByTitle('Nouveau terminal (⌘T)').click()
 await page.waitForSelector('.xterm')
 await attendre(2500)
 

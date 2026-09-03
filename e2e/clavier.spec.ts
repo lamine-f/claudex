@@ -11,7 +11,7 @@ test.describe('frappe au clavier', () => {
 
   test.beforeAll(async () => {
     ctx = await lancer()
-    await ctx.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await attendreInvite(ctx.page, 0)
   })
 

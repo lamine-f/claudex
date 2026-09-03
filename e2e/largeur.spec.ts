@@ -8,7 +8,7 @@ import { fermer, lancer, type Contexte } from './fixtures'
 test('replier la colonne élargit vraiment le terminal', async () => {
   const ctx: Contexte = await lancer()
   try {
-    await ctx.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     const largeur = async (): Promise<number> =>

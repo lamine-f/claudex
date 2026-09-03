@@ -8,7 +8,7 @@ test('une conversation lancée à la main est rattachée à son onglet', async (
   try {
     // Le projet est ouvert : Claudex guette dès lors les conversations qui y naissent.
     await expect(ctx.page.getByText('aucune session ici')).toBeVisible()
-    await ctx.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // Un `claude` tapé à la main écrirait exactement ce transcript.

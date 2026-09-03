@@ -22,7 +22,7 @@ test.describe('terminal arrêté', () => {
   })
 
   test("l'arrêt est signalé au lieu de laisser un écran mort", async () => {
-    await ctx.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await attendreInvite(ctx.page, 0)
 
     await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)

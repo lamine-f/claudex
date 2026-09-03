@@ -48,7 +48,7 @@ test('le paquet macOS ouvre un vrai terminal', async () => {
 
   try {
     await page.waitForSelector('[aria-label="Conversations"]')
-    await page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+    await page.getByTitle('Nouveau terminal (⌘T)').click()
     await expect(page.locator('.xterm')).toHaveCount(1)
 
     // Le terminal doit réellement parler : c'est la preuve que node-pty a été

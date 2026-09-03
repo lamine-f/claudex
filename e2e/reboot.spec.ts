@@ -12,7 +12,7 @@ async function simulerRedemarrage(): Promise<void> {
 
 test('un terminal se relève après un redémarrage de la machine', async () => {
   const premier = await lancer()
-  await premier.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
   await attendreInvite(premier.page, 0)
   await taper(premier.page, 0, 'echo TRACE_AVANT_REDEMARRAGE', 'TRACE_AVANT_REDEMARRAGE')
 
@@ -42,7 +42,7 @@ test('un terminal se relève après un redémarrage de la machine', async () => 
 
 test("l'écran restitué n'est pas rejoué dans le shell", async () => {
   const premier = await lancer()
-  await premier.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
   await attendreInvite(premier.page, 0)
   await taper(premier.page, 0, 'echo MARQUE_INERTE', 'MARQUE_INERTE')
   await fermer(premier, { nettoyer: false })
@@ -68,7 +68,7 @@ test("l'écran restitué n'est pas rejoué dans le shell", async () => {
 
 test('une commande interrompue par le redémarrage est proposée à la relance', async () => {
   const premier = await lancer()
-  await premier.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
   await attendreInvite(premier.page, 0)
 
   // Une commande longue, du genre de celles qu'un redémarrage interrompt : un

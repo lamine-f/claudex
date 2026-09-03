@@ -24,7 +24,7 @@ test('un terminal survit à la fermeture de l’application', async () => {
   const initiales = await sessionsClaudex()
   const premier = await lancer()
 
-  await premier.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
+  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
   await expect(premier.page.locator('.xterm')).toHaveCount(1)
 
   await taper(premier.page, 0, 'echo MARQUE_PERSISTANCE', 'MARQUE_PERSISTANCE')
