@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import type { Entree } from '@shared/types'
 import { ChevronRight } from 'lucide-react'
 import { useStore } from '@renderer/state/store'
+import { IconeFichier } from './IconeFichier'
 
 interface Ligne {
   entree: Entree
@@ -101,14 +102,21 @@ export function FileTree(): React.JSX.Element {
                       />
                     )}
                   </span>
+                  <span className="mr-1.5 flex w-[22px] shrink-0 items-center justify-center">
+                    <IconeFichier nom={entree.nom} dossier={entree.dossier} ouvert={ouvert} />
+                  </span>
                   <span
+                    // Ce que git ignore existe sur le disque sans faire partie du
+                    // projet : l'italique le dit sans le cacher.
                     className={`truncate font-mono text-[12px] leading-5 ${
                       entree.dossier
                         ? 'text-texte-doux'
                         : choisi
                           ? 'text-texte'
                           : 'text-texte-faible'
-                    } ${entree.discrete ? 'opacity-60' : ''}`}
+                    } ${entree.discrete ? 'opacity-60' : ''} ${
+                      entree.ignoree ? 'text-texte-tenu italic' : ''
+                    }`}
                   >
                     {entree.nom}
                   </span>

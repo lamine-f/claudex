@@ -99,6 +99,8 @@ export interface Entree {
   octets: number
   /** Vrai pour les entrées masquées par convention (nom commençant par un point). */
   discrete: boolean
+  /** Vrai si git ignore cette entrée : présente sur le disque, hors du projet. */
+  ignoree?: boolean
 }
 
 /**

@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import type { Apercu, Entree } from '@shared/types'
+import { ignores } from './git'
 
 /**
  * Dossiers écartés par défaut de l'arborescence.
@@ -59,8 +60,14 @@ export async function lireDossier(chemin: string): Promise<Entree[]> {
       })
   )
 
-  return resultat
-    .filter((e): e is Entree => e !== null)
+  const entrees2 = resultat.filter((e): e is Entree => e !== null)
+  const ignorees = await ignores(
+    chemin,
+    entrees2.map((e) => e.nom)
+  )
+  for (const entree of entrees2) entree.ignoree = ignorees.has(entree.nom)
+
+  return entrees2
     .sort((a, b) => {
       if (a.dossier !== b.dossier) return a.dossier ? -1 : 1
       return a.nom.localeCompare(b.nom, 'fr', { numeric: true, sensitivity: 'base' })
