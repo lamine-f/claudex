@@ -12,9 +12,19 @@ const ATTENDU: Record<string, string[]> = {
   workspace: ['list', 'add', 'remove', 'update'],
   term: ['list', 'create', 'open', 'input', 'resize', 'detach', 'close', 'rename'],
   fs: ['lireDossier', 'lireApercu', 'observer', 'cesserObservation'],
-  claude: ['listSessions', 'ouvrir', 'nommer', 'etiqueter', 'favori', 'ecarter', 'rangement', 'arranger'],
+  claude: [
+    'listSessions',
+    'ouvrir',
+    'nommer',
+    'etiqueter',
+    'favori',
+    'ecarter',
+    'rangement',
+    'arranger',
+    'apaiser'
+  ],
   git: ['etat'],
-  doctor: ['check', 'applySettingsFix']
+  doctor: ['check', 'appliquer']
 }
 
 /** Méthodes manquantes, sous la forme « claude.etiqueter ». */

@@ -21,7 +21,9 @@ export interface Contexte {
  * écrit directement — c'est le seul raccourci pris, tout le reste passe par
  * l'interface réelle.
  */
-export async function lancer(options: { donnees?: string; projet?: string } = {}): Promise<Contexte> {
+export async function lancer(
+  options: { donnees?: string; projet?: string; env?: Record<string, string> } = {}
+): Promise<Contexte> {
   const donnees = options.donnees ?? (await mkdtemp(join(tmpdir(), 'claudex-e2e-')))
   const projet = options.projet ?? (await mkdtemp(join(tmpdir(), 'claudex-projet-')))
 
@@ -57,7 +59,7 @@ export async function lancer(options: { donnees?: string; projet?: string } = {}
     args: [resolve('out/main/index.js'), `--user-data-dir=${donnees}`],
     // Socket tmux propre aux tests : sans lui, un `kill-server` de la suite
     // emporterait les sessions de l'application ouverte à côté.
-    env: { ...process.env, NODE_ENV: 'test', CLAUDEX_TMUX_SOCKET: SOCKET_TEST }
+    env: { ...process.env, NODE_ENV: 'test', CLAUDEX_TMUX_SOCKET: SOCKET_TEST, ...options.env }
   })
 
   const page = await app.firstWindow()

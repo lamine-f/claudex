@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { DoctorCheck } from '@shared/types'
 import { claudeProjectsRoot, claudeSettingsPath } from '../util/paths'
+import { installes } from './hooks'
 
 const run = promisify(execFile)
 
@@ -126,10 +127,37 @@ export async function check(): Promise<DoctorCheck[]> {
           ? `${bientot} conversation${bientot > 1 ? 's' : ''} ` +
             `${bientot > 1 ? 'partiront' : 'partira'} dans les 7 prochains jours.`
           : 'Aucune ne part dans les 7 prochains jours.'),
+      impose: true,
       fix: {
         label: `Porter la rétention à ${RETENTION_CIBLE} jours`,
         action: 'applySettingsFix'
       }
+    })
+  }
+
+  if (installes(settings)) {
+    checks.push({
+      id: 'notifications',
+      label: 'Notifications des agents',
+      severity: 'ok',
+      detail:
+        'Claude Code prévient Claudex quand un agent demande une permission ou ' +
+        'attend une réponse.',
+      fix: { label: 'Retirer les notifications', action: 'retirerHooks' }
+    })
+  } else {
+    checks.push({
+      id: 'notifications',
+      label: 'Notifications des agents',
+      severity: 'warn',
+      detail:
+        "Rien ne prévient quand un agent s'arrête pour demander une permission ou " +
+        "poser une question : il attend, et on ne le sait qu'en revenant sur son " +
+        'onglet. Claudex peut ajouter trois hooks à ~/.claude/settings.json, qui ' +
+        "appellent un script déposé dans ~/.claude/claudex/. Ce script n'écrit " +
+        "rien quand Claudex ne tourne pas, et les hooks déjà en place ne sont pas " +
+        'touchés.',
+      fix: { label: 'Installer les notifications', action: 'installerHooks' }
     })
   }
 

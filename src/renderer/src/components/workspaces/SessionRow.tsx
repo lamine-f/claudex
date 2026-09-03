@@ -6,7 +6,7 @@ import { IconeBifurquer, IconeBranche, IconeFavori } from '../ui/Icones'
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
   active: { libelle: 'à l’écran', couleur: 'var(--color-projet)' },
   ouverte: { libelle: 'dans un onglet', couleur: 'var(--color-texte-doux)' },
-  attente: { libelle: 'en attente', couleur: 'var(--color-attention)' },
+  attente: { libelle: 'vous attend', couleur: 'var(--color-attention)' },
   interrompue: { libelle: 'interrompue', couleur: 'var(--color-erreur)' },
   terminee: { libelle: 'terminée', couleur: 'var(--color-texte-faible)' }
 }

@@ -24,10 +24,11 @@ describe('contrôle du pont', () => {
         favori: () => {},
         ecarter: () => {},
         rangement: () => {},
-        arranger: () => {}
+        arranger: () => {},
+        apaiser: () => {}
       },
       git: { etat: () => {} },
-      doctor: { check: () => {}, applySettingsFix: () => {} }
+      doctor: { check: () => {}, appliquer: () => {} }
     }
     expect(manquesDuPont(pont)).toEqual(['claude.etiqueter'])
   })

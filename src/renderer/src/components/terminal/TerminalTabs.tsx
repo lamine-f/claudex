@@ -3,6 +3,8 @@ import { IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
   tabs: Tab[]
+  /** Conversations qui réclament leur utilisateur, par identifiant de session. */
+  sollicitees: Set<string>
   actifId?: string
   onChoisir: (id: string) => void
   onFermer: (id: string) => void
@@ -17,6 +19,7 @@ interface Props {
  */
 export function TerminalTabs({
   tabs,
+  sollicitees,
   actifId,
   onChoisir,
   onFermer,
@@ -38,10 +41,17 @@ export function TerminalTabs({
               }`}
             >
               {tab.claudeSessionId && (
+                // Ambre quand l'agent attend une réponse : c'est le seul état
+                // qui demande quelque chose, il ne se confond avec aucun autre.
                 <span
                   aria-hidden
+                  title={sollicitees.has(tab.claudeSessionId) ? 'Cet agent vous attend' : undefined}
                   className={`h-[6px] w-[6px] shrink-0 rounded-full ${
-                    courant ? 'bg-projet' : 'bg-texte-tenu'
+                    sollicitees.has(tab.claudeSessionId)
+                      ? 'bg-attention'
+                      : courant
+                        ? 'bg-projet'
+                        : 'bg-texte-tenu'
                   }`}
                 />
               )}

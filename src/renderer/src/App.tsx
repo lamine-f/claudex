@@ -64,6 +64,29 @@ export default function App(): React.JSX.Element {
     void charger()
   }, [charger])
 
+  // Les conversations qui réclament leur utilisateur, et le chemin qui y mène
+  // quand on a cliqué la notification depuis une autre application.
+  useEffect(() => {
+    const poser = useStore.getState().poserSollicitations
+    const arretSollicitations = window.claudex.claude.onSollicitations(poser)
+    const arretAller = window.claudex.claude.onAllerVers((tabId, workspaceId) => {
+      const etat = useStore.getState()
+      if (etat.activeWorkspaceId === workspaceId) {
+        etat.choisirOnglet(tabId)
+        return
+      }
+      // L'onglet vit dans un autre projet : il faut d'abord y aller, et ses
+      // onglets ne sont chargés qu'une fois arrivé.
+      void etat.choisirWorkspace(workspaceId).then(() => {
+        useStore.getState().choisirOnglet(tabId)
+      })
+    })
+    return () => {
+      arretSollicitations()
+      arretAller()
+    }
+  }, [])
+
   // Une conversation lancée à la main dans un terminal doit rejoindre la colonne
   // sans qu'on ait à changer de projet pour la voir.
   useEffect(

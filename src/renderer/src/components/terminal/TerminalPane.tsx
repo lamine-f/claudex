@@ -11,6 +11,7 @@ export function TerminalPane(): React.JSX.Element {
   const choisirOnglet = useStore((e) => e.choisirOnglet)
   const fermerOnglet = useStore((e) => e.fermerOnglet)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
+  const sollicitations = useStore((e) => e.sollicitations)
 
   const courant = workspaces.find((w) => w.id === workspaceActif)
 
@@ -30,6 +31,7 @@ export function TerminalPane(): React.JSX.Element {
     <section className="flex h-full min-w-0 flex-col bg-fond">
       <TerminalTabs
         tabs={tabs}
+        sollicitees={new Set(Object.keys(sollicitations))}
         actifId={activeTabId}
         onChoisir={choisirOnglet}
         onFermer={(id) => void fermerOnglet(id)}

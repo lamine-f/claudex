@@ -62,6 +62,16 @@ export interface AppState {
   favoris?: string[]
 
   /**
+   * Conversations qui réclament leur utilisateur, par identifiant.
+   *
+   * Alimenté par le hook `Notification` de Claude Code — une permission à
+   * accorder, une question posée — et vidé dès qu'on a repris la main. Gardé
+   * dans l'état parce qu'un agent bloqué le reste après la fermeture de
+   * Claudex : le voyant doit se retrouver allumé au retour.
+   */
+  sollicitations?: Record<string, Sollicitation>
+
+  /**
    * Ordre voulu et groupes des conversations, par projet.
    *
    * Le disque ne dit ni dans quel ordre on veut voir ses conversations ni ce
@@ -96,15 +106,30 @@ export interface ClaudeSession {
   epinglee: boolean
 }
 
+/** Ce qu'une conversation réclame, et depuis quand. */
+export interface Sollicitation {
+  /** Les mots de Claude Code : « needs your permission to use Bash », etc. */
+  message: string
+  quand: number
+}
+
 export type DoctorSeverity = 'ok' | 'warn' | 'error'
 
 export interface DoctorCheck {
-  id: 'tmux' | 'claude' | 'retention' | 'pont'
+  id: 'tmux' | 'claude' | 'retention' | 'notifications' | 'pont'
   label: string
   severity: DoctorSeverity
   detail: string
   /** Correctif applicable depuis l'écran de diagnostic, s'il en existe un. */
-  fix?: { label: string; action: 'applySettingsFix' }
+  fix?: { label: string; action: 'applySettingsFix' | 'installerHooks' | 'retirerHooks' }
+  /**
+   * Vrai si ce contrôle ouvre l'écran de lui-même au démarrage.
+   *
+   * Réservé à ce qui se perd en attendant. Une capacité qu'on n'a pas encore
+   * installée ne le mérite pas : elle deviendrait un rappel à écarter à chaque
+   * lancement, et c'est ainsi qu'on apprend à ne plus lire les avertissements.
+   */
+  impose?: boolean
 }
 
 /** Une entrée de l'arborescence de fichiers. */

@@ -19,6 +19,7 @@ import type {
   DoctorCheck,
   Entree,
   EtatGit,
+  Sollicitation,
   Tab,
   Workspace
 } from '@shared/types'
@@ -49,6 +50,14 @@ interface EtatUi {
   sessionsEnCours: Record<string, boolean>
   /** Workspaces dont la liste de sessions est entièrement déroulée. */
   toutAfficher: Record<string, boolean>
+
+  /**
+   * Conversations qui réclament leur utilisateur, par identifiant.
+   *
+   * Vient du processus main, qui reçoit les hooks de Claude Code ; l'interface
+   * ne fait que l'afficher et demander l'extinction quand on revient dessus.
+   */
+  sollicitations: Record<string, Sollicitation>
 
   /** Onglet de la colonne latérale : les conversations ou les fichiers. */
   panneau: 'sessions' | 'fichiers'
@@ -118,12 +127,14 @@ interface EtatUi {
   rafraichirArbre: (racine: string) => Promise<void>
   nouvelOnglet: () => Promise<void>
   choisirOnglet: (id: string) => void
+  /** Reçoit du main la liste des conversations qui attendent. */
+  poserSollicitations: (sollicitations: Record<string, Sollicitation>) => void
   fermerOnglet: (id: string) => Promise<void>
   enregistrerLayout: (layout: Partial<AppState['layout']>) => void
   replier: (quoi: 'rail' | 'colonne') => void
   ouvrirDiagnostic: (ouvert: boolean) => void
   relancerDiagnostic: () => Promise<void>
-  appliquerCorrectifRetention: () => Promise<string>
+  appliquerCorrectif: (action: NonNullable<DoctorCheck['fix']>['action']) => Promise<string>
 }
 
 type Poser = (partiel: Partial<EtatUi>) => void
@@ -156,6 +167,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   rangements: {},
   sessionsEnCours: {},
   toutAfficher: {},
+  sollicitations: {},
   arbre: {},
   dossiersOuverts: {},
   lectureEnCours: [],
@@ -194,9 +206,12 @@ export const useStore = create<EtatUi>((set, get) => ({
       workspaces: etat.workspaces,
       layout: etat.layout,
       activeWorkspaceId: etat.activeWorkspaceId,
+      sollicitations: etat.sollicitations ?? {},
       diagnostics,
-      // Le diagnostic ne s'impose que s'il a quelque chose à signaler.
-      diagnosticOuvert: diagnostics.some((d) => d.severity !== 'ok'),
+      // Le diagnostic ne s'impose que devant une panne ou une perte en cours.
+      // Le reste se signale par la pastille de la barre du haut, et s'ouvre
+      // quand on veut bien s'en occuper.
+      diagnosticOuvert: diagnostics.some((d) => d.severity === 'error' || d.impose),
       pret: true
     })
     if (etat.activeWorkspaceId) {
@@ -472,7 +487,15 @@ export const useStore = create<EtatUi>((set, get) => ({
     set({ tabs: [...get().tabs, tab], activeTabId: tab.id })
   },
 
-  choisirOnglet: (id) => set({ activeTabId: id }),
+  choisirOnglet: (id) => {
+    set({ activeTabId: id })
+    // Revenir sur un onglet, c'est répondre à ce qu'il demandait : le voyant
+    // s'éteint sans qu'on ait à le dire.
+    const uuid = get().tabs.find((t) => t.id === id)?.claudeSessionId
+    if (uuid && get().sollicitations[uuid]) void window.claudex.claude.apaiser(uuid)
+  },
+
+  poserSollicitations: (sollicitations) => set({ sollicitations }),
 
   fermerOnglet: async (id) => {
     await window.claudex.term.close(id)
@@ -501,8 +524,8 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   relancerDiagnostic: async () => set({ diagnostics: await window.claudex.doctor.check() }),
 
-  appliquerCorrectifRetention: async () => {
-    const resultat = await window.claudex.doctor.applySettingsFix()
+  appliquerCorrectif: async (action) => {
+    const resultat = await window.claudex.doctor.appliquer(action)
     set({ diagnostics: await window.claudex.doctor.check() })
     return resultat.message
   }

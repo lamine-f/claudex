@@ -7,6 +7,7 @@ import type {
   DoctorCheck,
   Entree,
   EtatGit,
+  Sollicitation,
   Tab,
   Workspace
 } from '@shared/types'
@@ -100,7 +101,24 @@ const api = {
     arranger: (workspaceId: string, rangement: Rangement): Promise<void> =>
       ipcRenderer.invoke('claude:arranger', workspaceId, rangement),
     ecarter: (workspaceId: string, uuid: string): Promise<string> =>
-      ipcRenderer.invoke('claude:ecarter', workspaceId, uuid)
+      ipcRenderer.invoke('claude:ecarter', workspaceId, uuid),
+
+    /** Éteint le voyant d'une conversation qui réclamait son utilisateur. */
+    apaiser: (uuid: string): Promise<void> => ipcRenderer.invoke('claude:apaiser', uuid),
+    onSollicitations: (
+      rappel: (sollicitations: Record<string, Sollicitation>) => void
+    ): (() => void) => {
+      const ecouteur = (_e: unknown, valeur: Record<string, Sollicitation>): void => rappel(valeur)
+      ipcRenderer.on('claude:sollicitations', ecouteur)
+      return () => ipcRenderer.removeListener('claude:sollicitations', ecouteur)
+    },
+    /** Une notification cliquée hors de l'application : rejoindre son onglet. */
+    onAllerVers: (rappel: (tabId: string, workspaceId: string) => void): (() => void) => {
+      const ecouteur = (_e: unknown, tabId: string, workspaceId: string): void =>
+        rappel(tabId, workspaceId)
+      ipcRenderer.on('claude:allerVers', ecouteur)
+      return () => ipcRenderer.removeListener('claude:allerVers', ecouteur)
+    }
   },
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>
@@ -108,8 +126,9 @@ const api = {
   },
   doctor: {
     check: (): Promise<DoctorCheck[]> => ipcRenderer.invoke('doctor:check'),
-    applySettingsFix: (): Promise<{ ok: boolean; message: string }> =>
-      ipcRenderer.invoke('doctor:applySettingsFix')
+    appliquer: (
+      action: NonNullable<DoctorCheck['fix']>['action']
+    ): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke('doctor:appliquer', action)
   }
 }
 

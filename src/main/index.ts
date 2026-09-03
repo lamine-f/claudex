@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 import { registerIpc } from './ipc'
 import { arreterVeilleurs } from './ipc/fs'
+import { annoncerPresence, retirerPresence } from './services/hooks'
+import * as notifications from './services/notifications'
 import { toutArreter } from './services/session-watcher'
 import * as pty from './services/pty'
 import * as scrollback from './services/scrollback'
@@ -28,6 +30,11 @@ if (!app.requestSingleInstanceLock()) {
     await store.load()
     registerIpc()
     createWindow()
+
+    // Le script de notification ne parle qu'à une application vivante : sans
+    // cette marque, il se tait — et il faut donc la poser avant d'écouter.
+    await annoncerPresence(process.pid).catch(() => undefined)
+    await notifications.demarrer().catch(() => undefined)
 
     // Copie régulière de l'écran des terminaux. Elle ne sert qu'après un
     // redémarrage de la machine, mais c'est précisément le moment où l'on ne peut
@@ -59,6 +66,8 @@ if (!app.requestSingleInstanceLock()) {
     pty.detachAll()
     arreterVeilleurs()
     toutArreter()
+    void notifications.arreter()
+    void retirerPresence()
 
     // Filet de sécurité : une écriture qui s'éternise ne doit pas rendre
     // l'application impossible à fermer.

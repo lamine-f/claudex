@@ -33,6 +33,18 @@ export function claudeSettingsPath(): string {
 }
 
 /**
+ * Dossier où Claudex pose ce qu'il donne à Claude Code : le script de
+ * notification, sa marque de présence, et les événements qu'il dépose.
+ *
+ * Il vit à côté de la configuration de Claude Code plutôt que dans les données
+ * de l'application : un chemin court, sans espace, qu'un hook peut appeler sans
+ * précaution de citation.
+ */
+export function claudexHooksDir(): string {
+  return process.env.CLAUDEX_HOOKS_DIR ?? join(homedir(), '.claude', 'claudex')
+}
+
+/**
  * Garde-fou : refuse tout chemin qui sort des workspaces enregistrés. Appelé par
  * chaque opération de lecture de fichier exposée au renderer.
  */

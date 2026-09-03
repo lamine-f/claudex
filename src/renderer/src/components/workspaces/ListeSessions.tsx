@@ -31,6 +31,7 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
   const tabs = useStore((e) => e.tabs)
   const activeTabId = useStore((e) => e.activeTabId)
   const groupeANommer = useStore((e) => e.groupeANommer)
+  const sollicitations = useStore((e) => e.sollicitations)
 
   const ouvrirSession = useStore((e) => e.ouvrirSession)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
@@ -78,7 +79,13 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
   const reste = retenues.length - visibles.length
 
   const statutDe = (uuid: string): StatutSession =>
-    uuid === aLEcran ? 'active' : ouvertes.has(uuid) ? 'ouverte' : 'terminee'
+    uuid === aLEcran
+      ? 'active'
+      : sollicitations[uuid]
+        ? 'attente'
+        : ouvertes.has(uuid)
+          ? 'ouverte'
+          : 'terminee'
 
   const deposer = (cible: Cible): void => {
     const quoi = glisse

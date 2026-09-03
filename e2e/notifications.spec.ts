@@ -1,0 +1,114 @@
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { expect, test, type Locator } from '@playwright/test'
+import { fermer, lancer, type Contexte } from './fixtures'
+
+const SESSION = 'aaaaaaaa-1111-1111-1111-111111111111'
+
+function dossierTranscrits(projet: string): string {
+  return join(process.env.HOME!, '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
+}
+
+/**
+ * Dépose un événement comme le fait le script appelé par Claude Code : écrit à
+ * côté puis renommé, pour ne jamais donner à lire un fichier à moitié écrit.
+ */
+async function deposer(dossierHooks: string, evenement: string, charge: unknown): Promise<void> {
+  const evenements = join(dossierHooks, 'evenements')
+  await mkdir(evenements, { recursive: true })
+  const temporaire = join(dossierHooks, `evt-${Date.now()}`)
+  await writeFile(temporaire, `${evenement}\n${JSON.stringify(charge)}\n`)
+  await rename(temporaire, join(evenements, `evt-${Date.now()}.json`))
+}
+
+test.describe('un agent qui réclame son utilisateur', () => {
+  let ctx: Contexte
+  let hooks: string
+
+  test.beforeAll(async () => {
+    hooks = await mkdtemp(join(tmpdir(), 'claudex-hooks-'))
+    const provisoire = await lancer({ env: { CLAUDEX_HOOKS_DIR: hooks } })
+    const dossier = dossierTranscrits(provisoire.projet)
+    await mkdir(dossier, { recursive: true })
+    await writeFile(
+      join(dossier, `${SESSION}.jsonl`),
+      `${JSON.stringify({ type: 'ai-title', aiTitle: 'Migration DTO' })}\n`
+    )
+    await fermer(provisoire, { nettoyer: false })
+    ctx = await lancer({
+      donnees: provisoire.donnees,
+      projet: provisoire.projet,
+      env: { CLAUDEX_HOOKS_DIR: hooks }
+    })
+
+    // La conversation doit être ouverte dans un onglet : Claudex ne réagit
+    // qu'aux agents qu'il a sous la main, pas à tous les `claude` de la machine.
+    await ctx.page.getByLabel('Sessions et fichiers').getByText('Migration DTO').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+
+    // Puis on la laisse derrière : la question n'est utile que pour ce qu'on
+    // n'a pas sous les yeux.
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(2)
+  })
+
+  test.afterAll(async () => {
+    await rm(dossierTranscrits(ctx.projet), { recursive: true, force: true })
+    await rm(hooks, { recursive: true, force: true })
+    await fermer(ctx)
+  })
+
+  const conversation = (): Locator =>
+    ctx.page.getByLabel('Sessions et fichiers').locator('li', { hasText: 'Migration DTO' }).last()
+
+  test('la conversation le dit dans la colonne', async () => {
+    await deposer(hooks, 'Notification', {
+      session_id: SESSION,
+      message: 'Claude needs your permission to use Bash'
+    })
+    await expect(conversation().getByText('vous attend')).toBeVisible()
+  })
+
+  test("revenir sur l'onglet éteint le voyant", async () => {
+    const onglets = ctx.page.getByRole('button', { name: 'Migration DTO' })
+    await onglets.last().click()
+    await expect(conversation().getByText('à l’écran')).toBeVisible()
+
+    // Reparti ailleurs, le voyant ne doit pas se rallumer : la demande a été
+    // vue, elle ne se repose pas.
+    await ctx.page.getByRole('button', { name: 'Terminal', exact: true }).last().click()
+    await expect(conversation().getByText('vous attend')).toHaveCount(0)
+  })
+
+  test('une réponse donnée dans le terminal éteint aussi le voyant', async () => {
+    await deposer(hooks, 'Notification', { session_id: SESSION, message: 'waiting for input' })
+    await expect(conversation().getByText('vous attend')).toBeVisible()
+
+    // `Stop` dit que l'agent a rendu la main : il n'attend plus rien.
+    await deposer(hooks, 'Stop', { session_id: SESSION })
+    await expect(conversation().getByText('vous attend')).toHaveCount(0)
+  })
+
+  test('une conversation inconnue de Claudex est ignorée', async () => {
+    await deposer(hooks, 'Notification', { session_id: 'inconnue-9999', message: 'coucou' })
+    // Rien ne doit apparaître : le hook est posé pour toute la machine, et
+    // Claudex n'a pas à parler des terminaux dont il ne sait rien.
+    await expect(ctx.page.getByText('vous attend')).toHaveCount(0)
+  })
+
+  test("l'attente survit à un redémarrage de Claudex", async () => {
+    await deposer(hooks, 'Notification', { session_id: SESSION, message: 'needs permission' })
+    await expect(conversation().getByText('vous attend')).toBeVisible()
+
+    await fermer(ctx, { nettoyer: false })
+    ctx = await lancer({
+      donnees: ctx.donnees,
+      projet: ctx.projet,
+      env: { CLAUDEX_HOOKS_DIR: hooks }
+    })
+    // L'agent est toujours bloqué dans sa session tmux : le voyant doit se
+    // retrouver allumé, sinon la demande se perd avec la fenêtre.
+    await expect(conversation().getByText('vous attend')).toBeVisible()
+  })
+})

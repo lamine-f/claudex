@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import type { DoctorSeverity } from '@shared/types'
+import type { DoctorCheck, DoctorSeverity } from '@shared/types'
 import { useStore } from '@renderer/state/store'
+
+type Correctif = NonNullable<DoctorCheck['fix']>['action']
 
 const PASTILLE: Record<DoctorSeverity, string> = {
   ok: 'bg-succes',
@@ -12,18 +14,18 @@ export function Diagnostic(): React.JSX.Element | null {
   const ouvert = useStore((e) => e.diagnosticOuvert)
   const diagnostics = useStore((e) => e.diagnostics)
   const fermer = useStore((e) => e.ouvrirDiagnostic)
-  const appliquer = useStore((e) => e.appliquerCorrectifRetention)
+  const appliquer = useStore((e) => e.appliquerCorrectif)
   const [message, setMessage] = useState<string | null>(null)
-  const [enCours, setEnCours] = useState(false)
+  const [enCours, setEnCours] = useState<string | null>(null)
 
   if (!ouvert) return null
 
-  const lancerCorrectif = async (): Promise<void> => {
-    setEnCours(true)
+  const lancerCorrectif = async (action: Correctif): Promise<void> => {
+    setEnCours(action)
     try {
-      setMessage(await appliquer())
+      setMessage(await appliquer(action))
     } finally {
-      setEnCours(false)
+      setEnCours(null)
     }
   }
 
@@ -57,11 +59,11 @@ export function Diagnostic(): React.JSX.Element | null {
                 {d.fix && (
                   <button
                     type="button"
-                    disabled={enCours}
-                    onClick={() => void lancerCorrectif()}
+                    disabled={enCours !== null}
+                    onClick={() => void lancerCorrectif(d.fix!.action)}
                     className="mt-2 rounded-md border border-accent-tenu bg-accent-tenu/25 px-2.5 py-1 text-[12px] text-accent transition-colors hover:bg-accent-tenu/40 disabled:opacity-50"
                   >
-                    {enCours ? 'En cours…' : d.fix.label}
+                    {enCours === d.fix.action ? 'En cours…' : d.fix.label}
                   </button>
                 )}
               </div>

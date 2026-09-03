@@ -5,6 +5,7 @@ import { RANGEMENT_VIDE, oublier, type Rangement } from '@shared/rangement'
 import { join } from 'node:path'
 import { listerSessions } from '../services/claude-projects'
 import { ecarter } from '../services/corbeille'
+import { apaiser } from '../services/notifications'
 import { surveiller } from '../services/session-watcher'
 import * as store from '../services/store'
 import { proteger } from '../services/tmux'
@@ -159,6 +160,10 @@ export function registerClaudeIpc(): void {
     })
   })
 
+  ipcMain.handle('claude:apaiser', (_evenement, uuid: string) => {
+    apaiser(uuid)
+  })
+
   ipcMain.handle('claude:favori', (_evenement, uuid: string, favori: boolean) => {
     store.update((etat) => {
       const favoris = new Set(etat.favoris ?? [])
@@ -177,6 +182,7 @@ export function registerClaudeIpc(): void {
     async (_evenement, workspaceId: string, uuid: string): Promise<string> => {
       const chemin = join(claudeProjectPath(workspaceDe(workspaceId).path), `${uuid}.jsonl`)
       const destination = await ecarter(chemin)
+      apaiser(uuid)
       store.update((etat) => {
         delete etat.nomsSessions?.[uuid]
         delete etat.etiquettes?.[uuid]
