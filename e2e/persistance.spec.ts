@@ -1,13 +1,13 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, lireTerminaux, taper } from './fixtures'
+import { fermer, lancer, lireTerminaux, taper, SOCKET_TEST } from './fixtures'
 
 const run = promisify(execFile)
 
 async function sessionsClaudex(): Promise<string[]> {
   try {
-    const { stdout } = await run('tmux', ['-L', 'claudex', 'ls', '-F', '#{session_name}'])
+    const { stdout } = await run('tmux', ['-L', SOCKET_TEST, 'ls', '-F', '#{session_name}'])
     return stdout.split('\n').filter(Boolean)
   } catch {
     return []

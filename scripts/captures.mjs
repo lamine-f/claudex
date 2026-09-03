@@ -45,7 +45,10 @@ await writeFile(
 )
 
 const app = await electron.launch({
-  args: [resolve('out/main/index.js'), `--user-data-dir=${profil}`]
+  args: [resolve('out/main/index.js'), `--user-data-dir=${profil}`],
+  // Serveur tmux distinct : les captures ne doivent pas toucher aux sessions
+  // ouvertes dans l'application.
+  env: { ...process.env, CLAUDEX_TMUX_SOCKET: 'claudex-captures' }
 })
 const page = await app.firstWindow()
 // Un canvas WebGL ne se capture pas : sans cela le terminal ressort vide.

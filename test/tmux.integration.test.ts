@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
+  SOCKET,
   capturePane,
   commandeComplete,
   preparerConfiguration,
@@ -162,10 +163,10 @@ describe('configuration du serveur', () => {
     await preparerConfiguration(join(tmpdir(), 'claudex-conf'))
     // Le cas qui compte : un serveur tmux lancé plus tôt, dont les options ne
     // viennent pas de notre configuration. `-f` seul ne suffirait pas.
-    await run('tmux', ['-L', 'claudex', 'set-option', '-g', 'status', 'on']).catch(() => undefined)
+    await run('tmux', ['-L', SOCKET, 'set-option', '-g', 'status', 'on']).catch(() => undefined)
     await ensureSession(session, '/tmp', 100, 30)
 
-    const { stdout } = await run('tmux', ['-L', 'claudex', 'show-options', '-g', 'status'])
+    const { stdout } = await run('tmux', ['-L', SOCKET, 'show-options', '-g', 'status'])
     expect(stdout.trim()).toBe('status off')
   })
 })

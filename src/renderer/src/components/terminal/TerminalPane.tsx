@@ -56,7 +56,12 @@ export function TerminalPane(): React.JSX.Element {
           </div>
         ) : (
           tabs.map((tab) => (
-            <TerminalInstance key={tab.id} tab={tab} actif={tab.id === activeTabId} />
+            <TerminalInstance
+              key={tab.id}
+              tab={tab}
+              actif={tab.id === activeTabId}
+              onFermer={() => void fermerOnglet(tab.id)}
+            />
           ))
         )}
       </div>

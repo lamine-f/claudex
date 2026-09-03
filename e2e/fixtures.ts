@@ -3,6 +3,9 @@ import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
 
+/** Serveur tmux réservé aux tests, distinct de celui de l'application. */
+export const SOCKET_TEST = 'claudex-test'
+
 export interface Contexte {
   app: ElectronApplication
   page: Page
@@ -52,7 +55,9 @@ export async function lancer(options: { donnees?: string; projet?: string } = {}
 
   const app = await electron.launch({
     args: [resolve('out/main/index.js'), `--user-data-dir=${donnees}`],
-    env: { ...process.env, NODE_ENV: 'test' }
+    // Socket tmux propre aux tests : sans lui, un `kill-server` de la suite
+    // emporterait les sessions de l'application ouverte à côté.
+    env: { ...process.env, NODE_ENV: 'test', CLAUDEX_TMUX_SOCKET: SOCKET_TEST }
   })
 
   const page = await app.firstWindow()

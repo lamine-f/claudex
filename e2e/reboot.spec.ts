@@ -1,13 +1,13 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { attendreInvite, fermer, lancer, lireTerminaux, taper } from './fixtures'
+import { attendreInvite, fermer, lancer, lireTerminaux, taper, SOCKET_TEST } from './fixtures'
 
 const run = promisify(execFile)
 
 /** Reproduit l'état d'après-redémarrage : le serveur tmux n'existe plus. */
 async function simulerRedemarrage(): Promise<void> {
-  await run('tmux', ['-L', 'claudex', 'kill-server']).catch(() => undefined)
+  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
 }
 
 test('un terminal se relève après un redémarrage de la machine', async () => {

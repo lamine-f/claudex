@@ -50,13 +50,18 @@ export function useTerminal(
   demarre: boolean
   /** Vrai quand la session a dû être recréée : il y a quelque chose à reprendre. */
   aRestaurer: boolean
+  /** Vrai quand le terminal s'est arrêté : plus rien ne répond derrière. */
+  arrete: boolean
   ecrire: (commande: string) => void
   oublierRestauration: () => void
+  relancer: () => void
 } {
   const conteneur = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const [demarre, setDemarre] = useState(false)
   const [aRestaurer, setARestaurer] = useState(false)
+  const [arrete, setArrete] = useState(false)
+  const [reprises, setReprises] = useState(0)
 
   useEffect(() => {
     const hote = conteneur.current
@@ -117,6 +122,14 @@ export function useTerminal(
       terminal.onData((donnees) => window.claudex.term.input(tabId, donnees)).dispose
     )
     desabonnements.push(
+      window.claudex.term.onExit((id) => {
+        // Le client tmux s'est terminé : soit la session a été détruite, soit le
+        // serveur lui-même s'est arrêté. Dans les deux cas plus rien n'écoute
+        // derrière, et taper dans ce terminal ne produirait aucun effet.
+        if (id === tabId && vivant) setArrete(true)
+      })
+    )
+    desabonnements.push(
       window.claudex.term.onData((id, donnees) => {
         if (id !== tabId || !vivant) return
         terminal.write(donnees)
@@ -159,6 +172,14 @@ export function useTerminal(
       terminal.focus()
     })
 
+    if (reprises > 0) {
+      // Une relance repart d'un écran propre : l'ancien contenu appartient à une
+      // session qui n'existe plus.
+      terminal.reset()
+      setArrete(false)
+      setDemarre(false)
+    }
+
     return () => {
       vivant = false
       terminalRef.current = null
@@ -169,7 +190,7 @@ export function useTerminal(
       void window.claudex.term.detach(tabId)
       terminal.dispose()
     }
-  }, [tabId])
+  }, [tabId, reprises])
 
   // Reprendre le focus quand l'onglet redevient actif : sans cela, revenir sur un
   // terminal ne rend pas la main au clavier et l'on croit l'application figée.
@@ -187,7 +208,11 @@ export function useTerminal(
     conteneur,
     demarre,
     aRestaurer,
+    arrete,
     ecrire,
-    oublierRestauration: () => setARestaurer(false)
+    oublierRestauration: () => setARestaurer(false),
+    // Remonter le terminal en entier : la session tmux est recréée au passage,
+    // et le nouvel écran ne garde rien de l'ancien.
+    relancer: () => setReprises((n) => n + 1)
   }
 }

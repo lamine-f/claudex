@@ -44,9 +44,15 @@ set -g base-index 1
 setw -g pane-base-index 1
 `
 
-/** Socket dédié : les sessions personnelles de l'utilisateur, sur le socket par
- *  défaut, ne sont ni listées ni modifiées par Claudex. */
-export const SOCKET = 'claudex'
+/**
+ * Socket dédié : les sessions personnelles de l'utilisateur, sur le socket par
+ * défaut, ne sont ni listées ni modifiées par Claudex.
+ *
+ * Il est surchargeable pour que les tests travaillent sur leur propre serveur :
+ * partager le socket de l'application revenait à tuer les sessions de
+ * l'utilisateur au premier `kill-server` d'une suite de tests.
+ */
+export const SOCKET = process.env.CLAUDEX_TMUX_SOCKET ?? 'claudex'
 
 let cheminConf = ''
 

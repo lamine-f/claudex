@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, type Contexte } from './fixtures'
+import { fermer, lancer, type Contexte, SOCKET_TEST } from './fixtures'
 
 const run = promisify(execFile)
 
@@ -17,7 +17,7 @@ async function commandesDeDepart(): Promise<string[]> {
   try {
     const { stdout } = await run('tmux', [
       '-L',
-      'claudex',
+      SOCKET_TEST,
       'list-panes',
       '-a',
       '-F',
