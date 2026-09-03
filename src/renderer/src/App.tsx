@@ -73,7 +73,7 @@ export default function App(): React.JSX.Element {
     // Trois bandes : où l'on est, ce qu'on fait, dans quel état est le projet.
     // Une seule bande de chrome, en haut : elle porte le contexte permanent, et
     // tout le reste de la hauteur revient au terminal.
-    <div className="grid h-full grid-rows-[44px_1fr]">
+    <div className="grid h-full grid-rows-[36px_1fr]">
       <FilAriane />
 
       {pret ? (

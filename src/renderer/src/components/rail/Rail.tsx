@@ -15,10 +15,6 @@ export function Rail(): React.JSX.Element {
   const tabs = useStore((e) => e.tabs)
   const choisir = useStore((e) => e.choisirWorkspace)
   const ajouter = useStore((e) => e.ajouterWorkspace)
-  const diagnostics = useStore((e) => e.diagnostics)
-  const ouvrirDiagnostic = useStore((e) => e.ouvrirDiagnostic)
-
-  const soucis = diagnostics.filter((d) => d.severity !== 'ok').length
 
   return (
     <nav
@@ -75,19 +71,6 @@ export function Rail(): React.JSX.Element {
           Ajouter un projet
         </button>
 
-        <button
-          type="button"
-          onClick={() => ouvrirDiagnostic(true)}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-[14px] text-texte-tenu transition-colors hover:bg-fond-survol hover:text-texte-faible"
-        >
-          <span
-            aria-hidden
-            className={`ml-[3px] h-[7px] w-[7px] shrink-0 rounded-full ${
-              soucis > 0 ? 'bg-attention' : 'bg-succes'
-            }`}
-          />
-          {soucis > 0 ? `${soucis} point${soucis > 1 ? 's' : ''} à voir` : 'Environnement'}
-        </button>
       </div>
     </nav>
   )

@@ -55,7 +55,7 @@ function BoutonRepli({
       title={titre}
       aria-label={titre}
       aria-pressed={!actif}
-      className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-fond-survol ${
+      className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-fond-survol ${
         actif ? 'text-texte-tenu' : 'text-texte-doux'
       }`}
     >
@@ -74,6 +74,7 @@ export function FilAriane(): React.JSX.Element {
   const rafraichirGit = useStore((e) => e.rafraichirGit)
   const layout = useStore((e) => e.layout)
   const replier = useStore((e) => e.replier)
+  const ouvrirDiagnostic = useStore((e) => e.ouvrirDiagnostic)
 
   const courant = workspaces.find((w) => w.id === actif)
   const onglet = tabs.find((t) => t.id === activeTabId)
@@ -92,19 +93,20 @@ export function FilAriane(): React.JSX.Element {
 
   const tmux = version('tmux')
   const claude = version('claude')
+  const soucis = diagnostics.filter((d) => d.severity !== 'ok').length
 
   return (
-    <header className="zone-glissable relative flex h-11 shrink-0 items-center gap-2.5 border-b border-separateur pr-5 pl-[92px]">
+    <header className="zone-glissable relative flex h-9 shrink-0 items-center gap-2 border-b border-separateur pr-4 pl-[88px]">
       <BoutonRepli
         actif={Boolean(layout.railReplie)}
         titre={layout.railReplie ? 'Afficher les projets' : 'Masquer les projets'}
-        icone={<IconePanneauProjets taille={16} />}
+        icone={<IconePanneauProjets taille={15} />}
         onBasculer={() => replier('rail')}
       />
       <BoutonRepli
         actif={Boolean(layout.colonneRepliee)}
         titre={layout.colonneRepliee ? 'Afficher la colonne' : 'Masquer la colonne'}
-        icone={<IconePanneauColonne taille={16} />}
+        icone={<IconePanneauColonne taille={15} />}
         onBasculer={() => replier('colonne')}
       />
 
@@ -159,6 +161,24 @@ export function FilAriane(): React.JSX.Element {
         {claude && (
           <Mesure icone={<IconeEtincelle />} valeur={claude} titre={`Claude Code ${claude}`} />
         )}
+
+        {/* L'état de l'environnement tient dans une pastille : c'est une veilleuse,
+            qu'on ne consulte que lorsqu'elle change de couleur. */}
+        <button
+          type="button"
+          onClick={() => ouvrirDiagnostic(true)}
+          title={
+            soucis > 0
+              ? `${soucis} point${soucis > 1 ? 's' : ''} à voir dans l'environnement`
+              : 'Environnement en ordre'
+          }
+          aria-label="État de l'environnement"
+          className="ml-1 flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-fond-survol"
+        >
+          <span
+            className={`h-[7px] w-[7px] rounded-full ${soucis > 0 ? 'bg-attention' : 'bg-succes'}`}
+          />
+        </button>
       </div>
     </header>
   )
