@@ -68,6 +68,16 @@ test.describe('un agent qui réclame son utilisateur', () => {
       message: 'Claude needs your permission to use Bash'
     })
     await expect(conversation().getByText('vous attend')).toBeVisible()
+    // Sur la ligne du titre : c'est là que l'œil passe en parcourant la liste.
+    await expect(conversation().getByLabel('Vous attend')).toBeVisible()
+  })
+
+  test("l'onglet et le projet le disent aussi", async () => {
+    // Trois endroits, parce qu'on ne regarde pas toujours la colonne : l'onglet
+    // pour ce qui est ouvert, le rail pour les projets qu'on a quittés.
+    const onglets = ctx.page.getByRole('button', { name: 'Migration DTO' }).last()
+    await expect(onglets.locator('xpath=../span[@aria-label="Vous attend"]')).toBeVisible()
+    await expect(ctx.page.getByLabel('Projets').getByLabel('Un agent vous attend')).toBeVisible()
   })
 
   test("revenir sur l'onglet éteint le voyant", async () => {

@@ -66,13 +66,29 @@ function diffuser(): void {
  * se voit déjà dans la colonne, et une notification par-dessus ne ferait que
  * répéter ce qui est à l'écran.
  */
-function prevenir(titre: string, corps: string, tabId: string, workspaceId: string): void {
+/**
+ * Deux voix, parce que ce sont deux nouvelles différentes.
+ *
+ * « Glass » est net et monte : un agent s'est arrêté et attend. « Pop » est
+ * bref et retombe : il a rendu la main, il n'y a rien à faire. Les entendre
+ * pareil obligerait à revenir voir pour savoir laquelle des deux c'était.
+ * (Sons du système, macOS seulement ; ailleurs la notification garde le sien.)
+ */
+const VOIX = { attente: 'Glass', fin: 'Pop' } as const
+
+function prevenir(
+  titre: string,
+  corps: string,
+  tabId: string,
+  workspaceId: string,
+  voix: keyof typeof VOIX
+): void {
   if (process.env.NODE_ENV === 'test') return
   if (!Notification.isSupported()) return
   const cible = fenetre()
   if (cible?.isFocused()) return
 
-  const notification = new Notification({ title: titre, body: corps })
+  const notification = new Notification({ title: titre, body: corps, sound: VOIX[voix] })
   notification.on('click', () => {
     const ouverte = fenetre()
     if (!ouverte || ouverte.isDestroyed()) return
@@ -101,14 +117,14 @@ function traiter(evenement: string, charge: unknown): void {
       const message = texteDe(charge, 'message') ?? 'Claude Code attend une réponse.'
       store.update((etat) => {
         const sollicitations = (etat.sollicitations ??= {})
-        sollicitations[uuid] = { message, quand: Date.now() }
+        sollicitations[uuid] = { message, quand: Date.now(), workspaceId: onglet.workspaceId }
       })
-      prevenir(nom, message, onglet.id, onglet.workspaceId)
+      prevenir(nom, message, onglet.id, onglet.workspaceId, 'attente')
       break
     }
     case 'Stop': {
       apaiser(uuid)
-      prevenir(nom, 'Claude a terminé.', onglet.id, onglet.workspaceId)
+      prevenir(nom, 'Claude a terminé.', onglet.id, onglet.workspaceId, 'fin')
       return
     }
     case 'UserPromptSubmit': {

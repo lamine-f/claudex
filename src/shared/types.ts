@@ -111,6 +111,8 @@ export interface Sollicitation {
   /** Les mots de Claude Code : « needs your permission to use Bash », etc. */
   message: string
   quand: number
+  /** Projet où la conversation se tient, pour la retrouver depuis le rail. */
+  workspaceId: string
 }
 
 export type DoctorSeverity = 'ok' | 'warn' | 'error'

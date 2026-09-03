@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '@renderer/state/store'
-import { IconePlus, IconeRecherche } from '../ui/Icones'
+import { IconeAttente, IconePlus, IconeRecherche } from '../ui/Icones'
 
 /**
  * Colonne des projets.
@@ -15,7 +15,16 @@ export function Rail(): React.JSX.Element {
   const tabs = useStore((e) => e.tabs)
   const choisir = useStore((e) => e.choisirWorkspace)
   const ajouter = useStore((e) => e.ajouterWorkspace)
+  const sollicitations = useStore((e) => e.sollicitations)
   const [filtre, setFiltre] = useState('')
+
+  // Les onglets des autres projets ne sont pas chargés : sans cette marque,
+  // un agent qui appelle depuis un projet qu'on ne regarde pas resterait
+  // invisible tant qu'on n'y serait pas retourné.
+  const enAttente = useMemo(
+    () => new Set(Object.values(sollicitations).map((s) => s.workspaceId)),
+    [sollicitations]
+  )
 
   const retenus = useMemo(() => {
     const terme = filtre.trim().toLowerCase()
@@ -87,6 +96,15 @@ export function Rail(): React.JSX.Element {
                 >
                   {w.name}
                 </span>
+                {enAttente.has(w.id) && (
+                  <span
+                    aria-label="Un agent vous attend"
+                    title="Un agent de ce projet attend une réponse"
+                    className="shrink-0 text-attention"
+                  >
+                    <IconeAttente taille={13} />
+                  </span>
+                )}
                 {ouverts > 0 && (
                   // Le compteur porte la couleur de son projet, comme le
                   // liseré : deux marques de la même main, pas deux couleurs

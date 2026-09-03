@@ -2,6 +2,7 @@ import {
   ChevronRight,
   Columns2,
   FolderPlus,
+  Hand,
   Search,
   FilePen,
   FilePlus,
@@ -61,6 +62,14 @@ export const IconeBifurquer = (p: Props): React.JSX.Element => <GitFork {...regl
 
 /** Conversation mise en favori. */
 export const IconeFavori = (p: Props): React.JSX.Element => <Star {...reglages(p)} />
+
+/**
+ * Un agent qui réclame son utilisateur.
+ *
+ * Une main levée : l'agent ne signale pas une panne, il demande la parole. Un
+ * point d'exclamation aurait dit l'alarme, une cloche aurait dit le bruit.
+ */
+export const IconeAttente = (p: Props): React.JSX.Element => <Hand {...reglages(p)} />
 
 /** Relire la liste. */
 export const IconeSynchro = (p: Props): React.JSX.Element => <RefreshCw {...reglages(p)} />

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ClaudeSession, StatutSession } from '@shared/types'
 import { quand } from '@shared/temps'
-import { IconeBifurquer, IconeBranche, IconeFavori } from '../ui/Icones'
+import { IconeAttente, IconeBifurquer, IconeBranche, IconeFavori } from '../ui/Icones'
 
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
   active: { libelle: 'à l’écran', couleur: 'var(--color-projet)' },
@@ -179,6 +179,17 @@ export function SessionRow({
         }`}
       >
         <span className="flex min-w-0 items-baseline gap-2">
+          {statut === 'attente' && (
+            // Sur la ligne du titre, là où l'œil passe : la mention « vous
+            // attend » vit une ligne plus bas, en petit, et se cherche.
+            <span
+              aria-label="Vous attend"
+              title="Cet agent attend une réponse"
+              className="shrink-0 self-center text-attention"
+            >
+              <IconeAttente taille={12} />
+            </span>
+          )}
           {session.epinglee && !edition && (
             <span aria-label="En favori" title="En favori" className="shrink-0 text-attention">
               <IconeFavori taille={11} />

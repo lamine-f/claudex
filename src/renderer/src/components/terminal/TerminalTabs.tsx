@@ -1,5 +1,5 @@
 import type { Tab } from '@shared/types'
-import { IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
+import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
   tabs: Tab[]
@@ -40,21 +40,25 @@ export function TerminalTabs({
                 courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
               }`}
             >
-              {tab.claudeSessionId && (
-                // Ambre quand l'agent attend une réponse : c'est le seul état
-                // qui demande quelque chose, il ne se confond avec aucun autre.
-                <span
-                  aria-hidden
-                  title={sollicitees.has(tab.claudeSessionId) ? 'Cet agent vous attend' : undefined}
-                  className={`h-[6px] w-[6px] shrink-0 rounded-full ${
-                    sollicitees.has(tab.claudeSessionId)
-                      ? 'bg-attention'
-                      : courant
-                        ? 'bg-projet'
-                        : 'bg-texte-tenu'
-                  }`}
-                />
-              )}
+              {tab.claudeSessionId &&
+                (sollicitees.has(tab.claudeSessionId) ? (
+                  // La main levée remplace la pastille : à cette taille, une
+                  // couleur de plus se confond, une forme de plus se voit.
+                  <span
+                    aria-label="Vous attend"
+                    title="Cet agent attend une réponse"
+                    className="shrink-0 text-attention"
+                  >
+                    <IconeAttente taille={12} />
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden
+                    className={`h-[6px] w-[6px] shrink-0 rounded-full ${
+                      courant ? 'bg-projet' : 'bg-texte-tenu'
+                    }`}
+                  />
+                ))}
               <button
                 type="button"
                 onClick={() => onChoisir(tab.id)}
