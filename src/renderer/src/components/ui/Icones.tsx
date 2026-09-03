@@ -1,5 +1,6 @@
 import {
   Columns2,
+  Search,
   FilePen,
   FilePlus,
   FolderTree,
@@ -81,3 +82,6 @@ export const IconePanneauProjets = (p: Props): React.JSX.Element => <PanelLeft {
 
 /** Replier ou déployer la colonne des conversations et des fichiers. */
 export const IconePanneauColonne = (p: Props): React.JSX.Element => <Columns2 {...reglages(p)} />
+
+/** Filtrer une liste. */
+export const IconeRecherche = (p: Props): React.JSX.Element => <Search {...reglages(p)} />

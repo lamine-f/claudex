@@ -1,13 +1,13 @@
+import { useMemo, useState } from 'react'
 import { useStore } from '@renderer/state/store'
-import { IconePlus } from '../ui/Icones'
+import { IconePlus, IconeRecherche } from '../ui/Icones'
 
 /**
  * Colonne des projets.
  *
  * Les noms sont écrits en toutes lettres : réduits à leurs initiales, ils
- * devenaient indéchiffrables dès que plusieurs projets partageaient les mêmes
- * premières lettres. Les lignes restent compactes pour que la largeur prise
- * reste modeste.
+ * devenaient indéchiffrables dès que plusieurs partageaient les mêmes
+ * premières lettres.
  */
 export function Rail(): React.JSX.Element {
   const workspaces = useStore((e) => e.workspaces)
@@ -15,14 +15,52 @@ export function Rail(): React.JSX.Element {
   const tabs = useStore((e) => e.tabs)
   const choisir = useStore((e) => e.choisirWorkspace)
   const ajouter = useStore((e) => e.ajouterWorkspace)
+  const [filtre, setFiltre] = useState('')
+
+  const retenus = useMemo(() => {
+    const terme = filtre.trim().toLowerCase()
+    if (!terme) return workspaces
+    // Le chemin compte autant que le nom : on cherche parfois un projet dont on
+    // ne retient que l'endroit où il vit.
+    return workspaces.filter(
+      (w) =>
+        w.name.toLowerCase().includes(terme) || w.path.toLowerCase().includes(terme)
+    )
+  }, [workspaces, filtre])
 
   return (
     <nav
       aria-label="Projets"
       className="flex h-full w-[212px] shrink-0 flex-col border-r border-separateur bg-fond-rail py-3"
     >
+      <div className="flex shrink-0 items-center gap-1.5 px-2 pb-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-separateur bg-fond-creux px-2.5 focus-within:border-bordure">
+          <span className="shrink-0 text-texte-tenu">
+            <IconeRecherche taille={13} />
+          </span>
+          <input
+            type="search"
+            value={filtre}
+            onChange={(e) => setFiltre(e.target.value)}
+            placeholder="Rechercher"
+            aria-label="Rechercher un projet"
+            className="min-w-0 flex-1 bg-transparent py-2 text-[13px] text-texte-doux placeholder:text-texte-tenu focus:outline-none"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void ajouter()}
+          title="Ajouter un projet"
+          aria-label="Ajouter un projet"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
+        >
+          <IconePlus taille={16} />
+        </button>
+      </div>
+
       <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
-        {workspaces.map((w) => {
+        {retenus.map((w) => {
           const courant = w.id === actif
           // Le compteur ne vaut que pour le projet courant : les onglets des
           // autres ne sont pas chargés, et afficher zéro serait un mensonge.
@@ -58,20 +96,13 @@ export function Rail(): React.JSX.Element {
             </li>
           )
         })}
+
+        {retenus.length === 0 && (
+          <li className="px-2.5 py-2 text-[13px] text-texte-tenu">
+            {workspaces.length === 0 ? 'Aucun projet.' : 'Aucun projet ne correspond.'}
+          </li>
+        )}
       </ul>
-
-      <div className="mt-2 flex flex-col gap-0.5 border-t border-separateur px-2 pt-2">
-        <button
-          type="button"
-          onClick={() => void ajouter()}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-[14px] text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte-doux"
-        >
-          <span aria-hidden className="w-[2px] shrink-0" />
-          <IconePlus taille={15} />
-          Ajouter un projet
-        </button>
-
-      </div>
     </nav>
   )
 }

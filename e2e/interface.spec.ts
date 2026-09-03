@@ -51,3 +51,36 @@ test.describe('replier les colonnes', () => {
     await expect(ctx.page.getByLabel('Projets', { exact: true })).toBeVisible()
   })
 })
+
+test.describe('recherche de projet', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('le filtre restreint la liste des projets', async () => {
+    const projets = ctx.page.getByLabel('Projets', { exact: true })
+    await expect(projets.getByText('Projet test')).toBeVisible()
+
+    await ctx.page.getByLabel('Rechercher un projet').fill('introuvable')
+    await expect(projets.getByText('Projet test')).toHaveCount(0)
+    await expect(projets.getByText('Aucun projet ne correspond.')).toBeVisible()
+
+    await ctx.page.getByLabel('Rechercher un projet').fill('')
+    await expect(projets.getByText('Projet test')).toBeVisible()
+  })
+
+  test('le chemin compte autant que le nom', async () => {
+    // On cherche parfois un projet dont on ne retient que l'endroit où il vit.
+    await ctx.page.getByLabel('Rechercher un projet').fill('claudex-projet')
+    await expect(
+      ctx.page.getByLabel('Projets', { exact: true }).getByText('Projet test')
+    ).toBeVisible()
+    await ctx.page.getByLabel('Rechercher un projet').fill('')
+  })
+})
