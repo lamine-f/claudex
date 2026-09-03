@@ -50,6 +50,7 @@ function Ecart(): React.JSX.Element | null {
 export default function App(): React.JSX.Element {
   const charger = useStore((e) => e.charger)
   const pret = useStore((e) => e.pret)
+  const layout = useStore((e) => e.layout)
   useShortcuts()
 
   useEffect(() => {
@@ -77,16 +78,20 @@ export default function App(): React.JSX.Element {
 
       {pret ? (
         <div className="flex min-h-0">
-          <Rail />
-          <Group orientation="horizontal" className="min-h-0 flex-1">
-            <Panel defaultSize="26%" minSize="16%" maxSize="42%">
-              <ColonneLaterale />
-            </Panel>
-            <Poignee />
-            <Panel defaultSize="74%" minSize="40%">
-              <TerminalPane />
-            </Panel>
-          </Group>
+          {!layout.railReplie && <Rail />}
+          {layout.colonneRepliee ? (
+            <TerminalPane />
+          ) : (
+            <Group orientation="horizontal" className="min-h-0 flex-1">
+              <Panel defaultSize="26%" minSize="16%" maxSize="42%">
+                <ColonneLaterale />
+              </Panel>
+              <Poignee />
+              <Panel defaultSize="74%" minSize="40%">
+                <TerminalPane />
+              </Panel>
+            </Group>
+          )}
         </div>
       ) : (
         <div className="flex items-center justify-center text-[12px] text-texte-faible">

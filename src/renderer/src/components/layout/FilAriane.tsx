@@ -5,6 +5,8 @@ import {
   IconeEtincelle,
   IconeModifie,
   IconeNonSuivi,
+  IconePanneauColonne,
+  IconePanneauProjets,
   IconeTerminal
 } from '../ui/Icones'
 
@@ -13,7 +15,7 @@ import {
  *
  * Elle porte tout le contexte permanent. Une seconde bande en bas doublait le
  * chrome et prenait de la hauteur au terminal pour des informations qui
- * tiennent ici, à droite d'un fil d'ariane par nature court.
+ * tiennent ici.
  */
 function Mesure({
   icone,
@@ -25,10 +27,40 @@ function Mesure({
   titre: string
 }): React.JSX.Element {
   return (
-    <span className="flex items-center gap-1.5 font-mono text-[11px] text-texte-faible" title={titre}>
+    <span
+      className="flex items-center gap-1.5 font-mono text-[11px] text-texte-faible"
+      title={titre}
+    >
       <span className="text-texte-tenu">{icone}</span>
       {valeur}
     </span>
+  )
+}
+
+function BoutonRepli({
+  actif,
+  titre,
+  icone,
+  onBasculer
+}: {
+  actif: boolean
+  titre: string
+  icone: React.ReactNode
+  onBasculer: () => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onBasculer}
+      title={titre}
+      aria-label={titre}
+      aria-pressed={!actif}
+      className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-fond-survol ${
+        actif ? 'text-texte-tenu' : 'text-texte-doux'
+      }`}
+    >
+      {icone}
+    </button>
   )
 }
 
@@ -40,6 +72,8 @@ export function FilAriane(): React.JSX.Element {
   const git = useStore((e) => e.git)
   const diagnostics = useStore((e) => e.diagnostics)
   const rafraichirGit = useStore((e) => e.rafraichirGit)
+  const layout = useStore((e) => e.layout)
+  const replier = useStore((e) => e.replier)
 
   const courant = workspaces.find((w) => w.id === actif)
   const onglet = tabs.find((t) => t.id === activeTabId)
@@ -60,10 +94,25 @@ export function FilAriane(): React.JSX.Element {
   const claude = version('claude')
 
   return (
-    <header className="zone-glissable flex h-11 shrink-0 items-center gap-2.5 border-b border-separateur pr-5 pl-[92px]">
+    <header className="zone-glissable relative flex h-11 shrink-0 items-center gap-2.5 border-b border-separateur pr-5 pl-[92px]">
+      <BoutonRepli
+        actif={Boolean(layout.railReplie)}
+        titre={layout.railReplie ? 'Afficher les projets' : 'Masquer les projets'}
+        icone={<IconePanneauProjets taille={16} />}
+        onBasculer={() => replier('rail')}
+      />
+      <BoutonRepli
+        actif={Boolean(layout.colonneRepliee)}
+        titre={layout.colonneRepliee ? 'Afficher la colonne' : 'Masquer la colonne'}
+        icone={<IconePanneauColonne taille={16} />}
+        onBasculer={() => replier('colonne')}
+      />
+
       {courant && (
         <>
-          <span className="shrink-0 font-mono text-[12.5px] text-texte-faible">{courant.name}</span>
+          <span className="ml-1 shrink-0 font-mono text-[12.5px] text-texte-faible">
+            {courant.name}
+          </span>
           {onglet && (
             <>
               <span className="shrink-0 text-texte-tenu">/</span>
@@ -72,6 +121,15 @@ export function FilAriane(): React.JSX.Element {
           )}
         </>
       )}
+
+      {/* Centré sur la fenêtre, non sur la place qui reste : le nom doit tomber
+          au milieu quel que soit ce qui l'entoure. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] text-texte-tenu"
+      >
+        Claudex
+      </span>
 
       <div className="min-w-4 flex-1" />
 

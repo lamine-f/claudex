@@ -1,8 +1,10 @@
 import {
+  Columns2,
   FilePen,
+  FilePlus,
   FolderTree,
   MessagesSquare,
-  FilePlus,
+  PanelLeft,
   GitBranch,
   GitFork,
   Plus,
@@ -73,3 +75,9 @@ export const IconeConversations = (p: Props): React.JSX.Element => (
 
 /** L'arborescence des fichiers. */
 export const IconeArborescence = (p: Props): React.JSX.Element => <FolderTree {...reglages(p)} />
+
+/** Replier ou déployer la colonne des projets. */
+export const IconePanneauProjets = (p: Props): React.JSX.Element => <PanelLeft {...reglages(p)} />
+
+/** Replier ou déployer la colonne des conversations et des fichiers. */
+export const IconePanneauColonne = (p: Props): React.JSX.Element => <Columns2 {...reglages(p)} />

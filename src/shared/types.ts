@@ -58,7 +58,13 @@ export interface AppState {
 
   /** Conversations mises en favori, remontées en tête de liste. */
   favoris?: string[]
-  layout: { leftWidth: number; middleWidth: number }
+  layout: {
+    leftWidth: number
+    middleWidth: number
+    /** Panneaux repliés, pour rendre leur largeur au terminal. */
+    railReplie?: boolean
+    colonneRepliee?: boolean
+  }
   activeWorkspaceId?: string
   activeTabId?: string
 }

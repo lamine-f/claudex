@@ -91,6 +91,7 @@ interface EtatUi {
   choisirOnglet: (id: string) => void
   fermerOnglet: (id: string) => Promise<void>
   enregistrerLayout: (layout: Partial<AppState['layout']>) => void
+  replier: (quoi: 'rail' | 'colonne') => void
   ouvrirDiagnostic: (ouvert: boolean) => void
   relancerDiagnostic: () => Promise<void>
   appliquerCorrectifRetention: () => Promise<string>
@@ -384,6 +385,15 @@ export const useStore = create<EtatUi>((set, get) => ({
   enregistrerLayout: (layout) => {
     set({ layout: { ...get().layout, ...layout } })
     void window.claudex.state.setLayout(layout)
+  },
+
+  replier: (quoi) => {
+    const layout = get().layout
+    get().enregistrerLayout(
+      quoi === 'rail'
+        ? { railReplie: !layout.railReplie }
+        : { colonneRepliee: !layout.colonneRepliee }
+    )
   },
 
   ouvrirDiagnostic: (ouvert) => set({ diagnosticOuvert: ouvert }),

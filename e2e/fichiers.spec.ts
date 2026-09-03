@@ -24,7 +24,7 @@ test.describe('arborescence et aperçu', () => {
     ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
     // L'arborescence partage sa colonne avec les conversations : il faut la
     // demander, elle n'est plus visible en permanence.
-    await ctx.page.getByRole('button', { name: 'Fichiers' }).click()
+    await ctx.page.getByRole('button', { name: 'Fichiers', exact: true }).click()
   })
 
   test.afterAll(async () => {
@@ -81,7 +81,7 @@ test.describe('lecture de l’arborescence', () => {
     await run('git', ['-C', p, 'init', '-q'])
     await fermer(provisoire, { nettoyer: false })
     ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
-    await ctx.page.getByRole('button', { name: 'Fichiers' }).click()
+    await ctx.page.getByRole('button', { name: 'Fichiers', exact: true }).click()
   })
 
   test.afterAll(async () => {
