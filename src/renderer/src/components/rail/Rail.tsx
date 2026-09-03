@@ -23,9 +23,9 @@ export function Rail(): React.JSX.Element {
   return (
     <nav
       aria-label="Projets"
-      className="flex h-full w-[184px] shrink-0 flex-col border-r border-separateur bg-fond-rail py-2"
+      className="flex h-full w-[212px] shrink-0 flex-col border-r border-separateur bg-fond-rail py-3"
     >
-      <ul className="min-h-0 flex-1 overflow-y-auto px-1.5">
+      <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
         {workspaces.map((w) => {
           const courant = w.id === actif
           // Le compteur ne vaut que pour le projet courant : les onglets des
@@ -37,17 +37,17 @@ export function Rail(): React.JSX.Element {
                 type="button"
                 onClick={() => void choisir(w.id)}
                 title={w.path}
-                className={`flex w-full items-center gap-2 rounded-md py-1.5 pr-2 pl-2 text-left transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
                   courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
                 }`}
               >
                 <span
                   aria-hidden
-                  className="h-3.5 w-[2px] shrink-0 rounded-full"
+                  className="h-4 w-[2px] shrink-0 rounded-full"
                   style={{ background: courant ? w.color : 'transparent' }}
                 />
                 <span
-                  className={`min-w-0 flex-1 truncate text-[13px] ${
+                  className={`min-w-0 flex-1 truncate text-[14.5px] ${
                     courant ? 'text-texte' : 'text-texte-faible'
                   }`}
                 >
@@ -64,25 +64,25 @@ export function Rail(): React.JSX.Element {
         })}
       </ul>
 
-      <div className="mt-1 border-t border-separateur px-1.5 pt-1.5">
+      <div className="mt-2 flex flex-col gap-0.5 border-t border-separateur px-2 pt-2">
         <button
           type="button"
           onClick={() => void ajouter()}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte-doux"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-[14px] text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte-doux"
         >
           <span aria-hidden className="w-[2px] shrink-0" />
-          <IconePlus taille={13} />
+          <IconePlus taille={15} />
           Ajouter un projet
         </button>
 
         <button
           type="button"
           onClick={() => ouvrirDiagnostic(true)}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-texte-tenu transition-colors hover:bg-fond-survol hover:text-texte-faible"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-[14px] text-texte-tenu transition-colors hover:bg-fond-survol hover:text-texte-faible"
         >
           <span
             aria-hidden
-            className={`h-[6px] w-[6px] shrink-0 rounded-full ${
+            className={`ml-[3px] h-[7px] w-[7px] shrink-0 rounded-full ${
               soucis > 0 ? 'bg-attention' : 'bg-succes'
             }`}
           />

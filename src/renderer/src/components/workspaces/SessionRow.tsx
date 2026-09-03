@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ClaudeSession, StatutSession } from '@shared/types'
 import { quand } from '@shared/temps'
-import { IconeBifurquer, IconeFavori } from '../ui/Icones'
+import { IconeBifurquer, IconeBranche, IconeFavori } from '../ui/Icones'
 
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
   active: { libelle: 'à l’écran', couleur: 'var(--color-accent)' },
@@ -114,7 +114,7 @@ export function SessionRow({
         }`}
         // Le liseré plein ne va qu'à la conversation qu'on a sous les yeux ;
         // celles qui patientent dans un autre onglet le portent en retrait.
-        className={`flex w-full flex-col gap-[3px] border-l-2 py-2 pr-10 pl-3 text-left transition-colors ${
+        className={`flex w-full flex-col gap-1 border-l-2 py-2.5 pr-10 pl-3.5 text-left transition-colors ${
           active
             ? 'border-l-accent bg-fond-creux'
             : dansUnOnglet
@@ -144,7 +144,7 @@ export function SessionRow({
             />
           ) : (
             <span
-              className={`min-w-0 flex-1 truncate text-[13.5px] ${
+              className={`min-w-0 flex-1 truncate text-[14px] ${
                 dansUnOnglet ? 'text-texte' : 'text-texte-doux'
               } ${session.titreDeRepli ? 'italic' : ''}`}
             >
@@ -158,10 +158,25 @@ export function SessionRow({
           )}
         </span>
 
-        <span className="flex items-center gap-1.5 font-mono text-[11px]">
+        <span className="flex items-center gap-1.5 font-mono text-[11.5px]">
           <span style={{ color: couleur }}>{libelle}</span>
           <span className="text-texte-tenu">·</span>
           <span className="text-texte-tenu">{quand(session.misAJourLe)}</span>
+          {session.gitBranch && (
+            // La branche où la conversation a eu lieu : sans elle, rien ne
+            // distingue un échange tenu sur main d'un autre mené dans une
+            // branche de travail, et l'on reprend parfois le mauvais.
+            <>
+              <span className="text-texte-tenu">·</span>
+              <span
+                className="flex min-w-0 items-center gap-1 text-texte-tenu"
+                title={`Branche : ${session.gitBranch}`}
+              >
+                <IconeBranche taille={10} />
+                <span className="truncate">{session.gitBranch}</span>
+              </span>
+            </>
+          )}
         </span>
       </button>
 

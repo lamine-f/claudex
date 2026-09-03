@@ -89,7 +89,7 @@ export function FileTree(): React.JSX.Element {
                       : void choisirFichier(entree.chemin)
                   }
                   title={entree.chemin}
-                  className={`flex w-full items-stretch py-[3px] pr-2 text-left transition-colors ${
+                  className={`flex w-full items-stretch py-1.5 pr-2 text-left transition-colors ${
                     choisi ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
                   }`}
                 >
@@ -113,13 +113,13 @@ export function FileTree(): React.JSX.Element {
                       />
                     )}
                   </span>
-                  <span className="mr-1.5 flex w-[22px] shrink-0 items-center justify-center">
+                  <span className="mr-2 flex w-[18px] shrink-0 items-center justify-center">
                     <IconeFichier nom={entree.nom} dossier={entree.dossier} ouvert={ouvert} />
                   </span>
                   <span
                     // Ce que git ignore existe sur le disque sans faire partie du
                     // projet : l'italique le dit sans le cacher.
-                    className={`truncate font-mono text-[12px] leading-5 ${
+                    className={`truncate font-mono text-[13px] leading-6 ${
                       entree.dossier
                         ? 'text-texte-doux'
                         : choisi

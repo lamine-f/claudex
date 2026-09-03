@@ -88,10 +88,22 @@ test.describe('lecture de l’arborescence', () => {
     await fermer(ctx)
   })
 
-  test('un fichier porte la marque de son type', async () => {
-    // Le badge se lit plus vite que l'extension elle-même dans une liste.
-    const ligne = ctx.page.locator('li', { hasText: 'app.ts' })
-    await expect(ligne.getByText('TS', { exact: true })).toBeVisible()
+  test('un fichier porte l’icône de son type', async () => {
+    // L'icône se lit plus vite que l'extension elle-même dans une liste.
+    const image = ctx.page.locator('li', { hasText: 'app.ts' }).locator('img')
+    await expect(image).toHaveAttribute('src', /typescript/)
+  })
+
+  test('un type inconnu retombe sur l’icône par défaut', async () => {
+    await writeFile(join(ctx.projet, 'note.zzzz'), 'rien\n')
+    const image = ctx.page.locator('li', { hasText: 'note.zzzz' }).locator('img')
+    await expect(image).toHaveAttribute('src', /file\.svg$/, { timeout: 10_000 })
+  })
+
+  test('un dossier connu porte son icône propre', async () => {
+    await mkdir(join(ctx.projet, 'src'), { recursive: true })
+    const image = ctx.page.locator('li', { hasText: /^src$/ }).locator('img')
+    await expect(image).toHaveAttribute('src', /folder-src/, { timeout: 10_000 })
   })
 
   test('ce que git ignore se distingue sans être caché', async () => {

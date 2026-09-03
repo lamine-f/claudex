@@ -26,14 +26,14 @@ export function TerminalTabs({
   const actif = tabs.find((t) => t.id === actifId)
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-1 border-b border-separateur px-3">
+    <div className="flex h-14 shrink-0 items-center gap-1.5 border-b border-separateur px-3.5">
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {tabs.map((tab) => {
           const courant = tab.id === actifId
           return (
             <div
               key={tab.id}
-              className={`group flex h-8 shrink-0 items-center gap-2 rounded-md pr-1.5 pl-2.5 transition-colors ${
+              className={`group flex h-9 shrink-0 items-center gap-2 rounded-lg pr-2 pl-3 transition-colors ${
                 courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
               }`}
             >
@@ -48,7 +48,7 @@ export function TerminalTabs({
               <button
                 type="button"
                 onClick={() => onChoisir(tab.id)}
-                className={`max-w-56 truncate text-[13px] ${
+                className={`max-w-56 truncate text-[13.5px] ${
                   courant ? 'text-texte' : 'text-texte-faible'
                 }`}
                 title={tab.cwd}
@@ -73,9 +73,9 @@ export function TerminalTabs({
           type="button"
           onClick={() => onBifurquer(actif)}
           title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
-          className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] text-texte-doux transition-colors hover:bg-fond-survol hover:text-accent"
+          className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-[13.5px] text-texte-doux transition-colors hover:bg-fond-survol hover:text-accent"
         >
-          <IconeBifurquer taille={13} />
+          <IconeBifurquer taille={14} />
           Bifurquer
         </button>
       )}
@@ -84,9 +84,9 @@ export function TerminalTabs({
         type="button"
         onClick={onNouveau}
         title="Nouveau terminal (⌘T)"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
       >
-        <IconePlus taille={14} />
+        <IconePlus taille={16} />
       </button>
     </div>
   )

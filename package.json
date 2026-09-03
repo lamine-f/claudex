@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "npm run icones && electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
@@ -19,7 +19,8 @@
     "capture": "node scripts/cdp.mjs shot",
     "test:e2e": "npm run build && playwright test",
     "test:all": "npm run test && npm run test:e2e",
-    "captures": "npm run build && node scripts/captures.mjs captures"
+    "captures": "npm run build && node scripts/captures.mjs captures",
+    "icones": "node scripts/preparer-icones.mjs"
   },
   "dependencies": {
     "node-pty": "^1.1.0"
@@ -48,6 +49,7 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "lucide-react": "^1.40.0",
+    "material-icon-theme": "^5.38.1",
     "react": "^19.2.8",
     "react-arborist": "^3.16.0",
     "react-dom": "^19.2.8",

@@ -6,3 +6,5 @@ playwright-report/
 *.tsbuildinfo
 .DS_Store
 captures/
+src/renderer/public/icones-fichiers/
+src/renderer/src/components/files/correspondances.json

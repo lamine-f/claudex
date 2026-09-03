@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { StatutSession } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { FileTree } from '../files/FileTree'
-import { IconeArborescence, IconeConversations, IconeSynchro } from '../ui/Icones'
+import { IconeArborescence, IconeConversations, IconePlus, IconeSynchro } from '../ui/Icones'
 import { MenuSession, type Action } from '../workspaces/MenuSession'
 import { SessionRow } from '../workspaces/SessionRow'
 
@@ -67,7 +67,7 @@ export function ColonneLaterale(): React.JSX.Element {
       title={libelle}
       aria-label={libelle}
       aria-pressed={panneau === cle}
-      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
+      className={`flex items-center gap-2 rounded-md border px-3 py-2 font-mono text-[11.5px] transition-colors ${
         panneau === cle
           ? 'border-bordure bg-fond-eleve text-texte'
           : 'border-transparent text-texte-faible hover:text-texte-doux'
@@ -83,9 +83,9 @@ export function ColonneLaterale(): React.JSX.Element {
       aria-label="Sessions et fichiers"
       className="flex h-full min-w-0 flex-col border-r border-separateur bg-fond-panneau"
     >
-      <div className="flex h-11 shrink-0 items-center gap-1 px-2.5">
-        {onglet('sessions', 'Conversations', <IconeConversations taille={14} />, retenues?.length)}
-        {onglet('fichiers', 'Fichiers', <IconeArborescence taille={14} />)}
+      <div className="flex h-12 shrink-0 items-center gap-1.5 px-2.5">
+        {onglet('sessions', 'Conversations', <IconeConversations taille={17} />, retenues?.length)}
+        {onglet('fichiers', 'Fichiers', <IconeArborescence taille={17} />)}
         <div className="flex-1" />
 
         {panneau === 'sessions' && courant && (
@@ -94,11 +94,23 @@ export function ColonneLaterale(): React.JSX.Element {
             onClick={() => void chargerSessions(courant.id)}
             title="Relire les conversations du projet"
             aria-label="Relire les conversations"
-            className={`flex h-6 w-6 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte ${
+            className={`flex h-7 w-7 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte ${
               chargement ? 'animate-spin' : ''
             }`}
           >
-            <IconeSynchro taille={13} />
+            <IconeSynchro taille={15} />
+          </button>
+        )}
+
+        {panneau === 'sessions' && courant && (
+          <button
+            type="button"
+            onClick={() => void ouvrirSession(courant.id, 'nouvelle')}
+            title="Nouvelle conversation"
+            aria-label="Nouvelle conversation"
+            className="flex h-7 w-7 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-accent"
+          >
+            <IconePlus taille={16} />
           </button>
         )}
 
@@ -197,15 +209,6 @@ export function ColonneLaterale(): React.JSX.Element {
             )}
           </div>
 
-          <div className="shrink-0 p-2.5">
-            <button
-              type="button"
-              onClick={() => void ouvrirSession(courant.id, 'nouvelle')}
-              className="w-full rounded-lg border border-dashed border-bordure py-2.5 text-[13px] text-texte-doux transition-colors hover:border-accent-tenu hover:text-accent"
-            >
-              + Nouvelle session
-            </button>
-          </div>
         </div>
       )}
       {menu && (

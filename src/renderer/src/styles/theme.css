@@ -66,6 +66,15 @@ body {
   -webkit-app-region: no-drag;
 }
 
+/* Ce qui réagit au clic doit le dire : Tailwind 4 laisse aux boutons le curseur
+   de la flèche, qui les fait passer pour du décor. */
+button:not(:disabled),
+[role='menuitem'],
+summary,
+label[for] {
+  cursor: pointer;
+}
+
 /* Le focus clavier doit rester lisible sur un fond noir sans alourdir le survol. */
 :focus-visible {
   outline: 1px solid var(--color-accent);

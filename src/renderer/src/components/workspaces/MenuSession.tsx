@@ -41,9 +41,9 @@ export function MenuSession({ x, y, actions, onFermer }: Props): React.JSX.Eleme
         // menu à moitié hors de l'écran.
         style={{
           left: Math.min(x, window.innerWidth - 220),
-          top: Math.min(y, window.innerHeight - actions.length * 32 - 16)
+          top: Math.min(y, window.innerHeight - actions.length * 38 - 20)
         }}
-        className="absolute min-w-52 rounded-lg border border-bordure bg-fond-panneau py-1 shadow-2xl"
+        className="absolute min-w-56 rounded-lg border border-bordure bg-fond-panneau py-1.5 shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {actions.map((action) => (
@@ -55,7 +55,7 @@ export function MenuSession({ x, y, actions, onFermer }: Props): React.JSX.Eleme
               onFermer()
               action.onChoisir()
             }}
-            className={`block w-full px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-fond-survol ${
+            className={`block w-full px-3.5 py-2 text-left text-[13.5px] transition-colors hover:bg-fond-survol ${
               action.ecarte ? 'text-erreur' : 'text-texte-doux hover:text-texte'
             }`}
           >

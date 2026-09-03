@@ -60,14 +60,14 @@ export function FilAriane(): React.JSX.Element {
   const claude = version('claude')
 
   return (
-    <header className="zone-glissable flex h-[38px] shrink-0 items-center gap-2 border-b border-separateur pr-4 pl-[88px]">
+    <header className="zone-glissable flex h-11 shrink-0 items-center gap-2.5 border-b border-separateur pr-5 pl-[92px]">
       {courant && (
         <>
-          <span className="shrink-0 font-mono text-[12px] text-texte-faible">{courant.name}</span>
+          <span className="shrink-0 font-mono text-[12.5px] text-texte-faible">{courant.name}</span>
           {onglet && (
             <>
               <span className="shrink-0 text-texte-tenu">/</span>
-              <span className="truncate text-[13px] font-medium text-texte">{onglet.title}</span>
+              <span className="truncate text-[13.5px] font-medium text-texte">{onglet.title}</span>
             </>
           )}
         </>
