@@ -15,41 +15,93 @@ interface Props {
   onOuvrir: () => void
   onBifurquer: () => void
   onEtiqueter: (texte: string) => void
+  onRenommer: (titre: string) => void
 }
+
+/** Ce que le double-clic ou le clic droit met en édition sur la ligne. */
+type Champ = 'titre' | 'etiquette'
 
 export function SessionRow({
   session,
   statut,
   onOuvrir,
   onBifurquer,
-  onEtiqueter
+  onEtiqueter,
+  onRenommer
 }: Props): React.JSX.Element {
   const { libelle, couleur } = STATUTS[statut]
   const ouverte = statut === 'ouverte'
-  const [edition, setEdition] = useState(false)
-  const [texte, setTexte] = useState(session.etiquette ?? '')
+  const [edition, setEdition] = useState<Champ | null>(null)
+  const [texte, setTexte] = useState('')
   const champ = useRef<HTMLInputElement | null>(null)
+  const clicDiffere = useRef<number | null>(null)
 
   useEffect(() => {
     if (edition) champ.current?.select()
   }, [edition])
 
+  useEffect(
+    () => () => {
+      if (clicDiffere.current) window.clearTimeout(clicDiffere.current)
+    },
+    []
+  )
+
+  /**
+   * Le premier clic d'un double-clic ouvrirait la conversation, et le
+   * remontage qui suit emporterait l'édition à peine ouverte. L'ouverture est
+   * donc retenue le temps de savoir si un second clic arrive.
+   */
+  const surClic = (): void => {
+    if (clicDiffere.current) window.clearTimeout(clicDiffere.current)
+    clicDiffere.current = window.setTimeout(() => {
+      clicDiffere.current = null
+      onOuvrir()
+    }, 220)
+  }
+
+  const annulerClic = (): void => {
+    if (clicDiffere.current) {
+      window.clearTimeout(clicDiffere.current)
+      clicDiffere.current = null
+    }
+  }
+
+  const editer = (quoi: Champ): void => {
+    setTexte(quoi === 'titre' ? session.titre : (session.etiquette ?? ''))
+    setEdition(quoi)
+  }
+
   const valider = (): void => {
-    setEdition(false)
-    if (texte.trim() !== (session.etiquette ?? '')) onEtiqueter(texte)
+    const quoi = edition
+    setEdition(null)
+    if (!quoi) return
+    const propre = texte.trim()
+    if (quoi === 'titre') {
+      // Un titre vide rend la conversation à son nom d'origine plutôt que de la
+      // laisser sans repère.
+      if (propre !== session.titre) onRenommer(propre)
+    } else if (propre !== (session.etiquette ?? '')) {
+      onEtiqueter(propre)
+    }
   }
 
   return (
     <li className="group/session relative">
       <button
         type="button"
-        onClick={onOuvrir}
-        // Le clic droit ouvre l'étiquette : le geste attendu pour agir sur une
-        // ligne, et qui évite d'ajouter un bouton de plus sur chacune.
+        onClick={surClic}
+        // Deux gestes, deux champs : le double-clic renomme la conversation
+        // — comme on renomme un fichier — et le clic droit pose l'étiquette.
+        onDoubleClick={(e) => {
+          e.preventDefault()
+          annulerClic()
+          editer('titre')
+        }}
         onContextMenu={(e) => {
           e.preventDefault()
-          setTexte(session.etiquette ?? '')
-          setEdition(true)
+          annulerClic()
+          editer('etiquette')
         }}
         title={`${session.titre}\n${Math.round(session.octets / 1024)} Ko${
           session.gitBranch ? ` · ${session.gitBranch}` : ''
@@ -61,13 +113,29 @@ export function SessionRow({
         }`}
       >
         <span className="flex min-w-0 items-baseline gap-2">
-          <span
-            className={`min-w-0 flex-1 truncate text-[13.5px] ${
-              ouverte ? 'text-texte' : 'text-texte-doux'
-            } ${session.titreDeRepli ? 'italic' : ''}`}
-          >
-            {session.titre}
-          </span>
+          {edition === 'titre' ? (
+            <input
+              ref={champ}
+              value={texte}
+              onChange={(e) => setTexte(e.target.value)}
+              onBlur={valider}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') valider()
+                if (e.key === 'Escape') setEdition(null)
+              }}
+              aria-label="Nom de la conversation"
+              className="min-w-0 flex-1 rounded border border-accent-tenu bg-fond-eleve px-1.5 py-px text-[13.5px] text-texte focus:outline-none"
+            />
+          ) : (
+            <span
+              className={`min-w-0 flex-1 truncate text-[13.5px] ${
+                ouverte ? 'text-texte' : 'text-texte-doux'
+              } ${session.titreDeRepli ? 'italic' : ''}`}
+            >
+              {session.titre}
+            </span>
+          )}
           {session.etiquette && !edition && (
             <span className="shrink-0 rounded border border-separateur px-1.5 py-px font-mono text-[10.5px] text-accent">
               {session.etiquette}
@@ -82,7 +150,7 @@ export function SessionRow({
         </span>
       </button>
 
-      {edition && (
+      {edition === 'etiquette' && (
         <input
           ref={champ}
           value={texte}
@@ -91,7 +159,7 @@ export function SessionRow({
           onBlur={valider}
           onKeyDown={(e) => {
             if (e.key === 'Enter') valider()
-            if (e.key === 'Escape') setEdition(false)
+            if (e.key === 'Escape') setEdition(null)
           }}
           placeholder="étiquette"
           aria-label="Étiquette de la conversation"

@@ -255,3 +255,61 @@ test.describe('étiquette', () => {
     await expect(ligne.getByText('facture v2')).toHaveCount(0)
   })
 })
+
+test.describe('renommer une conversation', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const provisoire = await lancer()
+    await semerTranscrits(provisoire.projet)
+    await fermer(provisoire, { nettoyer: false })
+    ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+  })
+
+  test.afterAll(async () => {
+    await rm(dossierTranscrits(ctx.projet), { recursive: true, force: true })
+    await fermer(ctx)
+  })
+
+  const colonne = (): ReturnType<Contexte['page']['getByLabel']> =>
+    ctx.page.getByLabel('Sessions et fichiers')
+
+  test('le double-clic met le nom en édition', async () => {
+    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    await ligne.getByRole('button').first().dblclick()
+
+    const champ = ctx.page.getByLabel('Nom de la conversation')
+    await expect(champ).toBeVisible()
+    await champ.fill('Facturation V2')
+    await ctx.page.keyboard.press('Enter')
+
+    await expect(colonne().getByText('Facturation V2')).toBeVisible()
+    await expect(colonne().getByText('Refonte facturation')).toHaveCount(0)
+  })
+
+  test('le nom donné survit à un redémarrage', async () => {
+    await fermer(ctx, { nettoyer: false })
+    ctx = await lancer({ donnees: ctx.donnees, projet: ctx.projet })
+    await expect(colonne().getByText('Facturation V2')).toBeVisible()
+  })
+
+  test('vider le champ rend son nom d’origine à la conversation', async () => {
+    const ligne = colonne().locator('li', { hasText: 'Facturation V2' })
+    await ligne.getByRole('button').first().dblclick()
+    await ctx.page.getByLabel('Nom de la conversation').fill('')
+    await ctx.page.keyboard.press('Enter')
+
+    // Le titre généré par Claude Code reprend sa place.
+    await expect(colonne().getByText('Refonte facturation')).toBeVisible()
+  })
+
+  test('Échap laisse le nom intact', async () => {
+    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    await ligne.getByRole('button').first().dblclick()
+    await ctx.page.getByLabel('Nom de la conversation').fill('jamais validé')
+    await ctx.page.keyboard.press('Escape')
+
+    await expect(colonne().getByText('Refonte facturation')).toBeVisible()
+    await expect(colonne().getByText('jamais validé')).toHaveCount(0)
+  })
+})

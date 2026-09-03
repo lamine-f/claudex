@@ -28,6 +28,7 @@ export function ColonneLaterale(): React.JSX.Element {
   const ouvrirSession = useStore((e) => e.ouvrirSession)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const etiqueter = useStore((e) => e.etiqueter)
+  const renommer = useStore((e) => e.renommer)
   const derouler = useStore((e) => e.deroulerTout)
 
   const courant = workspaces.find((w) => w.id === actif)
@@ -136,6 +137,7 @@ export function ColonneLaterale(): React.JSX.Element {
                         demanderBifurcation(courant.id, session.id, session.titre)
                       }
                       onEtiqueter={(texte) => void etiqueter(courant.id, session.id, texte)}
+                      onRenommer={(titre) => void renommer(courant.id, session.id, titre)}
                     />
                   )
                 })}
