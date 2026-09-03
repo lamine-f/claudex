@@ -135,13 +135,14 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
         const liste = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
         return liste.at(-1)?.title
       })
-      .toBe('piste sans cache')
+      .toBe('Refonte facturation -- piste sans cache')
 
     await expect(ctx.page.locator('.xterm')).toHaveCount(avant + 1)
     await expect.poll(async () => (await commandesDeDepart()).join('\n')).toContain('--fork-session')
 
     const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
-    expect(onglets.at(-1)?.title).toBe('piste sans cache')
+    // L'origine reste en préfixe : la branche se situe sans avoir à la rouvrir.
+    expect(onglets.at(-1)?.title).toBe('Refonte facturation -- piste sans cache')
     expect(onglets.at(-1)?.forkedFrom).toBe('aaaaaaaa-1111-1111-1111-111111111111')
   })
 

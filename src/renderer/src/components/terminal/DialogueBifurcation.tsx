@@ -13,6 +13,10 @@ interface Props {
  * Une branche sans nom ne dit pas ce qu'on y explore, et deux branches d'une
  * même conversation deviennent indiscernables. Le nom est demandé au moment où
  * l'intention est claire — juste avant de partir.
+ *
+ * L'origine reste en préfixe : dans une liste de vingt conversations, savoir
+ * qu'une branche vient de « Hello world » vaut autant que savoir ce qu'elle
+ * explore, et les deux se lisent alors d'un seul regard.
  */
 export function DialogueBifurcation({ origine, onValider, onAnnuler }: Props): React.JSX.Element {
   const [nom, setNom] = useState('')
@@ -22,7 +26,7 @@ export function DialogueBifurcation({ origine, onValider, onAnnuler }: Props): R
     champ.current?.focus()
   }, [])
 
-  const valider = (): void => onValider(nom.trim() || `${origine} ⑂`)
+  const valider = (): void => onValider(`${origine} -- ${nom.trim() || 'branche'}`)
 
   return (
     <div
@@ -47,18 +51,23 @@ export function DialogueBifurcation({ origine, onValider, onAnnuler }: Props): R
           <label htmlFor="nom-bifurcation" className="text-[12px] text-texte-faible">
             Nom de la branche
           </label>
-          <input
-            id="nom-bifurcation"
-            ref={champ}
-            value={nom}
-            onChange={(e) => setNom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') valider()
-              if (e.key === 'Escape') onAnnuler()
-            }}
-            placeholder="ce que tu veux explorer"
-            className="mt-1.5 w-full rounded-md border border-separateur bg-fond-creux px-3 py-2 text-[13px] text-texte placeholder:text-texte-tenu focus:border-accent-tenu focus:outline-none"
-          />
+          <div className="mt-1.5 flex items-center rounded-md border border-separateur bg-fond-creux pl-3 focus-within:border-accent-tenu">
+            <span className="shrink-0 truncate py-2 text-[13px] text-texte-tenu" aria-hidden>
+              {origine} --
+            </span>
+            <input
+              id="nom-bifurcation"
+              ref={champ}
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') valider()
+                if (e.key === 'Escape') onAnnuler()
+              }}
+              placeholder="ce que tu veux explorer"
+              className="min-w-0 flex-1 bg-transparent py-2 pr-3 pl-1.5 text-[13px] text-texte placeholder:text-texte-tenu focus:outline-none"
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-separateur px-4 py-3">
