@@ -51,7 +51,14 @@ export default function App(): React.JSX.Element {
   const charger = useStore((e) => e.charger)
   const pret = useStore((e) => e.pret)
   const layout = useStore((e) => e.layout)
+  const workspaces = useStore((e) => e.workspaces)
+  const actif = useStore((e) => e.activeWorkspaceId)
   useShortcuts()
+
+  // La couleur du projet ouvert est posée une fois pour toutes ici : les
+  // conversations et les onglets la lisent dans la cascade, sans que rien
+  // n'ait à leur transmettre de quel projet ils dépendent.
+  const couleur = workspaces.find((w) => w.id === actif)?.color
 
   useEffect(() => {
     void charger()
@@ -73,7 +80,10 @@ export default function App(): React.JSX.Element {
     // Trois bandes : où l'on est, ce qu'on fait, dans quel état est le projet.
     // Une seule bande de chrome, en haut : elle porte le contexte permanent, et
     // tout le reste de la hauteur revient au terminal.
-    <div className="grid h-full grid-rows-[36px_1fr]">
+    <div
+      className="grid h-full grid-rows-[36px_1fr]"
+      style={couleur ? ({ '--color-projet': couleur } as React.CSSProperties) : undefined}
+    >
       <FilAriane />
 
       {pret ? (

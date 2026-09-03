@@ -88,7 +88,13 @@ export function Rail(): React.JSX.Element {
                   {w.name}
                 </span>
                 {ouverts > 0 && (
-                  <span className="flex h-[15px] min-w-[15px] shrink-0 items-center justify-center rounded-full bg-accent px-[3px] font-mono text-[9px] text-fond">
+                  // Le compteur porte la couleur de son projet, comme le
+                  // liseré : deux marques de la même main, pas deux couleurs
+                  // sur la même ligne.
+                  <span
+                    style={{ background: w.color }}
+                    className="flex h-[15px] min-w-[15px] shrink-0 items-center justify-center rounded-full px-[3px] font-mono text-[9px] text-fond"
+                  >
                     {ouverts}
                   </span>
                 )}

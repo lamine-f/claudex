@@ -4,7 +4,7 @@ import { quand } from '@shared/temps'
 import { IconeBifurquer, IconeBranche, IconeFavori } from '../ui/Icones'
 
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
-  active: { libelle: 'à l’écran', couleur: 'var(--color-accent)' },
+  active: { libelle: 'à l’écran', couleur: 'var(--color-projet)' },
   ouverte: { libelle: 'dans un onglet', couleur: 'var(--color-texte-doux)' },
   attente: { libelle: 'en attente', couleur: 'var(--color-attention)' },
   interrompue: { libelle: 'interrompue', couleur: 'var(--color-erreur)' },
@@ -116,7 +116,7 @@ export function SessionRow({
         // celles qui patientent dans un autre onglet le portent en retrait.
         className={`flex w-full flex-col gap-1 border-l-2 py-2.5 pr-10 pl-3.5 text-left transition-colors ${
           active
-            ? 'border-l-accent bg-fond-creux'
+            ? 'border-l-projet bg-fond-creux'
             : dansUnOnglet
               ? 'border-l-bordure hover:bg-fond-survol'
               : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'
@@ -140,7 +140,7 @@ export function SessionRow({
                 if (e.key === 'Escape') setEdition(null)
               }}
               aria-label="Nom de la conversation"
-              className="min-w-0 flex-1 rounded border border-accent-tenu bg-fond-eleve px-1.5 py-px text-[13.5px] text-texte focus:outline-none"
+              className="min-w-0 flex-1 rounded border border-projet-tenu bg-fond-eleve px-1.5 py-px text-[13.5px] text-texte focus:outline-none"
             />
           ) : (
             <span
@@ -152,7 +152,7 @@ export function SessionRow({
             </span>
           )}
           {session.etiquette && !edition && (
-            <span className="shrink-0 rounded border border-separateur px-1.5 py-px font-mono text-[10.5px] text-accent">
+            <span className="shrink-0 rounded border border-separateur px-1.5 py-px font-mono text-[10.5px] text-projet">
               {session.etiquette}
             </span>
           )}
@@ -193,7 +193,7 @@ export function SessionRow({
           }}
           placeholder="étiquette"
           aria-label="Étiquette de la conversation"
-          className="absolute top-1.5 right-2 w-28 rounded border border-accent-tenu bg-fond-eleve px-1.5 py-0.5 font-mono text-[10.5px] text-texte placeholder:text-texte-tenu focus:outline-none"
+          className="absolute top-1.5 right-2 w-28 rounded border border-projet-tenu bg-fond-eleve px-1.5 py-0.5 font-mono text-[10.5px] text-texte placeholder:text-texte-tenu focus:outline-none"
         />
       )}
 

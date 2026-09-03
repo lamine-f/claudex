@@ -41,7 +41,7 @@ export function TerminalTabs({
                 <span
                   aria-hidden
                   className={`h-[6px] w-[6px] shrink-0 rounded-full ${
-                    courant ? 'bg-accent' : 'bg-texte-tenu'
+                    courant ? 'bg-projet' : 'bg-texte-tenu'
                   }`}
                 />
               )}

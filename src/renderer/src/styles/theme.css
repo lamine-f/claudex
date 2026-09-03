@@ -30,6 +30,15 @@
   /* Accent et états */
   --color-accent: #d97757;
   --color-accent-tenu: #5a3327;
+
+  /*
+   * Couleur d'identité du projet ouvert. Le rail la donne, les conversations
+   * et les onglets la reprennent : un même projet se reconnaît alors du bout
+   * du rail jusqu'à l'onglet actif. Surchargée à l'exécution sur la coque de
+   * l'application ; l'accent sert de repli tant qu'aucun projet n'est ouvert.
+   */
+  --color-projet: var(--color-accent);
+  --color-projet-tenu: color-mix(in oklab, var(--color-projet) 42%, var(--color-fond));
   --color-attention: #dfb45e;
   --color-erreur: #e0685f;
   --color-succes: #94c47a;
