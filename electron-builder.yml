@@ -1,0 +1,39 @@
+appId: com.laminef.claudex
+productName: Claudex
+copyright: Claudex
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+
+# node-pty embarque un binaire natif et un `spawn-helper` exécutable : dans une
+# archive asar ils ne sont ni chargeables ni exécutables.
+asarUnpack:
+  - node_modules/node-pty/**
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64]
+  icon: build/icon.png
+  darkModeSupport: true
+  # Aucun certificat de développeur ici : signer échouerait et empêcherait
+  # l'application d'être construite. macOS demandera confirmation au premier
+  # lancement, ce qui est le comportement attendu pour une application locale.
+  identity: null
+
+dmg:
+  title: Claudex
+  contents:
+    - x: 140
+      y: 190
+      type: file
+    - x: 400
+      y: 190
+      type: link
+      path: /Applications

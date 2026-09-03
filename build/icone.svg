@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Fond : le noir franc du design, adouci aux angles comme une fenêtre. -->
+  <rect width="1024" height="1024" rx="228" fill="#0a0908"/>
+  <rect x="8" y="8" width="1008" height="1008" rx="222" fill="none" stroke="#2e2a26" stroke-width="16"/>
+
+  <!-- Une invite de terminal : ce que l'application est avant tout. -->
+  <path d="M300 396 L432 512 L300 628" fill="none" stroke="#d97757" stroke-width="58"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Le curseur, en attente de ce qu'on va lui dire. -->
+  <rect x="500" y="576" width="224" height="52" rx="12" fill="#ece8e3"/>
+</svg>

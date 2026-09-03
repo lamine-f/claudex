@@ -80,7 +80,7 @@ export interface ClaudeSession {
 export type DoctorSeverity = 'ok' | 'warn' | 'error'
 
 export interface DoctorCheck {
-  id: 'tmux' | 'claude' | 'retention'
+  id: 'tmux' | 'claude' | 'retention' | 'pont'
   label: string
   severity: DoctorSeverity
   detail: string

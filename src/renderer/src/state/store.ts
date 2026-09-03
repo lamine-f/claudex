@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { manquesDuPont } from '@shared/pont'
 import type {
   Apercu,
   AppState,
@@ -95,6 +96,29 @@ export const useStore = create<EtatUi>((set, get) => ({
   filtre: '',
 
   charger: async () => {
+    // Un pont incomplet fait échouer des actions en silence : mieux vaut le dire
+    // avant que l'utilisateur ne voie une saisie disparaître sans explication.
+    const manques = manquesDuPont(window.claudex)
+    if (manques.length > 0) {
+      set({
+        diagnostics: [
+          {
+            id: 'pont',
+            label: 'Application à relancer',
+            severity: 'error',
+            detail:
+              `Le pont entre l'interface et le système est incomplet (${manques.join(', ')}). ` +
+              "Cela arrive en développement : le preload ne se recharge qu'au redémarrage " +
+              "complet d'Electron, là où l'interface se met à jour toute seule. Relance " +
+              'Claudex — sans cela, certaines actions échoueront sans rien dire.'
+          }
+        ],
+        diagnosticOuvert: true,
+        pret: true
+      })
+      return
+    }
+
     const [etat, diagnostics] = await Promise.all([
       window.claudex.state.get(),
       window.claudex.doctor.check()

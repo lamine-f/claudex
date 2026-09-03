@@ -1,7 +1,7 @@
 {
   "name": "claudex",
   "version": "0.1.0",
-  "description": "IDE desktop orienté vibe coding — workspaces, sessions Claude Code et terminaux tmux persistants",
+  "description": "IDE desktop dont l'unité de base est la session d'agent : projets, conversations Claude Code reprenables et terminaux tmux persistants",
   "main": "./out/main/index.js",
   "author": "lamine-f",
   "private": true,
