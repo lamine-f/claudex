@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ClaudeSession, StatutSession } from '@shared/types'
 import { quand } from '@shared/temps'
 
@@ -13,17 +14,43 @@ interface Props {
   statut: StatutSession
   onOuvrir: () => void
   onBifurquer: () => void
+  onEtiqueter: (texte: string) => void
 }
 
-export function SessionRow({ session, statut, onOuvrir, onBifurquer }: Props): React.JSX.Element {
+export function SessionRow({
+  session,
+  statut,
+  onOuvrir,
+  onBifurquer,
+  onEtiqueter
+}: Props): React.JSX.Element {
   const { libelle, couleur } = STATUTS[statut]
   const ouverte = statut === 'ouverte'
+  const [edition, setEdition] = useState(false)
+  const [texte, setTexte] = useState(session.etiquette ?? '')
+  const champ = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (edition) champ.current?.select()
+  }, [edition])
+
+  const valider = (): void => {
+    setEdition(false)
+    if (texte.trim() !== (session.etiquette ?? '')) onEtiqueter(texte)
+  }
 
   return (
     <li className="group/session relative">
       <button
         type="button"
         onClick={onOuvrir}
+        // Le clic droit ouvre l'étiquette : le geste attendu pour agir sur une
+        // ligne, et qui évite d'ajouter un bouton de plus sur chacune.
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setTexte(session.etiquette ?? '')
+          setEdition(true)
+        }}
         title={`${session.titre}\n${Math.round(session.octets / 1024)} Ko${
           session.gitBranch ? ` · ${session.gitBranch}` : ''
         }`}
@@ -33,13 +60,21 @@ export function SessionRow({ session, statut, onOuvrir, onBifurquer }: Props): R
             : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'
         }`}
       >
-        <span
-          className={`truncate text-[13.5px] ${ouverte ? 'text-texte' : 'text-texte-doux'} ${
-            session.titreDeRepli ? 'italic' : ''
-          }`}
-        >
-          {session.titre}
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span
+            className={`min-w-0 flex-1 truncate text-[13.5px] ${
+              ouverte ? 'text-texte' : 'text-texte-doux'
+            } ${session.titreDeRepli ? 'italic' : ''}`}
+          >
+            {session.titre}
+          </span>
+          {session.etiquette && !edition && (
+            <span className="shrink-0 rounded border border-separateur px-1.5 py-px font-mono text-[10.5px] text-accent">
+              {session.etiquette}
+            </span>
+          )}
         </span>
+
         <span className="flex items-center gap-1.5 font-mono text-[11px]">
           <span style={{ color: couleur }}>{libelle}</span>
           <span className="text-texte-tenu">·</span>
@@ -47,14 +82,33 @@ export function SessionRow({ session, statut, onOuvrir, onBifurquer }: Props): R
         </span>
       </button>
 
-      <button
-        type="button"
-        onClick={onBifurquer}
-        title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
-        className="absolute top-2 right-2 rounded px-1.5 py-0.5 text-[11px] text-texte-tenu opacity-0 transition-opacity group-hover/session:opacity-100 hover:bg-fond-eleve hover:text-accent focus-visible:opacity-100"
-      >
-        ⑂
-      </button>
+      {edition && (
+        <input
+          ref={champ}
+          value={texte}
+          maxLength={40}
+          onChange={(e) => setTexte(e.target.value)}
+          onBlur={valider}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') valider()
+            if (e.key === 'Escape') setEdition(false)
+          }}
+          placeholder="étiquette"
+          aria-label="Étiquette de la conversation"
+          className="absolute top-1.5 right-2 w-28 rounded border border-accent-tenu bg-fond-eleve px-1.5 py-0.5 font-mono text-[10.5px] text-texte placeholder:text-texte-tenu focus:outline-none"
+        />
+      )}
+
+      {!edition && (
+        <button
+          type="button"
+          onClick={onBifurquer}
+          title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
+          className="absolute top-2 right-2 rounded px-1.5 py-0.5 text-[11px] text-texte-tenu opacity-0 transition-opacity group-hover/session:opacity-100 hover:bg-fond-eleve hover:text-accent focus-visible:opacity-100"
+        >
+          ⑂
+        </button>
+      )}
     </li>
   )
 }

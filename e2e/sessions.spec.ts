@@ -112,6 +112,21 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
     await expect(ctx.page.getByRole('button', { name: 'Refonte facturation' }).last()).toBeVisible()
   })
 
+  test('le nom de la branche est transmis à Claude Code', async () => {
+    // `--name` le donne aussi à Claude Code, qui l'affiche dans son invite et
+    // dans son propre sélecteur : le nom vaut alors partout, pas seulement ici.
+    const ligne = colonne().locator('li', { hasText: 'Migration DTO' })
+    await ligne.hover()
+    await ligne.getByTitle(/Bifurquer/).click()
+    const dialogue = ctx.page.getByRole('dialog', { name: 'Bifurquer la session' })
+    await dialogue.getByLabel('Nom de la branche').fill('essai rapide')
+    await dialogue.getByRole('button', { name: 'Bifurquer', exact: true }).click()
+
+    await expect
+      .poll(async () => (await commandesDeDepart()).join('\n'))
+      .toContain("--name 'Migration DTO -- essai rapide'")
+  })
+
   test('une bifurcation se nomme avant de partir', async () => {
     // Mesuré en écart : ce qui compte est qu'une branche s'ajoute, pas le
     // nombre d'onglets qu'ont laissés les tests précédents.
@@ -190,5 +205,53 @@ test.describe('fermer un onglet', () => {
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
     const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
     expect(onglets.at(-1)?.claudeSessionId).toBe('aaaaaaaa-1111-1111-1111-111111111111')
+  })
+})
+
+test.describe('étiquette', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const provisoire = await lancer()
+    await semerTranscrits(provisoire.projet)
+    await fermer(provisoire, { nettoyer: false })
+    ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+  })
+
+  test.afterAll(async () => {
+    await rm(dossierTranscrits(ctx.projet), { recursive: true, force: true })
+    await fermer(ctx)
+  })
+
+  test('distingue deux conversations que leur titre confond', async () => {
+    const colonne = ctx.page.getByLabel('Sessions et fichiers')
+    const ligne = colonne.locator('li', { hasText: 'Refonte facturation' })
+
+    await ligne.getByRole('button').first().click({ button: 'right' })
+    await ctx.page.getByLabel('Étiquette de la conversation').fill('facture v2')
+    await ctx.page.keyboard.press('Enter')
+
+    await expect(ligne.getByText('facture v2')).toBeVisible()
+  })
+
+  test('survit à un redémarrage de l’application', async () => {
+    await fermer(ctx, { nettoyer: false })
+    ctx = await lancer({ donnees: ctx.donnees, projet: ctx.projet })
+
+    const ligne = ctx.page
+      .getByLabel('Sessions et fichiers')
+      .locator('li', { hasText: 'Refonte facturation' })
+    await expect(ligne.getByText('facture v2')).toBeVisible()
+  })
+
+  test('vider le champ retire l’étiquette', async () => {
+    const colonne = ctx.page.getByLabel('Sessions et fichiers')
+    const ligne = colonne.locator('li', { hasText: 'Refonte facturation' })
+
+    await ligne.getByRole('button').first().click({ button: 'right' })
+    await ctx.page.getByLabel('Étiquette de la conversation').fill('')
+    await ctx.page.keyboard.press('Enter')
+
+    await expect(ligne.getByText('facture v2')).toHaveCount(0)
   })
 })

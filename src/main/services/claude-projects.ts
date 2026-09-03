@@ -100,7 +100,8 @@ function extraireTexte(objet: Record<string, unknown>): string | undefined {
  */
 export async function listerSessions(
   cheminWorkspace: string,
-  noms: Record<string, string> = {}
+  noms: Record<string, string> = {},
+  etiquettes: Record<string, string> = {}
 ): Promise<ClaudeSession[]> {
   const dossier = claudeProjectPath(cheminWorkspace)
 
@@ -136,6 +137,7 @@ export async function listerSessions(
         id,
         titre,
         titreDeRepli: !noms[id] && !enTete.titre,
+        etiquette: etiquettes[id],
         gitBranch: enTete.gitBranch,
         debutLe: enTete.premierHorodatage,
         misAJourLe: infos.mtimeMs,

@@ -4,6 +4,7 @@ import type { ClaudeSession, Tab } from '@shared/types'
 import { listerSessions } from '../services/claude-projects'
 import { surveiller } from '../services/session-watcher'
 import * as store from '../services/store'
+import { proteger } from '../services/tmux'
 import { claudeProjectPath, tmuxSessionName } from '../util/paths'
 
 export type Intention = 'nouvelle' | 'reprise' | 'bifurcation'
@@ -58,11 +59,14 @@ function creerOngletAgent(
     case 'bifurcation': {
       if (!uuid) throw new Error('Bifurcation sans identifiant de session')
       sessionId = undefined
-      commande = `claude -r ${uuid} --fork-session`
       // Le nom vient de l'utilisateur, qui l'a choisi pour dire ce qu'il explore :
       // le décorer d'un symbole le dénaturerait. La pastille de l'onglet et le
       // lien vers l'origine disent déjà que c'est une branche.
       titre = titreSession ?? 'Branche'
+      // `--name` le donne aussi à Claude Code, qui l'affichera dans son invite
+      // et dans son propre sélecteur de sessions : le nom vaut alors partout,
+      // pas seulement dans Claudex.
+      commande = `claude -r ${uuid} --fork-session --name ${proteger(titre)}`
       break
     }
   }
@@ -96,9 +100,19 @@ export function registerClaudeIpc(): void {
       // Ouvrir un projet, c'est s'y intéresser : on se met dès lors à guetter les
       // conversations qui y naissent, y compris celles lancées à la main.
       void surveiller(chemin, evenement.sender)
-      return listerSessions(chemin, store.get().nomsSessions ?? {})
+      const etat = store.get()
+      return listerSessions(chemin, etat.nomsSessions ?? {}, etat.etiquettes ?? {})
     }
   )
+
+  ipcMain.handle('claude:etiqueter', (_evenement, uuid: string, texte: string) => {
+    store.update((etat) => {
+      const etiquettes = (etat.etiquettes ??= {})
+      const propre = texte.trim().slice(0, 40)
+      if (propre) etiquettes[uuid] = propre
+      else delete etiquettes[uuid]
+    })
+  })
 
   ipcMain.handle('claude:nommer', (_evenement, uuid: string, nom: string) => {
     store.update((etat) => {

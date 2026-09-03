@@ -22,10 +22,12 @@ export function ColonneLaterale(): React.JSX.Element {
   const filtrer = useStore((e) => e.filtre !== undefined ? e.filtrer : e.filtrer)
   const sessions = useStore((e) => (actif ? e.sessions[actif] : undefined))
   const chargement = useStore((e) => (actif ? e.sessionsEnCours[actif] : false))
+  const chargerSessions = useStore((e) => e.chargerSessions)
   const tout = useStore((e) => (actif ? e.toutAfficher[actif] : false))
   const tabs = useStore((e) => e.tabs)
   const ouvrirSession = useStore((e) => e.ouvrirSession)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
+  const etiqueter = useStore((e) => e.etiqueter)
   const derouler = useStore((e) => e.deroulerTout)
 
   const courant = workspaces.find((w) => w.id === actif)
@@ -67,6 +69,32 @@ export function ColonneLaterale(): React.JSX.Element {
         {onglet('sessions', 'SESSIONS', retenues?.length)}
         {onglet('fichiers', 'FICHIERS')}
         <div className="flex-1" />
+
+        {panneau === 'sessions' && courant && (
+          <button
+            type="button"
+            onClick={() => void chargerSessions(courant.id)}
+            title="Relire les conversations du projet"
+            aria-label="Relire les conversations"
+            className={`flex h-6 w-6 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte ${
+              chargement ? 'animate-spin' : ''
+            }`}
+          >
+            {/* Une branche n'apparaît qu'une fois son transcrit écrit, quelques
+                secondes après son lancement : ce bouton évite d'attendre sans
+                savoir si l'on attend pour rien. */}
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path
+                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        )}
+
         <span className="pr-1 font-mono text-[10px] text-texte-tenu">⌘E</span>
       </div>
 
@@ -107,6 +135,7 @@ export function ColonneLaterale(): React.JSX.Element {
                       onBifurquer={() =>
                         demanderBifurcation(courant.id, session.id, session.titre)
                       }
+                      onEtiqueter={(texte) => void etiqueter(courant.id, session.id, texte)}
                     />
                   )
                 })}

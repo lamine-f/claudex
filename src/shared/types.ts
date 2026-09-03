@@ -46,6 +46,15 @@ export interface AppState {
    * pas le résumé automatique des premiers échanges.
    */
   nomsSessions?: Record<string, string>
+
+  /**
+   * Étiquettes personnelles, par identifiant de conversation.
+   *
+   * Un mot posé à côté du titre pour distinguer ce que le titre confond : deux
+   * conversations nommées « Hello world » par Claude Code sont indiscernables
+   * sans lui.
+   */
+  etiquettes?: Record<string, string>
   layout: { leftWidth: number; middleWidth: number }
   activeWorkspaceId?: string
   activeTabId?: string
@@ -59,6 +68,8 @@ export interface ClaudeSession {
   titre: string
   /** Vrai si le titre est un repli et non un `ai-title` d'origine. */
   titreDeRepli: boolean
+  /** Mot posé à la main à côté du titre, pour distinguer deux homonymes. */
+  etiquette?: string
   gitBranch?: string
   debutLe?: number
   misAJourLe: number

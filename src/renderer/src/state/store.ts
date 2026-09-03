@@ -60,6 +60,7 @@ interface EtatUi {
   deroulerTout: (workspaceId: string) => void
   choisirPanneau: (panneau: 'sessions' | 'fichiers') => void
   demanderBifurcation: (workspaceId: string, uuid: string, titre: string) => void
+  etiqueter: (workspaceId: string, uuid: string, texte: string) => Promise<void>
   annulerBifurcation: () => void
   confirmerBifurcation: (nom: string) => Promise<void>
   filtrer: (filtre: string) => void
@@ -211,6 +212,11 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   demanderBifurcation: (workspaceId, uuid, titre) =>
     set({ bifurcationEnCours: { workspaceId, uuid, titre } }),
+
+  etiqueter: async (workspaceId, uuid, texte) => {
+    await window.claudex.claude.etiqueter(uuid, texte)
+    await get().chargerSessions(workspaceId)
+  },
 
   annulerBifurcation: () => set({ bifurcationEnCours: undefined }),
 
