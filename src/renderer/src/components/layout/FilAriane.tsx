@@ -1,22 +1,20 @@
 import { useStore } from '@renderer/state/store'
 
 /**
- * Bande supérieure : où l'on est, et l'état de l'environnement.
+ * Bande supérieure : où l'on est.
  *
  * Le fil d'ariane porte le nom complet du projet, que le rail réduit à ses
- * initiales, puis la conversation en cours.
+ * initiales, puis la conversation en cours. L'état de l'environnement n'y
+ * figure pas : le rail le signale déjà, et le répéter encombrerait une bande
+ * dont le seul rôle est de situer.
  */
 export function FilAriane(): React.JSX.Element {
   const workspaces = useStore((e) => e.workspaces)
   const actif = useStore((e) => e.activeWorkspaceId)
   const tabs = useStore((e) => e.tabs)
   const activeTabId = useStore((e) => e.activeTabId)
-  const diagnostics = useStore((e) => e.diagnostics)
-  const ouvrirDiagnostic = useStore((e) => e.ouvrirDiagnostic)
-
   const courant = workspaces.find((w) => w.id === actif)
   const onglet = tabs.find((t) => t.id === activeTabId)
-  const soucis = diagnostics.filter((d) => d.severity !== 'ok').length
 
   return (
     <header className="zone-glissable flex h-14 shrink-0 items-center gap-2.5 border-b border-separateur pr-4 pl-24">
@@ -36,17 +34,6 @@ export function FilAriane(): React.JSX.Element {
       )}
 
       <div className="flex-1" />
-
-      <button
-        type="button"
-        onClick={() => ouvrirDiagnostic(true)}
-        className="flex items-center gap-2 rounded-[7px] border border-separateur bg-fond-creux px-3 py-1.5 text-[13px] text-texte-doux transition-colors hover:border-bordure hover:text-texte"
-      >
-        <span
-          className={`h-[7px] w-[7px] rounded-full ${soucis > 0 ? 'bg-attention' : 'bg-succes'}`}
-        />
-        {soucis > 0 ? `${soucis} point${soucis > 1 ? 's' : ''} à voir` : 'Tout est prêt'}
-      </button>
     </header>
   )
 }

@@ -76,16 +76,46 @@ export function FileTree(): React.JSX.Element {
                       : void choisirFichier(entree.chemin)
                   }
                   title={entree.chemin}
-                  style={{ paddingLeft: 8 + profondeur * 12 }}
-                  className={`flex w-full items-center gap-1.5 py-[3px] pr-2 text-left transition-colors ${
+                  className={`flex w-full items-stretch py-[3px] pr-2 text-left transition-colors ${
                     choisi ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
                   }`}
                 >
-                  <span className="w-2.5 shrink-0 text-[10px] leading-none text-texte-faible">
-                    {entree.dossier ? (ouvert ? '▾' : '▸') : ''}
+                  {/* Un trait par niveau parcouru : sans eux, un arbre déplié en
+                      profondeur se lit comme une liste plate et l'on perd de vue
+                      à quel dossier appartient un fichier. */}
+                  {Array.from({ length: profondeur }, (_, niveau) => (
+                    <span
+                      key={niveau}
+                      aria-hidden
+                      className="ml-[9px] w-[11px] shrink-0 border-l border-separateur"
+                    />
+                  ))}
+                  <span className="ml-2 flex w-3.5 shrink-0 items-center justify-center">
+                    {entree.dossier && (
+                      // Dessiné plutôt que tapé : un chevron typographique se
+                      // réduit à un point à cette taille selon la police.
+                      <svg
+                        width="9"
+                        height="9"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        aria-hidden
+                        className={`text-texte-faible transition-transform ${
+                          ouvert ? 'rotate-90' : ''
+                        }`}
+                      >
+                        <path
+                          d="M4.5 2.5 8 6l-3.5 3.5"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
                   </span>
                   <span
-                    className={`truncate font-mono text-[12px] ${
+                    className={`truncate font-mono text-[12px] leading-5 ${
                       entree.dossier
                         ? 'text-texte-doux'
                         : choisi

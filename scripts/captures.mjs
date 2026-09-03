@@ -87,10 +87,12 @@ await capturer('1-vue-principale')
 // 3. Arborescence dépliée
 await page.getByRole('button', { name: /FICHIERS/ }).click().catch(() => undefined)
 await attendre(700)
-const src = page.getByRole('button', { name: /^src$/ }).first()
-if (await src.isVisible().catch(() => false)) {
-  await src.click()
-  await attendre(600)
+for (const dossier of ['src', 'main', 'services']) {
+  const cible = page.getByLabel('Sessions et fichiers').getByText(dossier, { exact: true }).first()
+  if (await cible.isVisible().catch(() => false)) {
+    await cible.click()
+    await attendre(600)
+  }
 }
 await capturer('2-arborescence')
 
@@ -115,7 +117,7 @@ if (await session.isVisible().catch(() => false)) {
 }
 
 // 6. Diagnostic
-await page.getByRole('button', { name: /Tout est prêt|point à voir/ }).click()
+await page.getByTitle("État de l'environnement").click()
 await attendre(700)
 await capturer('5-diagnostic')
 
