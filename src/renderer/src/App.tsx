@@ -5,6 +5,7 @@ import { useStore } from '@renderer/state/store'
 import { BarreStatut } from './components/layout/BarreStatut'
 import { ColonneLaterale } from './components/layout/ColonneLaterale'
 import { DialogueBifurcation } from './components/terminal/DialogueBifurcation'
+import { DialogueEcart } from './components/workspaces/DialogueEcart'
 import { Diagnostic } from './components/layout/Diagnostic'
 import { FilAriane } from './components/layout/FilAriane'
 import { FilePreview } from './components/files/FilePreview'
@@ -27,6 +28,21 @@ function Bifurcation(): React.JSX.Element | null {
     <DialogueBifurcation
       origine={demande.titre}
       onValider={(nom) => void confirmer(nom)}
+      onAnnuler={annuler}
+    />
+  )
+}
+
+/** Demande confirmation avant d'écarter une conversation. */
+function Ecart(): React.JSX.Element | null {
+  const demande = useStore((e) => e.ecartEnCours)
+  const annuler = useStore((e) => e.annulerEcart)
+  const confirmer = useStore((e) => e.confirmerEcart)
+  if (!demande) return null
+  return (
+    <DialogueEcart
+      session={demande.session}
+      onConfirmer={() => void confirmer()}
       onAnnuler={annuler}
     />
   )
@@ -80,6 +96,7 @@ export default function App(): React.JSX.Element {
       <BarreStatut />
       <FilePreview />
       <Bifurcation />
+      <Ecart />
       <Diagnostic />
     </div>
   )

@@ -55,6 +55,9 @@ export interface AppState {
    * sans lui.
    */
   etiquettes?: Record<string, string>
+
+  /** Conversations mises en favori, remontées en tête de liste. */
+  favoris?: string[]
   layout: { leftWidth: number; middleWidth: number }
   activeWorkspaceId?: string
   activeTabId?: string

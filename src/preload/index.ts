@@ -91,7 +91,11 @@ const api = {
     nommer: (uuid: string, nom: string): Promise<void> =>
       ipcRenderer.invoke('claude:nommer', uuid, nom),
     etiqueter: (uuid: string, texte: string): Promise<void> =>
-      ipcRenderer.invoke('claude:etiqueter', uuid, texte)
+      ipcRenderer.invoke('claude:etiqueter', uuid, texte),
+    favori: (uuid: string, favori: boolean): Promise<void> =>
+      ipcRenderer.invoke('claude:favori', uuid, favori),
+    ecarter: (workspaceId: string, uuid: string): Promise<string> =>
+      ipcRenderer.invoke('claude:ecarter', workspaceId, uuid)
   },
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>

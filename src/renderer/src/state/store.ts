@@ -63,6 +63,12 @@ interface EtatUi {
   demanderBifurcation: (workspaceId: string, uuid: string, titre: string) => void
   etiqueter: (workspaceId: string, uuid: string, texte: string) => Promise<void>
   renommer: (workspaceId: string, uuid: string, titre: string) => Promise<void>
+  basculerFavori: (workspaceId: string, uuid: string, favori: boolean) => Promise<void>
+  ecarterSession: (workspaceId: string, session: ClaudeSession) => Promise<void>
+  /** Conversation dont l'écart est proposé, le temps de le confirmer. */
+  ecartEnCours?: { workspaceId: string; session: ClaudeSession }
+  confirmerEcart: () => Promise<void>
+  annulerEcart: () => void
   annulerBifurcation: () => void
   confirmerBifurcation: (nom: string) => Promise<void>
   filtrer: (filtre: string) => void
@@ -246,6 +252,32 @@ export const useStore = create<EtatUi>((set, get) => ({
   renommer: async (workspaceId, uuid, titre) => {
     await window.claudex.claude.nommer(uuid, titre)
     await get().chargerSessions(workspaceId)
+  },
+
+  basculerFavori: async (workspaceId, uuid, favori) => {
+    await window.claudex.claude.favori(uuid, favori)
+    await get().chargerSessions(workspaceId)
+  },
+
+  // Écarter une conversation demande confirmation : c'est parfois le seul
+  // exemplaire d'un travail long.
+  ecarterSession: async (workspaceId, session) => {
+    set({ ecartEnCours: { workspaceId, session } })
+  },
+
+  annulerEcart: () => set({ ecartEnCours: undefined }),
+
+  confirmerEcart: async () => {
+    const demande = get().ecartEnCours
+    if (!demande) return
+    set({ ecartEnCours: undefined })
+
+    // L'onglet qui la portait n'a plus d'objet une fois la conversation partie.
+    const onglet = get().tabs.find((t) => t.claudeSessionId === demande.session.id)
+    if (onglet) await get().fermerOnglet(onglet.id)
+
+    await window.claudex.claude.ecarter(demande.workspaceId, demande.session.id)
+    await get().chargerSessions(demande.workspaceId)
   },
 
   annulerBifurcation: () => set({ bifurcationEnCours: undefined }),

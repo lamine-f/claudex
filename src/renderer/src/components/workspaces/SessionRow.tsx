@@ -17,6 +17,8 @@ interface Props {
   onBifurquer: () => void
   onEtiqueter: (texte: string) => void
   onRenommer: (titre: string) => void
+  /** Ouvre le menu de la conversation à l'endroit du clic. */
+  onMenu: (x: number, y: number, editer: (quoi: Champ) => void) => void
 }
 
 /** Ce que le double-clic ou le clic droit met en édition sur la ligne. */
@@ -28,7 +30,8 @@ export function SessionRow({
   onOuvrir,
   onBifurquer,
   onEtiqueter,
-  onRenommer
+  onRenommer,
+  onMenu
 }: Props): React.JSX.Element {
   const { libelle, couleur } = STATUTS[statut]
   const active = statut === 'active'
@@ -93,8 +96,8 @@ export function SessionRow({
       <button
         type="button"
         onClick={surClic}
-        // Deux gestes, deux champs : le double-clic renomme la conversation
-        // — comme on renomme un fichier — et le clic droit pose l'étiquette.
+        // Le double-clic renomme, comme on renomme un fichier ; le clic droit
+        // ouvre tout ce qu'on peut faire d'autre.
         onDoubleClick={(e) => {
           e.preventDefault()
           annulerClic()
@@ -103,7 +106,7 @@ export function SessionRow({
         onContextMenu={(e) => {
           e.preventDefault()
           annulerClic()
-          editer('etiquette')
+          onMenu(e.clientX, e.clientY, editer)
         }}
         title={`${session.titre}\n${Math.round(session.octets / 1024)} Ko${
           session.gitBranch ? ` · ${session.gitBranch}` : ''
@@ -119,6 +122,11 @@ export function SessionRow({
         }`}
       >
         <span className="flex min-w-0 items-baseline gap-2">
+          {session.epinglee && !edition && (
+            <span aria-label="En favori" title="En favori" className="shrink-0 text-[11px] text-attention">
+              ★
+            </span>
+          )}
           {edition === 'titre' ? (
             <input
               ref={champ}

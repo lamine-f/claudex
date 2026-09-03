@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
@@ -228,6 +228,7 @@ test.describe('étiquette', () => {
     const ligne = colonne.locator('li', { hasText: 'Refonte facturation' })
 
     await ligne.getByRole('button').first().click({ button: 'right' })
+    await ctx.page.getByRole('menuitem', { name: 'Étiqueter' }).click()
     await ctx.page.getByLabel('Étiquette de la conversation').fill('facture v2')
     await ctx.page.keyboard.press('Enter')
 
@@ -249,6 +250,7 @@ test.describe('étiquette', () => {
     const ligne = colonne.locator('li', { hasText: 'Refonte facturation' })
 
     await ligne.getByRole('button').first().click({ button: 'right' })
+    await ctx.page.getByRole('menuitem', { name: /étiquette|Étiqueter/ }).click()
     await ctx.page.getByLabel('Étiquette de la conversation').fill('')
     await ctx.page.keyboard.press('Enter')
 
@@ -354,5 +356,82 @@ test.describe('état des conversations', () => {
     await expect(colonne().getByText('à l’écran')).toHaveCount(1)
     const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
     await expect(ligne.getByText('à l’écran')).toBeVisible()
+  })
+})
+
+test.describe('menu d’une conversation', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const provisoire = await lancer()
+    await semerTranscrits(provisoire.projet)
+    await fermer(provisoire, { nettoyer: false })
+    ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+  })
+
+  test.afterAll(async () => {
+    await rm(dossierTranscrits(ctx.projet), { recursive: true, force: true })
+    await fermer(ctx)
+  })
+
+  const colonne = (): ReturnType<Contexte['page']['getByLabel']> =>
+    ctx.page.getByLabel('Sessions et fichiers')
+
+  const ouvrirMenu = async (titre: string): Promise<void> => {
+    await colonne().locator('li', { hasText: titre }).getByRole('button').first().click({
+      button: 'right'
+    })
+    await expect(ctx.page.getByRole('menu')).toBeVisible()
+  }
+
+  test('un favori remonte en tête de liste', async () => {
+    // « Migration DTO » est la plus ancienne : la mettre en favori doit la faire
+    // passer devant, sans quoi l'ordre chronologique l'enfouirait.
+    await ouvrirMenu('Migration DTO')
+    await ctx.page.getByRole('menuitem', { name: 'Mettre en favori' }).click()
+
+    const premiere = colonne().locator('li').first()
+    await expect(premiere).toContainText('Migration DTO')
+    await expect(premiere.getByLabel('En favori')).toBeVisible()
+
+    // Remis dans l'état d'origine pour que les cas suivants tiennent seuls.
+    await ouvrirMenu('Migration DTO')
+    await ctx.page.getByRole('menuitem', { name: 'Retirer des favoris' }).click()
+  })
+
+  test('le favori se retire et la liste retrouve son ordre', async () => {
+    // Posé puis retiré dans le même test : chacun doit tenir seul.
+    await ouvrirMenu('Migration DTO')
+    await ctx.page.getByRole('menuitem', { name: 'Mettre en favori' }).click()
+    await expect(colonne().locator('li').first()).toContainText('Migration DTO')
+
+    await ouvrirMenu('Migration DTO')
+    await ctx.page.getByRole('menuitem', { name: 'Retirer des favoris' }).click()
+    await expect(colonne().locator('li').first()).toContainText('Refonte facturation')
+  })
+
+  test('écarter demande confirmation et laisse le choix de renoncer', async () => {
+    await ouvrirMenu('Migration DTO')
+    await ctx.page.getByRole('menuitem', { name: /Écarter/ }).click()
+
+    await expect(ctx.page.getByRole('dialog', { name: 'Écarter la conversation' })).toBeVisible()
+    await ctx.page.getByRole('button', { name: 'Annuler' }).click()
+    await expect(colonne().getByText('Migration DTO')).toBeVisible()
+  })
+
+  test('la conversation écartée quitte la liste sans être effacée', async () => {
+    await ouvrirMenu('Migration DTO')
+    await ctx.page.getByRole('menuitem', { name: /Écarter/ }).click()
+    await ctx.page.getByRole('button', { name: 'Écarter', exact: true }).click()
+
+    await expect(colonne().getByText('Migration DTO')).toHaveCount(0)
+
+    // Le transcrit a quitté le dossier de Claude Code pour la corbeille : il est
+    // récupérable, ce que « supprimer » ne promettrait pas.
+    const restants = await readdir(dossierTranscrits(ctx.projet))
+    expect(restants.some((f) => f.startsWith('bbbbbbbb'))).toBe(false)
+
+    const corbeille = await readdir(join(ctx.donnees, 'corbeille')).catch(() => [])
+    expect(corbeille.some((f) => f.includes('bbbbbbbb'))).toBe(true)
   })
 })

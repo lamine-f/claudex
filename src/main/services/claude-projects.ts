@@ -101,7 +101,8 @@ function extraireTexte(objet: Record<string, unknown>): string | undefined {
 export async function listerSessions(
   cheminWorkspace: string,
   noms: Record<string, string> = {},
-  etiquettes: Record<string, string> = {}
+  etiquettes: Record<string, string> = {},
+  favoris: string[] = []
 ): Promise<ClaudeSession[]> {
   const dossier = claudeProjectPath(cheminWorkspace)
 
@@ -138,16 +139,21 @@ export async function listerSessions(
         titre,
         titreDeRepli: !noms[id] && !enTete.titre,
         etiquette: etiquettes[id],
+        epinglee: favoris.includes(id),
         gitBranch: enTete.gitBranch,
         debutLe: enTete.premierHorodatage,
         misAJourLe: infos.mtimeMs,
-        octets: infos.size,
-        epinglee: false
+        octets: infos.size
       }
     })
   )
 
   return sessions
     .filter((s): s is ClaudeSession => s !== null)
-    .sort((a, b) => b.misAJourLe - a.misAJourLe)
+    // Les favoris passent devant : on les garde sous la main précisément parce
+    // qu'on y revient, et l'ordre chronologique les enfouirait.
+    .sort((a, b) => {
+      if (a.epinglee !== b.epinglee) return a.epinglee ? -1 : 1
+      return b.misAJourLe - a.misAJourLe
+    })
 }

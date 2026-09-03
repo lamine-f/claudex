@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { StatutSession } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { FileTree } from '../files/FileTree'
+import { MenuSession, type Action } from '../workspaces/MenuSession'
 import { SessionRow } from '../workspaces/SessionRow'
 
 /** Nombre de conversations montrées avant d'avoir à dérouler le reste. */
@@ -30,6 +31,9 @@ export function ColonneLaterale(): React.JSX.Element {
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const etiqueter = useStore((e) => e.etiqueter)
   const renommer = useStore((e) => e.renommer)
+  const basculerFavori = useStore((e) => e.basculerFavori)
+  const ecarterSession = useStore((e) => e.ecarterSession)
+  const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
   const derouler = useStore((e) => e.deroulerTout)
 
   const courant = workspaces.find((w) => w.id === actif)
@@ -146,6 +150,31 @@ export function ColonneLaterale(): React.JSX.Element {
                       }
                       onEtiqueter={(texte) => void etiqueter(courant.id, session.id, texte)}
                       onRenommer={(titre) => void renommer(courant.id, session.id, titre)}
+                      onMenu={(x, y, editer) =>
+                        setMenu({
+                          x,
+                          y,
+                          actions: [
+                            {
+                              libelle: session.epinglee
+                                ? 'Retirer des favoris'
+                                : 'Mettre en favori',
+                              onChoisir: () =>
+                                void basculerFavori(courant.id, session.id, !session.epinglee)
+                            },
+                            { libelle: 'Renommer', onChoisir: () => editer('titre') },
+                            {
+                              libelle: session.etiquette ? "Changer l'étiquette" : 'Étiqueter',
+                              onChoisir: () => editer('etiquette')
+                            },
+                            {
+                              libelle: 'Écarter la conversation…',
+                              ecarte: true,
+                              onChoisir: () => void ecarterSession(courant.id, session)
+                            }
+                          ]
+                        })
+                      }
                     />
                   )
                 })}
@@ -178,6 +207,9 @@ export function ColonneLaterale(): React.JSX.Element {
             </button>
           </div>
         </div>
+      )}
+      {menu && (
+        <MenuSession x={menu.x} y={menu.y} actions={menu.actions} onFermer={() => setMenu(null)} />
       )}
     </section>
   )

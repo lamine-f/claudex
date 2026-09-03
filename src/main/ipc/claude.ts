@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { ipcMain } from 'electron'
 import type { ClaudeSession, Tab } from '@shared/types'
+import { join } from 'node:path'
 import { listerSessions } from '../services/claude-projects'
+import { ecarter } from '../services/corbeille'
 import { surveiller } from '../services/session-watcher'
 import * as store from '../services/store'
 import { proteger } from '../services/tmux'
@@ -101,7 +103,39 @@ export function registerClaudeIpc(): void {
       // conversations qui y naissent, y compris celles lancées à la main.
       void surveiller(chemin, evenement.sender)
       const etat = store.get()
-      return listerSessions(chemin, etat.nomsSessions ?? {}, etat.etiquettes ?? {})
+      return listerSessions(
+        chemin,
+        etat.nomsSessions ?? {},
+        etat.etiquettes ?? {},
+        etat.favoris ?? []
+      )
+    }
+  )
+
+  ipcMain.handle('claude:favori', (_evenement, uuid: string, favori: boolean) => {
+    store.update((etat) => {
+      const favoris = new Set(etat.favoris ?? [])
+      if (favori) favoris.add(uuid)
+      else favoris.delete(uuid)
+      etat.favoris = [...favoris]
+    })
+  })
+
+  /**
+   * Écarte une conversation : son transcrit rejoint la corbeille de Claudex, et
+   * ce qu'on lui avait attaché — nom, étiquette, favori — s'en va avec elle.
+   */
+  ipcMain.handle(
+    'claude:ecarter',
+    async (_evenement, workspaceId: string, uuid: string): Promise<string> => {
+      const chemin = join(claudeProjectPath(workspaceDe(workspaceId).path), `${uuid}.jsonl`)
+      const destination = await ecarter(chemin)
+      store.update((etat) => {
+        delete etat.nomsSessions?.[uuid]
+        delete etat.etiquettes?.[uuid]
+        etat.favoris = (etat.favoris ?? []).filter((f) => f !== uuid)
+      })
+      return destination
     }
   )
 
