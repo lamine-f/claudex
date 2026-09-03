@@ -1,5 +1,7 @@
 import {
+  ChevronRight,
   Columns2,
+  FolderPlus,
   Search,
   FilePen,
   FilePlus,
@@ -82,6 +84,12 @@ export const IconePanneauProjets = (p: Props): React.JSX.Element => <PanelLeft {
 
 /** Replier ou déployer la colonne des conversations et des fichiers. */
 export const IconePanneauColonne = (p: Props): React.JSX.Element => <Columns2 {...reglages(p)} />
+
+/** Réunir des conversations dans un groupe. */
+export const IconeNouveauGroupe = (p: Props): React.JSX.Element => <FolderPlus {...reglages(p)} />
+
+/** Replier ou déployer un groupe. Pivotée d'un quart de tour une fois ouvert. */
+export const IconeChevron = (p: Props): React.JSX.Element => <ChevronRight {...reglages(p)} />
 
 /** Filtrer une liste. */
 export const IconeRecherche = (p: Props): React.JSX.Element => <Search {...reglages(p)} />

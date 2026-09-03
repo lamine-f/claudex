@@ -1,5 +1,7 @@
 /** Types partagés entre le processus main, le preload et le renderer. */
 
+import type { Rangement } from './rangement'
+
 export interface Workspace {
   id: string
   /** Chemin absolu du dossier. C'est l'identité réelle du workspace. */
@@ -58,6 +60,14 @@ export interface AppState {
 
   /** Conversations mises en favori, remontées en tête de liste. */
   favoris?: string[]
+
+  /**
+   * Ordre voulu et groupes des conversations, par projet.
+   *
+   * Le disque ne dit ni dans quel ordre on veut voir ses conversations ni ce
+   * qui va avec quoi : c'est ici que ce classement vit.
+   */
+  rangements?: Record<string, Rangement>
   layout: {
     leftWidth: number
     middleWidth: number

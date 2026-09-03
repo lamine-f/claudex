@@ -11,9 +11,28 @@ const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
   terminee: { libelle: 'terminée', couleur: 'var(--color-texte-faible)' }
 }
 
+/**
+ * Gestes de réarrangement posés sur une ligne.
+ *
+ * Absents quand la liste n'est pas réarrangeable — sous un filtre, l'ordre
+ * affiché n'est plus celui de la liste, et déposer une conversation « ici »
+ * ne voudrait rien dire.
+ */
+export interface Glisser {
+  /** Vrai quand c'est cette ligne que l'on est en train de déplacer. */
+  enCours: boolean
+  /** Trait d'insertion à afficher, s'il y a lieu. */
+  indicateur?: 'avant' | 'apres'
+  onDebut: () => void
+  onFin: () => void
+  onSurvol: (position: 'avant' | 'apres') => void
+  onDepot: (position: 'avant' | 'apres') => void
+}
+
 interface Props {
   session: ClaudeSession
   statut: StatutSession
+  glisser?: Glisser
   onOuvrir: () => void
   onBifurquer: () => void
   onEtiqueter: (texte: string) => void
@@ -25,9 +44,16 @@ interface Props {
 /** Ce que le double-clic ou le clic droit met en édition sur la ligne. */
 type Champ = 'titre' | 'etiquette'
 
+/** Moitié haute ou moitié basse de la ligne : au-dessus, ou en dessous. */
+function positionDe(evenement: React.DragEvent): 'avant' | 'apres' {
+  const cadre = evenement.currentTarget.getBoundingClientRect()
+  return evenement.clientY - cadre.top < cadre.height / 2 ? 'avant' : 'apres'
+}
+
 export function SessionRow({
   session,
   statut,
+  glisser,
   onOuvrir,
   onBifurquer,
   onEtiqueter,
@@ -93,7 +119,37 @@ export function SessionRow({
   }
 
   return (
-    <li className="group/session relative">
+    <li
+      className={`group/session relative ${glisser?.enCours ? 'opacity-40' : ''}`}
+      // Une ligne en cours d'édition ne se déplace pas : le glisser-déposer
+      // empêcherait de sélectionner le texte que l'on est en train de corriger.
+      draggable={!!glisser && !edition}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', session.id)
+        glisser?.onDebut()
+      }}
+      onDragEnd={() => glisser?.onFin()}
+      onDragOver={(e) => {
+        if (!glisser) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        glisser.onSurvol(positionDe(e))
+      }}
+      onDrop={(e) => {
+        if (!glisser) return
+        e.preventDefault()
+        glisser.onDepot(positionDe(e))
+      }}
+    >
+      {glisser?.indicateur && (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-projet ${
+            glisser.indicateur === 'avant' ? 'top-0' : 'bottom-0'
+          }`}
+        />
+      )}
       <button
         type="button"
         onClick={surClic}
@@ -158,7 +214,9 @@ export function SessionRow({
           )}
         </span>
 
-        <span className="flex items-center gap-1.5 font-mono text-[11.5px]">
+        {/* Sur une ligne, quitte à se faire couper : repliée, la ligne d'état
+            doublait la hauteur de la conversation pour dire deux mots de plus. */}
+        <span className="flex items-center gap-1.5 overflow-hidden font-mono text-[11.5px] whitespace-nowrap">
           <span style={{ color: couleur }}>{libelle}</span>
           <span className="text-texte-tenu">·</span>
           <span className="text-texte-tenu">{quand(session.misAJourLe)}</span>

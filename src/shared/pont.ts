@@ -12,7 +12,7 @@ const ATTENDU: Record<string, string[]> = {
   workspace: ['list', 'add', 'remove', 'update'],
   term: ['list', 'create', 'open', 'input', 'resize', 'detach', 'close', 'rename'],
   fs: ['lireDossier', 'lireApercu', 'observer', 'cesserObservation'],
-  claude: ['listSessions', 'ouvrir', 'nommer', 'etiqueter', 'favori', 'ecarter'],
+  claude: ['listSessions', 'ouvrir', 'nommer', 'etiqueter', 'favori', 'ecarter', 'rangement', 'arranger'],
   git: ['etat'],
   doctor: ['check', 'applySettingsFix']
 }

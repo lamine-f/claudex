@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { Rangement } from '@shared/rangement'
 import type {
   Apercu,
   AppState,
@@ -94,6 +95,10 @@ const api = {
       ipcRenderer.invoke('claude:etiqueter', uuid, texte),
     favori: (uuid: string, favori: boolean): Promise<void> =>
       ipcRenderer.invoke('claude:favori', uuid, favori),
+    rangement: (workspaceId: string): Promise<Rangement> =>
+      ipcRenderer.invoke('claude:rangement', workspaceId),
+    arranger: (workspaceId: string, rangement: Rangement): Promise<void> =>
+      ipcRenderer.invoke('claude:arranger', workspaceId, rangement),
     ecarter: (workspaceId: string, uuid: string): Promise<string> =>
       ipcRenderer.invoke('claude:ecarter', workspaceId, uuid)
   },

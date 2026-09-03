@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { ipcMain } from 'electron'
 import type { ClaudeSession, Tab } from '@shared/types'
+import { RANGEMENT_VIDE, oublier, type Rangement } from '@shared/rangement'
 import { join } from 'node:path'
 import { listerSessions } from '../services/claude-projects'
 import { ecarter } from '../services/corbeille'
@@ -94,6 +95,39 @@ function creerOngletAgent(
   return tab
 }
 
+/**
+ * Nettoie un rangement venu de l'interface avant de l'écrire.
+ *
+ * Ce que l'on persiste finit relu au démarrage suivant : mieux vaut refuser une
+ * structure douteuse tout de suite que de la retrouver sous forme d'écran vide
+ * après un redémarrage.
+ */
+function assainir(brut: unknown): Rangement {
+  if (!brut || typeof brut !== 'object') return RANGEMENT_VIDE
+  const { ordre, groupes } = brut as Partial<Rangement>
+
+  const groupesPropres: Record<string, { nom: string; replie?: boolean; sessions: string[] }> = {}
+  for (const [id, groupe] of Object.entries(groupes ?? {})) {
+    if (!groupe || typeof groupe !== 'object') continue
+    groupesPropres[id] = {
+      nom: String(groupe.nom ?? '').trim().slice(0, 60) || 'Groupe',
+      replie: groupe.replie === true,
+      sessions: (groupe.sessions ?? []).filter((s): s is string => typeof s === 'string')
+    }
+  }
+
+  return {
+    ordre: (ordre ?? []).filter(
+      (e): e is Rangement['ordre'][number] =>
+        !!e &&
+        typeof e === 'object' &&
+        typeof e.id === 'string' &&
+        (e.type === 'groupe' ? groupesPropres[e.id] !== undefined : e.type === 'session')
+    ),
+    groupes: groupesPropres
+  }
+}
+
 export function registerClaudeIpc(): void {
   ipcMain.handle(
     'claude:listSessions',
@@ -111,6 +145,19 @@ export function registerClaudeIpc(): void {
       )
     }
   )
+
+  ipcMain.handle(
+    'claude:rangement',
+    (_evenement, workspaceId: string): Rangement =>
+      store.get().rangements?.[workspaceId] ?? RANGEMENT_VIDE
+  )
+
+  ipcMain.handle('claude:arranger', (_evenement, workspaceId: string, rangement: unknown) => {
+    store.update((etat) => {
+      const rangements = (etat.rangements ??= {})
+      rangements[workspaceId] = assainir(rangement)
+    })
+  })
 
   ipcMain.handle('claude:favori', (_evenement, uuid: string, favori: boolean) => {
     store.update((etat) => {
@@ -134,6 +181,8 @@ export function registerClaudeIpc(): void {
         delete etat.nomsSessions?.[uuid]
         delete etat.etiquettes?.[uuid]
         etat.favoris = (etat.favoris ?? []).filter((f) => f !== uuid)
+        const range = etat.rangements?.[workspaceId]
+        if (range) etat.rangements![workspaceId] = oublier(range, uuid)
       })
       return destination
     }

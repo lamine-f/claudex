@@ -22,7 +22,9 @@ describe('contrôle du pont', () => {
         ouvrir: () => {},
         nommer: () => {},
         favori: () => {},
-        ecarter: () => {}
+        ecarter: () => {},
+        rangement: () => {},
+        arranger: () => {}
       },
       git: { etat: () => {} },
       doctor: { check: () => {}, applySettingsFix: () => {} }

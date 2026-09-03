@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
-import type { StatutSession } from '@shared/types'
+import { useMemo } from 'react'
 import { useStore } from '@renderer/state/store'
 import { FileTree } from '../files/FileTree'
-import { IconeArborescence, IconeConversations, IconePlus, IconeSynchro } from '../ui/Icones'
-import { MenuSession, type Action } from '../workspaces/MenuSession'
-import { SessionRow } from '../workspaces/SessionRow'
-
-/** Nombre de conversations montrées avant d'avoir à dérouler le reste. */
-const APERCU = 10
+import {
+  IconeArborescence,
+  IconeConversations,
+  IconeNouveauGroupe,
+  IconePlus,
+  IconeSynchro
+} from '../ui/Icones'
+import { ListeSessions } from '../workspaces/ListeSessions'
 
 /**
  * Colonne unique portant les conversations et les fichiers.
@@ -21,37 +22,22 @@ export function ColonneLaterale(): React.JSX.Element {
   const panneau = useStore((e) => e.panneau)
   const choisirPanneau = useStore((e) => e.choisirPanneau)
   const filtre = useStore((e) => e.filtre)
-  const filtrer = useStore((e) => e.filtre !== undefined ? e.filtrer : e.filtrer)
+  const filtrer = useStore((e) => e.filtrer)
   const sessions = useStore((e) => (actif ? e.sessions[actif] : undefined))
   const chargement = useStore((e) => (actif ? e.sessionsEnCours[actif] : false))
   const chargerSessions = useStore((e) => e.chargerSessions)
-  const tout = useStore((e) => (actif ? e.toutAfficher[actif] : false))
-  const tabs = useStore((e) => e.tabs)
-  const activeTabId = useStore((e) => e.activeTabId)
   const ouvrirSession = useStore((e) => e.ouvrirSession)
-  const demanderBifurcation = useStore((e) => e.demanderBifurcation)
-  const etiqueter = useStore((e) => e.etiqueter)
-  const renommer = useStore((e) => e.renommer)
-  const basculerFavori = useStore((e) => e.basculerFavori)
-  const ecarterSession = useStore((e) => e.ecarterSession)
-  const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
-  const derouler = useStore((e) => e.deroulerTout)
+  const ouvrirGroupe = useStore((e) => e.ouvrirGroupe)
 
   const courant = workspaces.find((w) => w.id === actif)
-  const ouvertes = useMemo(
-    () => new Set(tabs.map((t) => t.claudeSessionId).filter(Boolean)),
-    [tabs]
-  )
-  const aLEcran = tabs.find((t) => t.id === activeTabId)?.claudeSessionId
 
-  const retenues = useMemo(() => {
+  // Le compte annoncé est celui des conversations, groupées ou non : c'est ce
+  // que l'on cherche, pas le nombre de lignes de la colonne.
+  const compte = useMemo(() => {
     const terme = filtre.trim().toLowerCase()
     if (!sessions) return undefined
-    return terme ? sessions.filter((s) => s.titre.toLowerCase().includes(terme)) : sessions
+    return terme ? sessions.filter((s) => s.titre.toLowerCase().includes(terme)).length : sessions.length
   }, [sessions, filtre])
-
-  const visibles = tout || filtre ? retenues : retenues?.slice(0, APERCU)
-  const reste = (retenues?.length ?? 0) - (visibles?.length ?? 0)
 
   // Les deux vues se disent par leur icône : deux mots en capitales pesaient
   // plus lourd que ce qu'ils désignaient, en tête d'une colonne étroite.
@@ -59,7 +45,7 @@ export function ColonneLaterale(): React.JSX.Element {
     cle: 'sessions' | 'fichiers',
     libelle: string,
     icone: React.ReactNode,
-    compte?: number
+    nombre?: number
   ): React.JSX.Element => (
     <button
       type="button"
@@ -74,7 +60,24 @@ export function ColonneLaterale(): React.JSX.Element {
       }`}
     >
       {icone}
-      {compte !== undefined && <span className="text-texte-tenu">{compte}</span>}
+      {nombre !== undefined && <span className="text-texte-tenu">{nombre}</span>}
+    </button>
+  )
+
+  const outil = (
+    libelle: string,
+    icone: React.ReactNode,
+    onClic: () => void,
+    className = ''
+  ): React.JSX.Element => (
+    <button
+      type="button"
+      onClick={onClic}
+      title={libelle}
+      aria-label={libelle}
+      className={`flex h-7 w-7 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte ${className}`}
+    >
+      {icone}
     </button>
   )
 
@@ -84,34 +87,28 @@ export function ColonneLaterale(): React.JSX.Element {
       className="flex h-full min-w-0 flex-col border-r border-separateur bg-fond-panneau"
     >
       <div className="flex h-12 shrink-0 items-center gap-1.5 px-2.5">
-        {onglet('sessions', 'Conversations', <IconeConversations taille={17} />, retenues?.length)}
+        {onglet('sessions', 'Conversations', <IconeConversations taille={17} />, compte)}
         {onglet('fichiers', 'Fichiers', <IconeArborescence taille={17} />)}
         <div className="flex-1" />
 
         {panneau === 'sessions' && courant && (
-          <button
-            type="button"
-            onClick={() => void chargerSessions(courant.id)}
-            title="Relire les conversations du projet"
-            aria-label="Relire les conversations"
-            className={`flex h-7 w-7 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte ${
+          <>
+            {outil(
+              'Relire les conversations',
+              <IconeSynchro taille={15} />,
+              () => void chargerSessions(courant.id),
               chargement ? 'animate-spin' : ''
-            }`}
-          >
-            <IconeSynchro taille={15} />
-          </button>
-        )}
-
-        {panneau === 'sessions' && courant && (
-          <button
-            type="button"
-            onClick={() => void ouvrirSession(courant.id, 'nouvelle')}
-            title="Nouvelle conversation"
-            aria-label="Nouvelle conversation"
-            className="flex h-7 w-7 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-accent"
-          >
-            <IconePlus taille={16} />
-          </button>
+            )}
+            {outil('Nouveau groupe', <IconeNouveauGroupe taille={15} />, () =>
+              void ouvrirGroupe(courant.id)
+            )}
+            {outil(
+              'Nouvelle conversation',
+              <IconePlus taille={16} />,
+              () => void ouvrirSession(courant.id, 'nouvelle'),
+              'hover:text-accent'
+            )}
+          </>
         )}
 
         <span className="pr-1 font-mono text-[10px] text-texte-tenu">⌘E</span>
@@ -134,85 +131,9 @@ export function ColonneLaterale(): React.JSX.Element {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {chargement && !sessions ? (
-              <p className="px-3 py-2 text-[12px] text-texte-faible">Lecture des conversations…</p>
-            ) : visibles?.length ? (
-              <ul>
-                {visibles.map((session) => {
-                  // Ce qui est déductible aujourd'hui : la conversation qu'on a
-                  // sous les yeux, et celles qui patientent dans un autre onglet.
-                  // « en attente » et « interrompue » demandent de savoir ce que
-                  // fait l'agent, ce que les hooks de Claude Code apporteront.
-                  const statut: StatutSession =
-                    session.id === aLEcran
-                      ? 'active'
-                      : ouvertes.has(session.id)
-                        ? 'ouverte'
-                        : 'terminee'
-                  return (
-                    <SessionRow
-                      key={session.id}
-                      session={session}
-                      statut={statut}
-                      onOuvrir={() =>
-                        void ouvrirSession(courant.id, 'reprise', session.id, session.titre)
-                      }
-                      onBifurquer={() =>
-                        demanderBifurcation(courant.id, session.id, session.titre)
-                      }
-                      onEtiqueter={(texte) => void etiqueter(courant.id, session.id, texte)}
-                      onRenommer={(titre) => void renommer(courant.id, session.id, titre)}
-                      onMenu={(x, y, editer) =>
-                        setMenu({
-                          x,
-                          y,
-                          actions: [
-                            {
-                              libelle: session.epinglee
-                                ? 'Retirer des favoris'
-                                : 'Mettre en favori',
-                              onChoisir: () =>
-                                void basculerFavori(courant.id, session.id, !session.epinglee)
-                            },
-                            { libelle: 'Renommer', onChoisir: () => editer('titre') },
-                            {
-                              libelle: session.etiquette ? "Changer l'étiquette" : 'Étiqueter',
-                              onChoisir: () => editer('etiquette')
-                            },
-                            {
-                              libelle: 'Écarter la conversation…',
-                              ecarte: true,
-                              onChoisir: () => void ecarterSession(courant.id, session)
-                            }
-                          ]
-                        })
-                      }
-                    />
-                  )
-                })}
-                {reste > 0 && (
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => derouler(courant.id)}
-                      className="w-full px-3 py-2 text-left text-[12px] text-texte-faible transition-colors hover:text-texte-doux"
-                    >
-                      ⋯ {reste} autre{reste > 1 ? 's' : ''}
-                    </button>
-                  </li>
-                )}
-              </ul>
-            ) : (
-              <p className="px-3 py-2 text-[12px] text-texte-faible">
-                {filtre ? 'Aucune conversation ne correspond.' : 'aucune session ici'}
-              </p>
-            )}
+            <ListeSessions workspaceId={courant.id} />
           </div>
-
         </div>
-      )}
-      {menu && (
-        <MenuSession x={menu.x} y={menu.y} actions={menu.actions} onFermer={() => setMenu(null)} />
       )}
     </section>
   )

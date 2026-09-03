@@ -1,5 +1,17 @@
 import { create } from 'zustand'
 import { manquesDuPont } from '@shared/pont'
+import {
+  RANGEMENT_VIDE,
+  creerGroupe,
+  deplacer,
+  dissoudreGroupe,
+  materialiser,
+  renommerGroupe,
+  replierGroupe,
+  type Cible,
+  type Element,
+  type Rangement
+} from '@shared/rangement'
 import type {
   Apercu,
   AppState,
@@ -25,6 +37,15 @@ interface EtatUi {
 
   /** Sessions Claude Code par workspace, chargées au dépli. */
   sessions: Record<string, ClaudeSession[]>
+  /** Ordre voulu et groupes, par workspace. */
+  rangements: Record<string, Rangement>
+  /**
+   * Groupe qui vient d'être créé et attend son nom.
+   *
+   * Le bouton qui le crée vit dans l'en-tête de la colonne, la ligne à nommer
+   * dans la liste : l'état passe par ici plutôt que par une chaîne de props.
+   */
+  groupeANommer?: string
   sessionsEnCours: Record<string, boolean>
   /** Workspaces dont la liste de sessions est entièrement déroulée. */
   toutAfficher: Record<string, boolean>
@@ -68,6 +89,14 @@ interface EtatUi {
     titre?: string
   ) => Promise<void>
   deroulerTout: (workspaceId: string) => void
+  /** Déplace une conversation ou un groupe à l'endroit visé. */
+  deplacerElement: (workspaceId: string, quoi: Element, cible: Cible) => Promise<void>
+  /** Crée un groupe, éventuellement autour d'une conversation. Renvoie son identifiant. */
+  ouvrirGroupe: (workspaceId: string, index?: number, avec?: string[]) => Promise<string>
+  nommerGroupe: (workspaceId: string, id: string, nom: string) => Promise<void>
+  finirNommage: () => void
+  replierGroupeSessions: (workspaceId: string, id: string, replie: boolean) => Promise<void>
+  defaireGroupe: (workspaceId: string, id: string) => Promise<void>
   choisirPanneau: (panneau: 'sessions' | 'fichiers') => void
   demanderBifurcation: (workspaceId: string, uuid: string, titre: string) => void
   etiqueter: (workspaceId: string, uuid: string, texte: string) => Promise<void>
@@ -97,6 +126,25 @@ interface EtatUi {
   appliquerCorrectifRetention: () => Promise<string>
 }
 
+type Poser = (partiel: Partial<EtatUi>) => void
+type Lire = () => EtatUi
+
+/**
+ * Applique un rangement : à l'écran d'abord, sur le disque ensuite.
+ *
+ * Un déplacement doit se voir à l'instant où on lâche la souris ; attendre
+ * l'écriture donnerait un temps mort à chaque geste.
+ */
+async function enregistrerRangement(
+  workspaceId: string,
+  rangement: Rangement,
+  set: Poser,
+  get: Lire
+): Promise<void> {
+  set({ rangements: { ...get().rangements, [workspaceId]: rangement } })
+  await window.claudex.claude.arranger(workspaceId, rangement)
+}
+
 export const useStore = create<EtatUi>((set, get) => ({
   workspaces: [],
   layout: { leftWidth: 260, middleWidth: 300 },
@@ -105,6 +153,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   pret: false,
   tabs: [],
   sessions: {},
+  rangements: {},
   sessionsEnCours: {},
   toutAfficher: {},
   arbre: {},
@@ -224,8 +273,16 @@ export const useStore = create<EtatUi>((set, get) => ({
   chargerSessions: async (workspaceId) => {
     set({ sessionsEnCours: { ...get().sessionsEnCours, [workspaceId]: true } })
     try {
-      const sessions = await window.claudex.claude.listSessions(workspaceId)
-      set({ sessions: { ...get().sessions, [workspaceId]: sessions } })
+      // Les conversations et leur rangement se lisent d'un même geste : afficher
+      // les unes sans l'autre ferait sauter la liste sous les yeux.
+      const [sessions, rangement] = await Promise.all([
+        window.claudex.claude.listSessions(workspaceId),
+        window.claudex.claude.rangement(workspaceId)
+      ])
+      set({
+        sessions: { ...get().sessions, [workspaceId]: sessions },
+        rangements: { ...get().rangements, [workspaceId]: rangement }
+      })
     } finally {
       set({ sessionsEnCours: { ...get().sessionsEnCours, [workspaceId]: false } })
     }
@@ -247,6 +304,50 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   deroulerTout: (workspaceId) =>
     set({ toutAfficher: { ...get().toutAfficher, [workspaceId]: true } }),
+
+  deplacerElement: async (workspaceId, quoi, cible) => {
+    // Le premier geste fige l'ordre affiché : sans cela, la conversation
+    // déplacée serait la seule rangée et le reste se réordonnerait derrière.
+    const base = materialiser(
+      get().sessions[workspaceId] ?? [],
+      get().rangements[workspaceId] ?? RANGEMENT_VIDE
+    )
+    await enregistrerRangement(workspaceId, deplacer(base, quoi, cible), set, get)
+  },
+
+  ouvrirGroupe: async (workspaceId, index = 0, avec = []) => {
+    const id = crypto.randomUUID()
+    const base = materialiser(
+      get().sessions[workspaceId] ?? [],
+      get().rangements[workspaceId] ?? RANGEMENT_VIDE
+    )
+    await enregistrerRangement(workspaceId, creerGroupe(base, id, '', index, avec), set, get)
+    set({ groupeANommer: id })
+    return id
+  },
+
+  nommerGroupe: async (workspaceId, id, nom) => {
+    const base = get().rangements[workspaceId] ?? RANGEMENT_VIDE
+    set({ groupeANommer: undefined })
+    await enregistrerRangement(
+      workspaceId,
+      renommerGroupe(base, id, nom.trim().slice(0, 60) || 'Groupe'),
+      set,
+      get
+    )
+  },
+
+  finirNommage: () => set({ groupeANommer: undefined }),
+
+  replierGroupeSessions: async (workspaceId, id, replie) => {
+    const base = get().rangements[workspaceId] ?? RANGEMENT_VIDE
+    await enregistrerRangement(workspaceId, replierGroupe(base, id, replie), set, get)
+  },
+
+  defaireGroupe: async (workspaceId, id) => {
+    const base = get().rangements[workspaceId] ?? RANGEMENT_VIDE
+    await enregistrerRangement(workspaceId, dissoudreGroupe(base, id), set, get)
+  },
 
   choisirPanneau: (panneau) => set({ panneau }),
 

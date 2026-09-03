@@ -45,6 +45,7 @@ export function registerWorkspaceIpc(): void {
     store.update((etat) => {
       etat.workspaces = etat.workspaces.filter((w) => w.id !== id)
       etat.tabs = etat.tabs.filter((t) => t.workspaceId !== id)
+      delete etat.rangements?.[id]
       if (etat.activeWorkspaceId === id) etat.activeWorkspaceId = etat.workspaces[0]?.id
     })
     return store.get().workspaces
