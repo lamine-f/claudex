@@ -39,9 +39,18 @@ interface EtatUi {
   /** Conversation dont on s'apprête à bifurquer, le temps de la nommer. */
   bifurcationEnCours?: { workspaceId: string; uuid: string; titre: string }
 
-  /** Contenu des dossiers déjà lus, indexé par chemin. */
+  /**
+   * Contenu des dossiers déjà lus, indexé par chemin absolu.
+   *
+   * Conservé d'un projet à l'autre : les chemins sont absolus, donc sans
+   * collision, et revenir sur un projet doit être immédiat plutôt que de
+   * reparcourir ce qu'on vient de quitter.
+   */
   arbre: Record<string, Entree[]>
-  dossiersOuverts: string[]
+  /** Dossiers dépliés, par projet, pour retrouver l'arbre tel qu'on l'a laissé. */
+  dossiersOuverts: Record<string, string[]>
+  /** Dossiers en cours de lecture, pour ne pas laisser l'écran muet. */
+  lectureEnCours: string[]
   fichierChoisi?: string
   apercu?: Apercu
 
@@ -98,7 +107,8 @@ export const useStore = create<EtatUi>((set, get) => ({
   sessionsEnCours: {},
   toutAfficher: {},
   arbre: {},
-  dossiersOuverts: [],
+  dossiersOuverts: {},
+  lectureEnCours: [],
   panneau: 'sessions',
   filtre: '',
 
@@ -188,10 +198,6 @@ export const useStore = create<EtatUi>((set, get) => ({
 
     set({
       activeWorkspaceId: id,
-      // L'arbre appartient au projet qu'on quitte : le garder afficherait les
-      // fichiers du précédent sous le nom du nouveau.
-      arbre: {},
-      dossiersOuverts: [],
       fichierChoisi: undefined,
       apercu: undefined,
       filtre: '',
@@ -201,7 +207,9 @@ export const useStore = create<EtatUi>((set, get) => ({
 
     const courant = get().workspaces.find((w) => w.id === id)
     if (courant) {
-      await get().chargerDossier(courant.path)
+      // Déjà lu : on affiche sans attendre et l'on rafraîchit derrière.
+      if (get().arbre[courant.path]) void get().chargerDossier(courant.path)
+      else await get().chargerDossier(courant.path)
       void window.claudex.fs.observer(courant.path)
     }
     await get().chargerOnglets(id)
@@ -301,6 +309,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   },
 
   chargerDossier: async (chemin) => {
+    set({ lectureEnCours: [...get().lectureEnCours, chemin] })
     try {
       const entrees = await window.claudex.fs.lireDossier(chemin)
       set({ arbre: { ...get().arbre, [chemin]: entrees } })
@@ -309,17 +318,28 @@ export const useStore = create<EtatUi>((set, get) => ({
       const arbre = { ...get().arbre }
       delete arbre[chemin]
       set({ arbre })
+    } finally {
+      set({ lectureEnCours: get().lectureEnCours.filter((c) => c !== chemin) })
     }
   },
 
   basculerDossier: async (chemin) => {
-    const ouverts = get().dossiersOuverts
+    const projet = get().activeWorkspaceId
+    if (!projet) return
+    const ouverts = get().dossiersOuverts[projet] ?? []
+    const majOuverts = (liste: string[]): void =>
+      set({ dossiersOuverts: { ...get().dossiersOuverts, [projet]: liste } })
+
     if (ouverts.includes(chemin)) {
-      set({ dossiersOuverts: ouverts.filter((d) => d !== chemin) })
+      majOuverts(ouverts.filter((d) => d !== chemin))
       return
     }
-    set({ dossiersOuverts: [...ouverts, chemin] })
-    if (!get().arbre[chemin]) await get().chargerDossier(chemin)
+    majOuverts([...ouverts, chemin])
+
+    // Le contenu déjà lu s'affiche aussitôt, puis on le relit en arrière-plan :
+    // le disque a pu bouger depuis, mais l'attente n'a pas à être visible.
+    if (get().arbre[chemin]) void get().chargerDossier(chemin)
+    else await get().chargerDossier(chemin)
   },
 
   choisirFichier: async (chemin) => {
@@ -337,7 +357,9 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   /** Relit les dossiers déjà ouverts sous une racine, après un changement disque. */
   rafraichirArbre: async (racine) => {
-    const aRelire = Object.keys(get().arbre).filter((d) => d === racine || d.startsWith(`${racine}/`))
+    const aRelire = Object.keys(get().arbre).filter(
+      (d) => d === racine || d.startsWith(`${racine}/`)
+    )
     await Promise.all(aRelire.map((d) => get().chargerDossier(d)))
   },
 

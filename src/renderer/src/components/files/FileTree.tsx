@@ -4,6 +4,15 @@ import { ChevronRight } from 'lucide-react'
 import { useStore } from '@renderer/state/store'
 import { IconeFichier } from './IconeFichier'
 
+/**
+ * Tableau vide partagé.
+ *
+ * Un sélecteur qui construit `[]` à chaque appel rend une référence neuve à
+ * chaque rendu : le store la croit changée, redéclenche un rendu, et la boucle
+ * ne s'arrête plus.
+ */
+const AUCUN: string[] = []
+
 interface Ligne {
   entree: Entree
   profondeur: number
@@ -37,13 +46,15 @@ export function FileTree(): React.JSX.Element {
   const workspaces = useStore((e) => e.workspaces)
   const actif = useStore((e) => e.activeWorkspaceId)
   const arbre = useStore((e) => e.arbre)
-  const dossiersOuverts = useStore((e) => e.dossiersOuverts)
+  const dossiersOuverts = useStore((e) => (actif ? (e.dossiersOuverts[actif] ?? AUCUN) : AUCUN))
+  const lectureEnCours = useStore((e) => e.lectureEnCours)
   const fichierChoisi = useStore((e) => e.fichierChoisi)
   const basculerDossier = useStore((e) => e.basculerDossier)
   const choisirFichier = useStore((e) => e.choisirFichier)
   const rafraichirArbre = useStore((e) => e.rafraichirArbre)
 
   const courant = workspaces.find((w) => w.id === actif)
+  const litLaRacine = Boolean(courant && lectureEnCours.includes(courant.path))
 
   // Le disque bouge sous nos pieds : agents, git, compilations. L'arbre se remet
   // à jour tout seul plutôt que d'attendre un clic.

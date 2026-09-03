@@ -39,7 +39,11 @@ export function registerFsIpc(): void {
 
     const veilleur = chokidar.watch(racine, {
       ignoreInitial: true,
-      depth: 6,
+      // Deux niveaux suffisent à voir ce qui compte — un fichier créé à la
+      // racine ou dans un dossier courant. Six posaient des centaines de
+      // surveillances sur un projet ordinaire, pour des changements que
+      // personne ne regardait.
+      depth: 2,
       ignored: (cible: string) =>
         /(^|[/\\])(node_modules|\.git|dist|out|build|target|venv|\.venv|__pycache__|\.next|coverage)([/\\]|$)/.test(
           cible
