@@ -67,6 +67,14 @@ function rattacher(cheminWorkspace: string, uuid: string): void {
 
     candidat.claudeSessionId = uuid
     candidat.claudeProjectDir = claudeProjectPath(cheminWorkspace)
+
+    // Le nom d'une branche est attaché ici, au plus tôt : Claude Code ne donne
+    // son identifiant qu'en écrivant son transcrit, et attendre que le renderer
+    // s'en charge le perdrait s'il avait fermé l'onglet entre-temps.
+    if (candidat.forkedFrom) {
+      const noms = (etat.nomsSessions ??= {})
+      noms[uuid] = candidat.title
+    }
   })
 }
 

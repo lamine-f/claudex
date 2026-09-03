@@ -45,17 +45,10 @@ export default function App(): React.JSX.Element {
   // sans qu'on ait à changer de projet pour la voir.
   useEffect(
     () =>
-      window.claudex.claude.onSessionDetectee(async (chemin, uuid) => {
+      window.claudex.claude.onSessionDetectee((chemin) => {
         const etat = useStore.getState()
         const cible = etat.workspaces.find((w) => w.path === chemin)
-        if (!cible) return
-
-        // Une branche reçoit son identifiant de Claude Code, après coup : c'est
-        // ici, et pas avant, qu'on peut lui attacher le nom qu'on lui a donné.
-        const onglet = etat.tabs.find((t) => t.claudeSessionId === uuid)
-        if (onglet?.forkedFrom) await window.claudex.claude.nommer(uuid, onglet.title)
-
-        await etat.chargerSessions(cible.id)
+        if (cible) void etat.chargerSessions(cible.id)
       }),
     []
   )

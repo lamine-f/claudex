@@ -157,3 +157,38 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
     await expect(ctx.page.locator('.xterm')).toHaveCount(avant)
   })
 })
+
+test.describe('fermer un onglet', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const provisoire = await lancer()
+    await semerTranscrits(provisoire.projet)
+    await fermer(provisoire, { nettoyer: false })
+    ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+  })
+
+  test.afterAll(async () => {
+    await rm(dossierTranscrits(ctx.projet), { recursive: true, force: true })
+    await fermer(ctx)
+  })
+
+  test('ne perd pas la conversation', async () => {
+    const colonne = ctx.page.getByLabel('Sessions et fichiers')
+    await colonne.getByText('Refonte facturation').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+
+    // Fermer détruit la session tmux, jamais le transcrit : c'est lui qui porte
+    // la conversation, et il vit dans ~/.claude/projects.
+    await ctx.page.getByTitle("Fermer l'onglet et sa session tmux").click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(0)
+
+    await expect(colonne.getByText('Refonte facturation')).toBeVisible()
+
+    // Et elle se rouvre avec son contexte.
+    await colonne.getByText('Refonte facturation').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+    const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+    expect(onglets.at(-1)?.claudeSessionId).toBe('aaaaaaaa-1111-1111-1111-111111111111')
+  })
+})
