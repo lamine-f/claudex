@@ -43,12 +43,10 @@ export function TerminalPane(): React.JSX.Element {
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {tabs.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-5">
-            {/* Un écran vide dit qu'il ne se passe rien ; le logo dit où l'on
-                est. La marque a sa place là où il n'y a rien d'autre. */}
-            <img src="./logo.png" alt="" aria-hidden className="w-28 opacity-25" />
-            <p className="font-mono text-[12.5px] text-texte-tenu">
-              Aucun terminal ouvert pour {courant.name}.
-            </p>
+            {/* Le logo suffit : écrire qu'il n'y a pas de terminal alors que
+                l'écran est vide et qu'un bouton propose d'en ouvrir un ne dit
+                rien que la vue ne montre déjà. */}
+            <img src="./logo.png" alt="" aria-hidden className="w-32 opacity-20" />
             <button
               type="button"
               onClick={() => void nouvelOnglet()}
