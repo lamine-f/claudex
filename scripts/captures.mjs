@@ -117,7 +117,7 @@ if (await session.isVisible().catch(() => false)) {
 }
 
 // 6. Diagnostic
-await page.getByTitle("État de l'environnement").click()
+await page.getByRole('button', { name: /Environnement|point.? à voir/ }).click()
 await attendre(700)
 await capturer('5-diagnostic')
 

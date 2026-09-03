@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initiales, quand } from '../src/renderer/src/util/temps'
+import { quand } from '../src/renderer/src/util/temps'
 
 describe('datation relative', () => {
   const minute = 60_000
@@ -29,17 +29,5 @@ describe('datation relative', () => {
     const vieux = new Date()
     vieux.setDate(vieux.getDate() - 6)
     expect(quand(vieux.getTime())).toMatch(/^\d{2}\/\d{2}$/)
-  })
-})
-
-describe('initiales de projet', () => {
-  it.each([
-    ['boutique_front', 'OF'],
-    ['Claudex', 'CL'],
-    ['Acme board', 'ZB'],
-    ['boutique-pdf-builder', 'OP'],
-    ['now', 'NO']
-  ])('%s donne %s', (nom, attendu) => {
-    expect(initiales(nom)).toBe(attendu)
   })
 })

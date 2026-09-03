@@ -23,10 +23,3 @@ export function quand(ms: number): string {
 
   return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
 }
-
-/** Initiales d'un projet, pour le rail : « boutique_front » donne « OF ». */
-export function initiales(nom: string): string {
-  const morceaux = nom.split(/[\s_\-.]+/).filter(Boolean)
-  if (morceaux.length >= 2) return (morceaux[0]![0]! + morceaux[1]![0]!).toUpperCase()
-  return nom.slice(0, 2).toUpperCase()
-}
