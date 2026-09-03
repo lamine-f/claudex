@@ -71,7 +71,9 @@ export default function App(): React.JSX.Element {
 
   return (
     // Trois bandes : où l'on est, ce qu'on fait, dans quel état est le projet.
-    <div className="grid h-full grid-rows-[56px_1fr_38px]">
+    // La bande du haut n'a qu'à loger les feux de la fenêtre et le fil d'ariane :
+    // au-delà, elle prend de la hauteur au terminal sans rien apporter.
+    <div className="grid h-full grid-rows-[38px_1fr_38px]">
       <FilAriane />
 
       {pret ? (

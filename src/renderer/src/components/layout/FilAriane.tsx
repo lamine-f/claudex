@@ -17,16 +17,16 @@ export function FilAriane(): React.JSX.Element {
   const onglet = tabs.find((t) => t.id === activeTabId)
 
   return (
-    <header className="zone-glissable flex h-14 shrink-0 items-center gap-2.5 border-b border-separateur pr-4 pl-24">
+    <header className="zone-glissable flex h-[38px] shrink-0 items-center gap-2 border-b border-separateur pr-4 pl-[88px]">
       {courant && (
         <>
-          <span className="font-mono text-[13px] text-texte-faible">{courant.name}</span>
+          <span className="font-mono text-[12px] text-texte-faible">{courant.name}</span>
           {onglet && (
             <>
               <span className="text-texte-tenu">/</span>
-              <span className="truncate text-[14px] font-medium text-texte">{onglet.title}</span>
+              <span className="truncate text-[13px] font-medium text-texte">{onglet.title}</span>
               {onglet.claudeSessionId && (
-                <span className="font-mono text-[12px] text-texte-tenu">ouverte</span>
+                <span className="font-mono text-[11px] text-texte-tenu">ouverte</span>
               )}
             </>
           )}

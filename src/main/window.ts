@@ -8,9 +8,9 @@ export function createWindow(): BrowserWindow {
     minWidth: 900,
     minHeight: 600,
     show: false,
-    backgroundColor: '#0d0e12',
+    backgroundColor: '#000000',
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 14, y: 16 },
+    trafficLightPosition: { x: 14, y: 12 },
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,

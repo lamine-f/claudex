@@ -11,7 +11,7 @@
 @theme {
   /* Fonds, du plus profond au plus élevé */
   --color-fond: #000000;
-  --color-fond-rail: #070605;
+  --color-fond-rail: #111111;
   --color-fond-panneau: #0a0908;
   --color-fond-creux: #0e0c0a;
   --color-fond-eleve: #1b1815;
