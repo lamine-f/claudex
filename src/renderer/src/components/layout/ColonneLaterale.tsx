@@ -25,6 +25,7 @@ export function ColonneLaterale(): React.JSX.Element {
   const chargerSessions = useStore((e) => e.chargerSessions)
   const tout = useStore((e) => (actif ? e.toutAfficher[actif] : false))
   const tabs = useStore((e) => e.tabs)
+  const activeTabId = useStore((e) => e.activeTabId)
   const ouvrirSession = useStore((e) => e.ouvrirSession)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const etiqueter = useStore((e) => e.etiqueter)
@@ -36,6 +37,7 @@ export function ColonneLaterale(): React.JSX.Element {
     () => new Set(tabs.map((t) => t.claudeSessionId).filter(Boolean)),
     [tabs]
   )
+  const aLEcran = tabs.find((t) => t.id === activeTabId)?.claudeSessionId
 
   const retenues = useMemo(() => {
     const terme = filtre.trim().toLowerCase()
@@ -121,10 +123,16 @@ export function ColonneLaterale(): React.JSX.Element {
             ) : visibles?.length ? (
               <ul>
                 {visibles.map((session) => {
-                  // Seul « ouverte » est déductible aujourd'hui ; « en attente » et
-                  // « interrompue » demandent de savoir ce que fait l'agent, ce que
-                  // les hooks de Claude Code apporteront.
-                  const statut: StatutSession = ouvertes.has(session.id) ? 'ouverte' : 'terminee'
+                  // Ce qui est déductible aujourd'hui : la conversation qu'on a
+                  // sous les yeux, et celles qui patientent dans un autre onglet.
+                  // « en attente » et « interrompue » demandent de savoir ce que
+                  // fait l'agent, ce que les hooks de Claude Code apporteront.
+                  const statut: StatutSession =
+                    session.id === aLEcran
+                      ? 'active'
+                      : ouvertes.has(session.id)
+                        ? 'ouverte'
+                        : 'terminee'
                   return (
                     <SessionRow
                       key={session.id}

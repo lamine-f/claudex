@@ -313,3 +313,46 @@ test.describe('renommer une conversation', () => {
     await expect(colonne().getByText('jamais validé')).toHaveCount(0)
   })
 })
+
+test.describe('état des conversations', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const provisoire = await lancer()
+    await semerTranscrits(provisoire.projet)
+    await fermer(provisoire, { nettoyer: false })
+    ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+  })
+
+  test.afterAll(async () => {
+    await rm(dossierTranscrits(ctx.projet), { recursive: true, force: true })
+    await fermer(ctx)
+  })
+
+  const colonne = (): ReturnType<Contexte['page']['getByLabel']> =>
+    ctx.page.getByLabel('Sessions et fichiers')
+
+  test("seule la conversation regardée est dite à l’écran", async () => {
+    await colonne().getByText('Refonte facturation').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+    await colonne().getByText('Migration DTO').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(2)
+
+    // Deux conversations sont ouvertes, une seule est sous les yeux : les
+    // confondre laissait croire que plusieurs tournaient de front.
+    await expect(colonne().getByText('à l’écran')).toHaveCount(1)
+    await expect(colonne().getByText('dans un onglet')).toHaveCount(1)
+
+    const ligneRegardee = colonne().locator('li', { hasText: 'Migration DTO' })
+    await expect(ligneRegardee.getByText('à l’écran')).toBeVisible()
+  })
+
+  test('revenir sur un onglet déplace l’état', async () => {
+    // Basculer d'onglet doit déplacer le repère, pas en allumer un second.
+    await ctx.page.getByRole('button', { name: 'Refonte facturation' }).last().click()
+
+    await expect(colonne().getByText('à l’écran')).toHaveCount(1)
+    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    await expect(ligne.getByText('à l’écran')).toBeVisible()
+  })
+})

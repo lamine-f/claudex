@@ -3,7 +3,8 @@ import type { ClaudeSession, StatutSession } from '@shared/types'
 import { quand } from '@shared/temps'
 
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
-  ouverte: { libelle: 'ouverte', couleur: 'var(--color-accent)' },
+  active: { libelle: 'à l’écran', couleur: 'var(--color-accent)' },
+  ouverte: { libelle: 'dans un onglet', couleur: 'var(--color-texte-doux)' },
   attente: { libelle: 'en attente', couleur: 'var(--color-attention)' },
   interrompue: { libelle: 'interrompue', couleur: 'var(--color-erreur)' },
   terminee: { libelle: 'terminée', couleur: 'var(--color-texte-faible)' }
@@ -30,7 +31,8 @@ export function SessionRow({
   onRenommer
 }: Props): React.JSX.Element {
   const { libelle, couleur } = STATUTS[statut]
-  const ouverte = statut === 'ouverte'
+  const active = statut === 'active'
+  const dansUnOnglet = active || statut === 'ouverte'
   const [edition, setEdition] = useState<Champ | null>(null)
   const [texte, setTexte] = useState('')
   const champ = useRef<HTMLInputElement | null>(null)
@@ -106,10 +108,14 @@ export function SessionRow({
         title={`${session.titre}\n${Math.round(session.octets / 1024)} Ko${
           session.gitBranch ? ` · ${session.gitBranch}` : ''
         }`}
+        // Le liseré plein ne va qu'à la conversation qu'on a sous les yeux ;
+        // celles qui patientent dans un autre onglet le portent en retrait.
         className={`flex w-full flex-col gap-[3px] border-l-2 py-2 pr-10 pl-3 text-left transition-colors ${
-          ouverte
+          active
             ? 'border-l-accent bg-fond-creux'
-            : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'
+            : dansUnOnglet
+              ? 'border-l-bordure hover:bg-fond-survol'
+              : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'
         }`}
       >
         <span className="flex min-w-0 items-baseline gap-2">
@@ -130,7 +136,7 @@ export function SessionRow({
           ) : (
             <span
               className={`min-w-0 flex-1 truncate text-[13.5px] ${
-                ouverte ? 'text-texte' : 'text-texte-doux'
+                dansUnOnglet ? 'text-texte' : 'text-texte-doux'
               } ${session.titreDeRepli ? 'italic' : ''}`}
             >
               {session.titre}
