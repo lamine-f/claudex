@@ -4,6 +4,7 @@ import { useShortcuts } from '@renderer/hooks/useShortcuts'
 import { useStore } from '@renderer/state/store'
 import { BarreStatut } from './components/layout/BarreStatut'
 import { ColonneLaterale } from './components/layout/ColonneLaterale'
+import { DialogueBifurcation } from './components/terminal/DialogueBifurcation'
 import { Diagnostic } from './components/layout/Diagnostic'
 import { FilAriane } from './components/layout/FilAriane'
 import { FilePreview } from './components/files/FilePreview'
@@ -13,6 +14,21 @@ import { TerminalPane } from './components/terminal/TerminalPane'
 function Poignee(): React.JSX.Element {
   return (
     <Separator className="w-px bg-separateur transition-colors hover:bg-bordure data-[state=dragging]:bg-accent" />
+  )
+}
+
+/** Affiche le nommage quand une bifurcation est demandée. */
+function Bifurcation(): React.JSX.Element | null {
+  const demande = useStore((e) => e.bifurcationEnCours)
+  const annuler = useStore((e) => e.annulerBifurcation)
+  const confirmer = useStore((e) => e.confirmerBifurcation)
+  if (!demande) return null
+  return (
+    <DialogueBifurcation
+      origine={demande.titre}
+      onValider={(nom) => void confirmer(nom)}
+      onAnnuler={annuler}
+    />
   )
 }
 
@@ -29,10 +45,17 @@ export default function App(): React.JSX.Element {
   // sans qu'on ait à changer de projet pour la voir.
   useEffect(
     () =>
-      window.claudex.claude.onSessionDetectee((chemin) => {
+      window.claudex.claude.onSessionDetectee(async (chemin, uuid) => {
         const etat = useStore.getState()
         const cible = etat.workspaces.find((w) => w.path === chemin)
-        if (cible) void etat.chargerSessions(cible.id)
+        if (!cible) return
+
+        // Une branche reçoit son identifiant de Claude Code, après coup : c'est
+        // ici, et pas avant, qu'on peut lui attacher le nom qu'on lui a donné.
+        const onglet = etat.tabs.find((t) => t.claudeSessionId === uuid)
+        if (onglet?.forkedFrom) await window.claudex.claude.nommer(uuid, onglet.title)
+
+        await etat.chargerSessions(cible.id)
       }),
     []
   )
@@ -63,6 +86,7 @@ export default function App(): React.JSX.Element {
 
       <BarreStatut />
       <FilePreview />
+      <Bifurcation />
       <Diagnostic />
     </div>
   )

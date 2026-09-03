@@ -25,6 +25,7 @@ export function ColonneLaterale(): React.JSX.Element {
   const tout = useStore((e) => (actif ? e.toutAfficher[actif] : false))
   const tabs = useStore((e) => e.tabs)
   const ouvrirSession = useStore((e) => e.ouvrirSession)
+  const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const derouler = useStore((e) => e.deroulerTout)
 
   const courant = workspaces.find((w) => w.id === actif)
@@ -104,7 +105,7 @@ export function ColonneLaterale(): React.JSX.Element {
                         void ouvrirSession(courant.id, 'reprise', session.id, session.titre)
                       }
                       onBifurquer={() =>
-                        void ouvrirSession(courant.id, 'bifurcation', session.id, session.titre)
+                        demanderBifurcation(courant.id, session.id, session.titre)
                       }
                     />
                   )

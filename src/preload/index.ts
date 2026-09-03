@@ -87,7 +87,9 @@ const api = {
       intention: 'nouvelle' | 'reprise' | 'bifurcation',
       uuid?: string,
       titre?: string
-    ): Promise<Tab> => ipcRenderer.invoke('claude:ouvrir', workspaceId, intention, uuid, titre)
+    ): Promise<Tab> => ipcRenderer.invoke('claude:ouvrir', workspaceId, intention, uuid, titre),
+    nommer: (uuid: string, nom: string): Promise<void> =>
+      ipcRenderer.invoke('claude:nommer', uuid, nom)
   },
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>

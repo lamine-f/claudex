@@ -38,6 +38,14 @@ export interface Tab {
 export interface AppState {
   workspaces: Workspace[]
   tabs: Tab[]
+  /**
+   * Noms donnés à la main, par identifiant de conversation.
+   *
+   * Ils priment sur le titre que Claude Code génère : quand on a nommé une
+   * bifurcation « piste sans cache », c'est ce nom qui dit ce qu'on y explore,
+   * pas le résumé automatique des premiers échanges.
+   */
+  nomsSessions?: Record<string, string>
   layout: { leftWidth: number; middleWidth: number }
   activeWorkspaceId?: string
   activeTabId?: string

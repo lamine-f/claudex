@@ -98,7 +98,10 @@ function extraireTexte(objet: Record<string, unknown>): string | undefined {
  * dossier de transcrits. Un dossier absent signifie simplement que `claude` n'a
  * jamais été lancé là — ce n'est pas une erreur.
  */
-export async function listerSessions(cheminWorkspace: string): Promise<ClaudeSession[]> {
+export async function listerSessions(
+  cheminWorkspace: string,
+  noms: Record<string, string> = {}
+): Promise<ClaudeSession[]> {
   const dossier = claudeProjectPath(cheminWorkspace)
 
   let fichiers: string[]
@@ -119,7 +122,10 @@ export async function listerSessions(cheminWorkspace: string): Promise<ClaudeSes
       }
 
       const enTete = await lireEnTete(chemin)
-      const titre = enTete.titre ?? enTete.titreDeRepli
+      const id = basename(fichier, '.jsonl')
+      // Un nom donné à la main l'emporte : il dit ce qu'on explore, là où le
+      // titre généré ne résume que les premiers échanges.
+      const titre = noms[id] ?? enTete.titre ?? enTete.titreDeRepli
 
       // Sans titre ni premier message, le transcript ne porte aucune conversation
       // (fichiers « bridge-session », sessions avortées) : l'afficher n'aurait
@@ -127,9 +133,9 @@ export async function listerSessions(cheminWorkspace: string): Promise<ClaudeSes
       if (!titre) return null
 
       return {
-        id: basename(fichier, '.jsonl'),
+        id,
         titre,
-        titreDeRepli: !enTete.titre,
+        titreDeRepli: !noms[id] && !enTete.titre,
         gitBranch: enTete.gitBranch,
         debutLe: enTete.premierHorodatage,
         misAJourLe: infos.mtimeMs,

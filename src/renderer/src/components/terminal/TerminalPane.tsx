@@ -10,7 +10,7 @@ export function TerminalPane(): React.JSX.Element {
   const nouvelOnglet = useStore((e) => e.nouvelOnglet)
   const choisirOnglet = useStore((e) => e.choisirOnglet)
   const fermerOnglet = useStore((e) => e.fermerOnglet)
-  const ouvrirSession = useStore((e) => e.ouvrirSession)
+  const demanderBifurcation = useStore((e) => e.demanderBifurcation)
 
   const courant = workspaces.find((w) => w.id === workspaceActif)
 
@@ -35,7 +35,8 @@ export function TerminalPane(): React.JSX.Element {
         onFermer={(id) => void fermerOnglet(id)}
         onNouveau={() => void nouvelOnglet()}
         onBifurquer={(tab) =>
-          void ouvrirSession(tab.workspaceId, 'bifurcation', tab.claudeSessionId, tab.title)
+          tab.claudeSessionId &&
+          demanderBifurcation(tab.workspaceId, tab.claudeSessionId, tab.title)
         }
       />
 

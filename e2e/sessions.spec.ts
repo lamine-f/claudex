@@ -112,11 +112,47 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
     await expect(ctx.page.getByRole('button', { name: 'Refonte facturation' }).last()).toBeVisible()
   })
 
-  test('une bifurcation ouvre un second onglet sans toucher à l’original', async () => {
-    await colonne().getByText('Refonte facturation').hover()
-    await ctx.page.getByTitle(/Bifurquer/).first().click()
-    await expect(ctx.page.locator('.xterm')).toHaveCount(2)
+  test('une bifurcation se nomme avant de partir', async () => {
+    // Mesuré en écart : ce qui compte est qu'une branche s'ajoute, pas le
+    // nombre d'onglets qu'ont laissés les tests précédents.
+    const avant = await ctx.page.locator('.xterm').count()
+    // Le bouton est cherché DANS la ligne de la conversation : chaque ligne a
+    // le sien, et le premier de la colonne appartient à la plus récente.
+    const ligneCible = colonne().locator('li', { hasText: 'Refonte facturation' })
+    await ligneCible.hover()
+    await ligneCible.getByTitle(/Bifurquer/).click()
 
+    // Le nom est demandé au moment où l'intention est claire : sans lui, deux
+    // branches d'une même conversation seraient indiscernables.
+    const dialogue = ctx.page.getByRole('dialog', { name: 'Bifurquer la session' })
+    await expect(dialogue).toBeVisible()
+    await dialogue.getByLabel('Nom de la branche').fill('piste sans cache')
+    await dialogue.getByRole('button', { name: 'Bifurquer', exact: true }).click()
+
+    // L'onglet porte le nom donné, pas celui de la conversation d'origine.
+    await expect
+      .poll(async () => {
+        const liste = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+        return liste.at(-1)?.title
+      })
+      .toBe('piste sans cache')
+
+    await expect(ctx.page.locator('.xterm')).toHaveCount(avant + 1)
     await expect.poll(async () => (await commandesDeDepart()).join('\n')).toContain('--fork-session')
+
+    const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+    expect(onglets.at(-1)?.title).toBe('piste sans cache')
+    expect(onglets.at(-1)?.forkedFrom).toBe('aaaaaaaa-1111-1111-1111-111111111111')
+  })
+
+  test("annuler le nommage ne bifurque pas", async () => {
+    const avant = await ctx.page.locator('.xterm').count()
+    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    await ligne.hover()
+    await ligne.getByTitle(/Bifurquer/).click()
+    await ctx.page.getByRole('button', { name: 'Annuler' }).click()
+
+    await expect(ctx.page.getByRole('dialog')).toHaveCount(0)
+    await expect(ctx.page.locator('.xterm')).toHaveCount(avant)
   })
 })

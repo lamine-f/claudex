@@ -59,7 +59,10 @@ function creerOngletAgent(
       if (!uuid) throw new Error('Bifurcation sans identifiant de session')
       sessionId = undefined
       commande = `claude -r ${uuid} --fork-session`
-      titre = titreSession ? `${titreSession} ⑂` : 'Branche'
+      // Le nom vient de l'utilisateur, qui l'a choisi pour dire ce qu'il explore :
+      // le décorer d'un symbole le dénaturerait. La pastille de l'onglet et le
+      // lien vers l'origine disent déjà que c'est une branche.
+      titre = titreSession ?? 'Branche'
       break
     }
   }
@@ -90,12 +93,21 @@ export function registerClaudeIpc(): void {
     'claude:listSessions',
     (evenement, workspaceId: string): Promise<ClaudeSession[]> => {
       const chemin = workspaceDe(workspaceId).path
-      // Déplier un projet, c'est s'y intéresser : on se met dès lors à guetter les
+      // Ouvrir un projet, c'est s'y intéresser : on se met dès lors à guetter les
       // conversations qui y naissent, y compris celles lancées à la main.
       void surveiller(chemin, evenement.sender)
-      return listerSessions(chemin)
+      return listerSessions(chemin, store.get().nomsSessions ?? {})
     }
   )
+
+  ipcMain.handle('claude:nommer', (_evenement, uuid: string, nom: string) => {
+    store.update((etat) => {
+      const noms = (etat.nomsSessions ??= {})
+      const propre = nom.trim()
+      if (propre) noms[uuid] = propre
+      else delete noms[uuid]
+    })
+  })
 
   ipcMain.handle(
     'claude:ouvrir',

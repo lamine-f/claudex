@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { quand } from '../src/renderer/src/util/temps'
+import { quand } from '../src/shared/temps'
 
 describe('datation relative', () => {
   const minute = 60_000

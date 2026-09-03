@@ -1,5 +1,5 @@
 import type { ClaudeSession, StatutSession } from '@shared/types'
-import { quand } from '@renderer/util/temps'
+import { quand } from '@shared/temps'
 
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
   ouverte: { libelle: 'ouverte', couleur: 'var(--color-accent)' },

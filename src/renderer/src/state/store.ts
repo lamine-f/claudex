@@ -35,6 +35,9 @@ interface EtatUi {
   /** État git du projet courant, pour la barre de statut. */
   git?: EtatGit | null
 
+  /** Conversation dont on s'apprête à bifurquer, le temps de la nommer. */
+  bifurcationEnCours?: { workspaceId: string; uuid: string; titre: string }
+
   /** Contenu des dossiers déjà lus, indexé par chemin. */
   arbre: Record<string, Entree[]>
   dossiersOuverts: string[]
@@ -56,6 +59,9 @@ interface EtatUi {
   ) => Promise<void>
   deroulerTout: (workspaceId: string) => void
   choisirPanneau: (panneau: 'sessions' | 'fichiers') => void
+  demanderBifurcation: (workspaceId: string, uuid: string, titre: string) => void
+  annulerBifurcation: () => void
+  confirmerBifurcation: (nom: string) => Promise<void>
   filtrer: (filtre: string) => void
   rafraichirGit: () => Promise<void>
   chargerDossier: (chemin: string) => Promise<void>
@@ -202,6 +208,18 @@ export const useStore = create<EtatUi>((set, get) => ({
     set({ toutAfficher: { ...get().toutAfficher, [workspaceId]: true } }),
 
   choisirPanneau: (panneau) => set({ panneau }),
+
+  demanderBifurcation: (workspaceId, uuid, titre) =>
+    set({ bifurcationEnCours: { workspaceId, uuid, titre } }),
+
+  annulerBifurcation: () => set({ bifurcationEnCours: undefined }),
+
+  confirmerBifurcation: async (nom) => {
+    const demande = get().bifurcationEnCours
+    if (!demande) return
+    set({ bifurcationEnCours: undefined })
+    await get().ouvrirSession(demande.workspaceId, 'bifurcation', demande.uuid, nom)
+  },
 
   filtrer: (filtre) => set({ filtre }),
 
