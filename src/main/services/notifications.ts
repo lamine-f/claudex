@@ -89,6 +89,10 @@ function prevenir(
   if (cible?.isFocused()) return
 
   const notification = new Notification({ title: titre, body: corps, sound: VOIX[voix] })
+  // Tracé dans la sortie du processus main : quand rien n'apparaît à l'écran,
+  // c'est la seule façon de savoir si l'application n'a pas prévenu ou si le
+  // système ne l'a pas montré — deux pannes qui ne se soignent pas pareil.
+  notification.on('show', () => console.log('[notification] remise au système :', titre))
   notification.on('click', () => {
     const ouverte = fenetre()
     if (!ouverte || ouverte.isDestroyed()) return
