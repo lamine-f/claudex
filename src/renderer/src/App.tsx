@@ -80,7 +80,11 @@ export default function App(): React.JSX.Element {
         <div className="flex min-h-0">
           {!layout.railReplie && <Rail />}
           {layout.colonneRepliee ? (
-            <TerminalPane />
+            // Sans cette enveloppe, le terminal garde sa largeur naturelle et
+            // laisse vide la place que le repli vient de libérer.
+            <div className="min-w-0 flex-1">
+              <TerminalPane />
+            </div>
           ) : (
             <Group orientation="horizontal" className="min-h-0 flex-1">
               <Panel defaultSize="26%" minSize="16%" maxSize="42%">

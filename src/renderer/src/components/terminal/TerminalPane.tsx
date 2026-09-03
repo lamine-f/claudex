@@ -42,14 +42,17 @@ export function TerminalPane(): React.JSX.Element {
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {tabs.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3">
-            <p className="font-mono text-[12px] text-texte-faible">
+          <div className="flex h-full flex-col items-center justify-center gap-5">
+            {/* Un écran vide dit qu'il ne se passe rien ; le logo dit où l'on
+                est. La marque a sa place là où il n'y a rien d'autre. */}
+            <img src="./logo.png" alt="" aria-hidden className="w-28 opacity-25" />
+            <p className="font-mono text-[12.5px] text-texte-tenu">
               Aucun terminal ouvert pour {courant.name}.
             </p>
             <button
               type="button"
               onClick={() => void nouvelOnglet()}
-              className="rounded-md border border-bordure px-3 py-1.5 text-[12px] text-texte-doux transition-colors hover:bg-fond-survol hover:text-texte"
+              className="rounded-lg border border-bordure px-4 py-2 text-[13px] text-texte-doux transition-colors hover:border-accent-tenu hover:bg-fond-survol hover:text-accent"
             >
               Ouvrir un terminal
             </button>
