@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Group, Panel, Separator } from 'react-resizable-panels'
 import { useShortcuts } from '@renderer/hooks/useShortcuts'
 import { useStore } from '@renderer/state/store'
-import { BarreStatut } from './components/layout/BarreStatut'
 import { ColonneLaterale } from './components/layout/ColonneLaterale'
 import { DialogueBifurcation } from './components/terminal/DialogueBifurcation'
 import { DialogueEcart } from './components/workspaces/DialogueEcart'
@@ -71,9 +70,9 @@ export default function App(): React.JSX.Element {
 
   return (
     // Trois bandes : où l'on est, ce qu'on fait, dans quel état est le projet.
-    // La bande du haut n'a qu'à loger les feux de la fenêtre et le fil d'ariane :
-    // au-delà, elle prend de la hauteur au terminal sans rien apporter.
-    <div className="grid h-full grid-rows-[38px_1fr_38px]">
+    // Une seule bande de chrome, en haut : elle porte le contexte permanent, et
+    // tout le reste de la hauteur revient au terminal.
+    <div className="grid h-full grid-rows-[38px_1fr]">
       <FilAriane />
 
       {pret ? (
@@ -95,7 +94,6 @@ export default function App(): React.JSX.Element {
         </div>
       )}
 
-      <BarreStatut />
       <FilePreview />
       <Bifurcation />
       <Ecart />
