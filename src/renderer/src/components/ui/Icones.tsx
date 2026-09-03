@@ -1,85 +1,75 @@
+import {
+  FilePen,
+  FolderTree,
+  MessagesSquare,
+  FilePlus,
+  GitBranch,
+  GitFork,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  SquareTerminal,
+  Star,
+  X
+} from 'lucide-react'
+
 /**
  * Icônes de l'interface.
  *
- * Dessinées plutôt que tapées : une glyphe dépend de la police installée et se
- * réduit parfois à un carré vide. Toutes partagent la même grille de 16 et la
- * même épaisseur de trait, pour qu'un alignement de plusieurs reste calme.
+ * Reprises de Lucide plutôt que dessinées à la main : un jeu entretenu tient
+ * une cohérence de trait et d'optique qu'un dessin au cas par cas n'atteint
+ * pas. Le trait est affiné à 1,5 pour une interface dense où les icônes ne
+ * doivent jamais peser plus que le texte qu'elles accompagnent.
  */
+const TRAIT = 1.5
+const TAILLE = 13
+
 interface Props {
   taille?: number
   className?: string
 }
 
-function Trace({
-  taille = 12,
-  className,
-  children
-}: Props & { children: React.ReactNode }): React.JSX.Element {
-  return (
-    <svg
-      width={taille}
-      height={taille}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className={className}
-    >
-      <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </g>
-    </svg>
-  )
-}
+const reglages = ({ taille = TAILLE, className }: Props): Record<string, unknown> => ({
+  size: taille,
+  strokeWidth: TRAIT,
+  absoluteStrokeWidth: true,
+  className
+})
 
-/** Branche git : deux fils, l'un qui part de l'autre. */
-export function IconeBranche(p: Props): React.JSX.Element {
-  return (
-    <Trace {...p}>
-      <circle cx="4.5" cy="3.5" r="1.8" />
-      <circle cx="4.5" cy="12.5" r="1.8" />
-      <circle cx="11.5" cy="6.5" r="1.8" />
-      <path d="M4.5 5.3v5.4M4.5 10.7c0-2.3 1.6-4.2 5.2-4.2" />
-    </Trace>
-  )
-}
+/** Branche git courante. */
+export const IconeBranche = (p: Props): React.JSX.Element => <GitBranch {...reglages(p)} />
+
+/** Fichier suivi et modifié. */
+export const IconeModifie = (p: Props): React.JSX.Element => <FilePen {...reglages(p)} />
 
 /** Fichier que git ne suit pas encore. */
-export function IconeNonSuivi(p: Props): React.JSX.Element {
-  return (
-    <Trace {...p}>
-      <path d="M9 1.8H4.4a1.2 1.2 0 0 0-1.2 1.2v10a1.2 1.2 0 0 0 1.2 1.2h5.2" />
-      <path d="M9 1.8 12.8 5.6V9" />
-      <path d="M11.4 11v3.4M9.7 12.7h3.4" />
-    </Trace>
-  )
-}
+export const IconeNonSuivi = (p: Props): React.JSX.Element => <FilePlus {...reglages(p)} />
 
-/** Fichier modifié mais pas encore enregistré. */
-export function IconeModifie(p: Props): React.JSX.Element {
-  return (
-    <Trace {...p}>
-      <path d="M9 1.8H4.4a1.2 1.2 0 0 0-1.2 1.2v10a1.2 1.2 0 0 0 1.2 1.2h7.2a1.2 1.2 0 0 0 1.2-1.2V5.6z" />
-      <path d="M9 1.8v3.8h3.8" />
-      <circle cx="8" cy="10" r="1.4" fill="currentColor" stroke="none" />
-    </Trace>
-  )
-}
+/** Multiplexeur de terminal. */
+export const IconeTerminal = (p: Props): React.JSX.Element => <SquareTerminal {...reglages(p)} />
 
-/** Multiplexeur de terminal : une fenêtre partagée. */
-export function IconeTerminal(p: Props): React.JSX.Element {
-  return (
-    <Trace {...p}>
-      <rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" />
-      <path d="M4.6 6.4 6.6 8l-2 1.6M8.4 10.2h3" />
-    </Trace>
-  )
-}
+/** Claude Code. */
+export const IconeEtincelle = (p: Props): React.JSX.Element => <Sparkles {...reglages(p)} />
 
-/** L'étincelle de Claude Code. */
-export function IconeEtincelle(p: Props): React.JSX.Element {
-  return (
-    <Trace {...p}>
-      <path d="M8 1.6v12.8M1.6 8h12.8M3.5 3.5l9 9M12.5 3.5l-9 9" />
-    </Trace>
-  )
-}
+/** Bifurquer une conversation. */
+export const IconeBifurquer = (p: Props): React.JSX.Element => <GitFork {...reglages(p)} />
+
+/** Conversation mise en favori. */
+export const IconeFavori = (p: Props): React.JSX.Element => <Star {...reglages(p)} />
+
+/** Relire la liste. */
+export const IconeSynchro = (p: Props): React.JSX.Element => <RefreshCw {...reglages(p)} />
+
+/** Ajouter. */
+export const IconePlus = (p: Props): React.JSX.Element => <Plus {...reglages(p)} />
+
+/** Fermer. */
+export const IconeFermer = (p: Props): React.JSX.Element => <X {...reglages(p)} />
+
+/** Les conversations d'un projet. */
+export const IconeConversations = (p: Props): React.JSX.Element => (
+  <MessagesSquare {...reglages(p)} />
+)
+
+/** L'arborescence des fichiers. */
+export const IconeArborescence = (p: Props): React.JSX.Element => <FolderTree {...reglages(p)} />

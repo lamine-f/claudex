@@ -1,4 +1,5 @@
 import { useStore } from '@renderer/state/store'
+import { IconePlus } from '../ui/Icones'
 
 /**
  * Colonne des projets.
@@ -70,7 +71,8 @@ export function Rail(): React.JSX.Element {
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte-doux"
         >
           <span aria-hidden className="w-[2px] shrink-0" />
-          + Ajouter un projet
+          <IconePlus taille={13} />
+          Ajouter un projet
         </button>
 
         <button

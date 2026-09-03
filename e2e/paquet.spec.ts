@@ -14,9 +14,13 @@ import { _electron as electron } from '@playwright/test'
  */
 const BINAIRE = resolve('dist/mac-arm64/Claudex.app/Contents/MacOS/Claudex')
 
-// Le paquet n'existe qu'après `npm run dist` : la suite courante ne doit pas
-// échouer pour autant.
-test.skip(!existsSync(BINAIRE), 'application non empaquetée (npm run dist)')
+// Ce cas vise le bundle, pas les sources : lancé dans la suite courante il
+// contrôlerait un paquet périmé, ce qui ne prouve rien. Il est réservé à
+// `npm run dist`, qui l'enchaîne juste après avoir reconstruit.
+test.skip(
+  process.env.CLAUDEX_TEST_PAQUET !== '1' || !existsSync(BINAIRE),
+  'réservé à npm run dist'
+)
 
 test('le paquet macOS ouvre un vrai terminal', async () => {
   const binaire = BINAIRE
@@ -43,7 +47,7 @@ test('le paquet macOS ouvre un vrai terminal', async () => {
   const page = await app.firstWindow()
 
   try {
-    await page.waitForSelector('text=SESSIONS')
+    await page.waitForSelector('[aria-label="Conversations"]')
     await page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
     await expect(page.locator('.xterm')).toHaveCount(1)
 

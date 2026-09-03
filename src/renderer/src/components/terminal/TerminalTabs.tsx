@@ -1,4 +1,5 @@
 import type { Tab } from '@shared/types'
+import { IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
   tabs: Tab[]
@@ -58,9 +59,9 @@ export function TerminalTabs({
                 type="button"
                 onClick={() => onFermer(tab.id)}
                 title="Fermer l'onglet et sa session tmux"
-                className="flex h-4 w-4 items-center justify-center rounded text-[11px] text-texte-tenu opacity-0 transition-opacity group-hover:opacity-100 hover:text-texte focus-visible:opacity-100"
+                className="flex h-4 w-4 items-center justify-center rounded text-texte-tenu opacity-0 transition-opacity group-hover:opacity-100 hover:text-texte focus-visible:opacity-100"
               >
-                ✕
+                <IconeFermer taille={11} />
               </button>
             </div>
           )
@@ -74,7 +75,8 @@ export function TerminalTabs({
           title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
           className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] text-texte-doux transition-colors hover:bg-fond-survol hover:text-accent"
         >
-          ⑂ Bifurquer
+          <IconeBifurquer taille={13} />
+          Bifurquer
         </button>
       )}
 
@@ -82,9 +84,9 @@ export function TerminalTabs({
         type="button"
         onClick={onNouveau}
         title="Nouveau terminal (⌘T)"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[15px] text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
       >
-        +
+        <IconePlus taille={14} />
       </button>
     </div>
   )

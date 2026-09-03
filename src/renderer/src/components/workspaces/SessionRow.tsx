@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ClaudeSession, StatutSession } from '@shared/types'
 import { quand } from '@shared/temps'
+import { IconeBifurquer, IconeFavori } from '../ui/Icones'
 
 const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
   active: { libelle: 'à l’écran', couleur: 'var(--color-accent)' },
@@ -123,8 +124,8 @@ export function SessionRow({
       >
         <span className="flex min-w-0 items-baseline gap-2">
           {session.epinglee && !edition && (
-            <span aria-label="En favori" title="En favori" className="shrink-0 text-[11px] text-attention">
-              ★
+            <span aria-label="En favori" title="En favori" className="shrink-0 text-attention">
+              <IconeFavori taille={11} />
             </span>
           )}
           {edition === 'titre' ? (
@@ -186,9 +187,9 @@ export function SessionRow({
           type="button"
           onClick={onBifurquer}
           title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
-          className="absolute top-2 right-2 rounded px-1.5 py-0.5 text-[11px] text-texte-tenu opacity-0 transition-opacity group-hover/session:opacity-100 hover:bg-fond-eleve hover:text-accent focus-visible:opacity-100"
+          className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded text-texte-tenu opacity-0 transition-opacity group-hover/session:opacity-100 hover:bg-fond-eleve hover:text-accent focus-visible:opacity-100"
         >
-          ⑂
+          <IconeBifurquer taille={12} />
         </button>
       )}
     </li>

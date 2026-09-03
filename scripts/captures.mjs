@@ -57,7 +57,7 @@ await page.addInitScript(() => {
 })
 await page.reload()
 await page.setViewportSize({ width: 1440, height: 900 })
-await page.waitForSelector('text=SESSIONS')
+await page.waitForSelector('[aria-label="Conversations"]')
 
 const attendre = (ms) => page.waitForTimeout(ms)
 const capturer = async (nom) => {
@@ -88,7 +88,7 @@ await attendre(2500)
 await capturer('1-vue-principale')
 
 // 3. Arborescence dépliée
-await page.getByRole('button', { name: /FICHIERS/ }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Fichiers' }).click().catch(() => undefined)
 await attendre(700)
 for (const dossier of ['src', 'main', 'services']) {
   const cible = page.getByLabel('Sessions et fichiers').getByText(dossier, { exact: true }).first()
@@ -110,7 +110,7 @@ if (await fichier.isVisible().catch(() => false)) {
 }
 
 // 5. Une conversation reprise : l'onglet porte son titre, l'agent occupe la colonne
-await page.getByRole('button', { name: /SESSIONS/ }).click().catch(() => undefined)
+await page.getByRole('button', { name: 'Conversations' }).click().catch(() => undefined)
 await attendre(500)
 const session = page.getByLabel('Sessions et fichiers').getByText('Erreur de capture réseau').first()
 if (await session.isVisible().catch(() => false)) {

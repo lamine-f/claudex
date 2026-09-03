@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { Entree } from '@shared/types'
+import { ChevronRight } from 'lucide-react'
 import { useStore } from '@renderer/state/store'
 
 interface Ligne {
@@ -92,26 +93,12 @@ export function FileTree(): React.JSX.Element {
                   ))}
                   <span className="ml-2 flex w-3.5 shrink-0 items-center justify-center">
                     {entree.dossier && (
-                      // Dessiné plutôt que tapé : un chevron typographique se
-                      // réduit à un point à cette taille selon la police.
-                      <svg
-                        width="9"
-                        height="9"
-                        viewBox="0 0 12 12"
-                        fill="none"
-                        aria-hidden
-                        className={`text-texte-faible transition-transform ${
-                          ouvert ? 'rotate-90' : ''
-                        }`}
-                      >
-                        <path
-                          d="M4.5 2.5 8 6l-3.5 3.5"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      <ChevronRight
+                        size={11}
+                        strokeWidth={1.5}
+                        absoluteStrokeWidth
+                        className={`text-texte-faible transition-transform ${ouvert ? 'rotate-90' : ''}`}
+                      />
                     )}
                   </span>
                   <span

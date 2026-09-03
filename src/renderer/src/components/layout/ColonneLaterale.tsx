@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { StatutSession } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { FileTree } from '../files/FileTree'
+import { IconeArborescence, IconeConversations, IconeSynchro } from '../ui/Icones'
 import { MenuSession, type Action } from '../workspaces/MenuSession'
 import { SessionRow } from '../workspaces/SessionRow'
 
@@ -52,17 +53,27 @@ export function ColonneLaterale(): React.JSX.Element {
   const visibles = tout || filtre ? retenues : retenues?.slice(0, APERCU)
   const reste = (retenues?.length ?? 0) - (visibles?.length ?? 0)
 
-  const onglet = (cle: 'sessions' | 'fichiers', libelle: string, compte?: number): React.JSX.Element => (
+  // Les deux vues se disent par leur icône : deux mots en capitales pesaient
+  // plus lourd que ce qu'ils désignaient, en tête d'une colonne étroite.
+  const onglet = (
+    cle: 'sessions' | 'fichiers',
+    libelle: string,
+    icone: React.ReactNode,
+    compte?: number
+  ): React.JSX.Element => (
     <button
       type="button"
       onClick={() => choisirPanneau(cle)}
-      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] tracking-[0.1em] transition-colors ${
+      title={libelle}
+      aria-label={libelle}
+      aria-pressed={panneau === cle}
+      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
         panneau === cle
           ? 'border-bordure bg-fond-eleve text-texte'
           : 'border-transparent text-texte-faible hover:text-texte-doux'
       }`}
     >
-      {libelle}
+      {icone}
       {compte !== undefined && <span className="text-texte-tenu">{compte}</span>}
     </button>
   )
@@ -73,8 +84,8 @@ export function ColonneLaterale(): React.JSX.Element {
       className="flex h-full min-w-0 flex-col border-r border-separateur bg-fond-panneau"
     >
       <div className="flex h-11 shrink-0 items-center gap-1 px-2.5">
-        {onglet('sessions', 'SESSIONS', retenues?.length)}
-        {onglet('fichiers', 'FICHIERS')}
+        {onglet('sessions', 'Conversations', <IconeConversations taille={14} />, retenues?.length)}
+        {onglet('fichiers', 'Fichiers', <IconeArborescence taille={14} />)}
         <div className="flex-1" />
 
         {panneau === 'sessions' && courant && (
@@ -87,18 +98,7 @@ export function ColonneLaterale(): React.JSX.Element {
               chargement ? 'animate-spin' : ''
             }`}
           >
-            {/* Une branche n'apparaît qu'une fois son transcrit écrit, quelques
-                secondes après son lancement : ce bouton évite d'attendre sans
-                savoir si l'on attend pour rien. */}
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path
-                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <IconeSynchro taille={13} />
           </button>
         )}
 
