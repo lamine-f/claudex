@@ -13,7 +13,11 @@ const RETENTION_CIBLE = 365
 async function versionDe(binaire: string, args: string[]): Promise<string | null> {
   try {
     const { stdout } = await run(binaire, args, { timeout: 5000 })
-    return stdout.trim().split('\n')[0] ?? null
+    const ligne = stdout.trim().split('\n')[0] ?? ''
+    // Les outils répondent chacun à leur façon — « tmux 3.7c », mais
+    // « 2.1.259 (Claude Code) » : on ne garde que le numéro, le nom étant déjà
+    // porté par le libellé du contrôle.
+    return ligne.match(/\d[\w.-]*/)?.[0] ?? ligne ?? null
   } catch {
     return null
   }
