@@ -1,16 +1,24 @@
-import type { ClaudeSession } from '@shared/types'
+import type { ClaudeSession, StatutSession } from '@shared/types'
+import { quand } from '@renderer/util/temps'
 
-const dateCourte = (ms: number): string =>
-  new Date(ms).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+const STATUTS: Record<StatutSession, { libelle: string; couleur: string }> = {
+  ouverte: { libelle: 'ouverte', couleur: 'var(--color-accent)' },
+  attente: { libelle: 'en attente', couleur: 'var(--color-attention)' },
+  interrompue: { libelle: 'interrompue', couleur: 'var(--color-erreur)' },
+  terminee: { libelle: 'terminée', couleur: 'var(--color-texte-faible)' }
+}
 
 interface Props {
   session: ClaudeSession
-  ouverte: boolean
+  statut: StatutSession
   onOuvrir: () => void
   onBifurquer: () => void
 }
 
-export function SessionRow({ session, ouverte, onOuvrir, onBifurquer }: Props): React.JSX.Element {
+export function SessionRow({ session, statut, onOuvrir, onBifurquer }: Props): React.JSX.Element {
+  const { libelle, couleur } = STATUTS[statut]
+  const ouverte = statut === 'ouverte'
+
   return (
     <li className="group/session relative">
       <button
@@ -19,22 +27,23 @@ export function SessionRow({ session, ouverte, onOuvrir, onBifurquer }: Props): 
         title={`${session.titre}\n${Math.round(session.octets / 1024)} Ko${
           session.gitBranch ? ` · ${session.gitBranch}` : ''
         }`}
-        className="flex w-full items-center gap-2 rounded-md py-1 pr-12 pl-2 text-left transition-colors hover:bg-fond-survol"
+        className={`flex w-full flex-col gap-[3px] border-l-2 py-2 pr-10 pl-3 text-left transition-colors ${
+          ouverte
+            ? 'border-l-accent bg-fond-creux'
+            : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'
+        }`}
       >
         <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-            ouverte ? 'bg-accent' : 'border border-texte-faible'
+          className={`truncate text-[13.5px] ${ouverte ? 'text-texte' : 'text-texte-doux'} ${
+            session.titreDeRepli ? 'italic' : ''
           }`}
-        />
-        <span
-          className={`min-w-0 flex-1 truncate text-[12px] ${
-            ouverte ? 'text-texte' : 'text-texte-doux'
-          } ${session.titreDeRepli ? 'italic' : ''}`}
         >
           {session.titre}
         </span>
-        <span className="shrink-0 font-mono text-[10.5px] text-texte-faible tabular-nums">
-          {dateCourte(session.misAJourLe)}
+        <span className="flex items-center gap-1.5 font-mono text-[11px]">
+          <span style={{ color: couleur }}>{libelle}</span>
+          <span className="text-texte-tenu">·</span>
+          <span className="text-texte-tenu">{quand(session.misAJourLe)}</span>
         </span>
       </button>
 
@@ -42,9 +51,7 @@ export function SessionRow({ session, ouverte, onOuvrir, onBifurquer }: Props): 
         type="button"
         onClick={onBifurquer}
         title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
-        // Toujours présent dans le flux, simplement effacé au repos : un bouton
-        // qui n'existe qu'au survol serait hors d'atteinte au clavier.
-        className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10.5px] text-texte-faible opacity-0 transition-opacity group-hover/session:opacity-100 hover:bg-fond-eleve hover:text-accent focus-visible:opacity-100"
+        className="absolute top-2 right-2 rounded px-1.5 py-0.5 text-[11px] text-texte-tenu opacity-0 transition-opacity group-hover/session:opacity-100 hover:bg-fond-eleve hover:text-accent focus-visible:opacity-100"
       >
         ⑂
       </button>

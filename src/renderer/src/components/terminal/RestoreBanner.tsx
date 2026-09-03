@@ -25,7 +25,7 @@ export function RestoreBanner({ tab, onReprendre, onIgnorer }: Props): React.JSX
   if (!agent && !commande) return null
 
   return (
-    <div className="absolute inset-x-3 top-3 z-10 rounded-lg border border-accent-doux bg-fond-eleve/95 px-3 py-2.5 shadow-lg backdrop-blur">
+    <div className="absolute inset-x-3 top-3 z-10 rounded-lg border border-accent-tenu bg-fond-eleve/95 px-3 py-2.5 shadow-lg backdrop-blur">
       <p className="text-[12px] text-texte">
         {agent ? (
           <>
@@ -45,7 +45,7 @@ export function RestoreBanner({ tab, onReprendre, onIgnorer }: Props): React.JSX
         <button
           type="button"
           onClick={onReprendre}
-          className="rounded-md border border-accent-doux bg-accent-doux/25 px-2.5 py-1 text-[12px] text-accent transition-colors hover:bg-accent-doux/40"
+          className="rounded-md border border-accent-tenu bg-accent-tenu/25 px-2.5 py-1 text-[12px] text-accent transition-colors hover:bg-accent-tenu/40"
         >
           {agent ? 'Reprendre la conversation' : 'Relancer la commande'}
         </button>

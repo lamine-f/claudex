@@ -5,6 +5,7 @@ import type {
   ClaudeSession,
   DoctorCheck,
   Entree,
+  EtatGit,
   Tab,
   Workspace
 } from '@shared/types'
@@ -27,6 +28,13 @@ interface EtatUi {
   /** Workspaces dont la liste de sessions est entièrement déroulée. */
   toutAfficher: Record<string, boolean>
 
+  /** Onglet de la colonne latérale : les conversations ou les fichiers. */
+  panneau: 'sessions' | 'fichiers'
+  /** Filtre de la liste des sessions. */
+  filtre: string
+  /** État git du projet courant, pour la barre de statut. */
+  git?: EtatGit | null
+
   /** Contenu des dossiers déjà lus, indexé par chemin. */
   arbre: Record<string, Entree[]>
   dossiersOuverts: string[]
@@ -47,6 +55,9 @@ interface EtatUi {
     titre?: string
   ) => Promise<void>
   deroulerTout: (workspaceId: string) => void
+  choisirPanneau: (panneau: 'sessions' | 'fichiers') => void
+  filtrer: (filtre: string) => void
+  rafraichirGit: () => Promise<void>
   chargerDossier: (chemin: string) => Promise<void>
   basculerDossier: (chemin: string) => Promise<void>
   choisirFichier: (chemin: string) => Promise<void>
@@ -73,6 +84,8 @@ export const useStore = create<EtatUi>((set, get) => ({
   toutAfficher: {},
   arbre: {},
   dossiersOuverts: [],
+  panneau: 'sessions',
+  filtre: '',
 
   charger: async () => {
     const [etat, diagnostics] = await Promise.all([
@@ -96,11 +109,12 @@ export const useStore = create<EtatUi>((set, get) => ({
         void window.claudex.fs.observer(courant.path)
       }
     }
-    // Les sessions des projets déjà dépliés sont chargées d'emblée : la colonne
-    // de gauche doit être utile dès l'ouverture, sans un clic de plus.
-    await Promise.all(
-      etat.workspaces.filter((w) => w.expanded).map((w) => get().chargerSessions(w.id))
-    )
+    // Les conversations du projet courant sont chargées d'emblée : la colonne
+    // doit être utile dès l'ouverture, sans un clic de plus.
+    if (etat.activeWorkspaceId) {
+      await get().chargerSessions(etat.activeWorkspaceId)
+      void get().rafraichirGit()
+    }
   },
 
   ajouterWorkspace: async () => {
@@ -141,7 +155,9 @@ export const useStore = create<EtatUi>((set, get) => ({
       arbre: {},
       dossiersOuverts: [],
       fichierChoisi: undefined,
-      apercu: undefined
+      apercu: undefined,
+      filtre: '',
+      git: undefined
     })
     await window.claudex.state.setActiveWorkspace(id)
 
@@ -184,6 +200,19 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   deroulerTout: (workspaceId) =>
     set({ toutAfficher: { ...get().toutAfficher, [workspaceId]: true } }),
+
+  choisirPanneau: (panneau) => set({ panneau }),
+
+  filtrer: (filtre) => set({ filtre }),
+
+  rafraichirGit: async () => {
+    const workspaceId = get().activeWorkspaceId
+    if (!workspaceId) {
+      set({ git: null })
+      return
+    }
+    set({ git: await window.claudex.git.etat(workspaceId) })
+  },
 
   chargerDossier: async (chemin) => {
     try {

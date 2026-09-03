@@ -5,28 +5,35 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Terminal } from '@xterm/xterm'
 
 /** Thème xterm accordé à la palette de l'application. */
+/**
+ * Thème du terminal, accordé au design system.
+ *
+ * Il en fait pleinement partie : c'est ici que la couleur vit réellement, et des
+ * ANSI qui jurent avec l'interface ruinent l'ensemble. Les seize teintes sont
+ * dérivées de la même palette que le reste, en versions normale et vive.
+ */
 const THEME = {
-  background: '#0d0e12',
-  foreground: '#e6e7ea',
-  cursor: '#e8825a',
-  cursorAccent: '#0d0e12',
-  selectionBackground: '#2f323c',
-  black: '#22242c',
-  red: '#e05a5a',
-  green: '#7ec96f',
-  yellow: '#e0c15a',
-  blue: '#5aa9e8',
-  magenta: '#c98fe0',
-  cyan: '#5ad0c0',
-  white: '#c9ccd4',
-  brightBlack: '#6b6e7b',
-  brightRed: '#f07a7a',
-  brightGreen: '#9adb8d',
-  brightYellow: '#f0d67e',
-  brightBlue: '#7cc0f5',
-  brightMagenta: '#dcaaef',
-  brightCyan: '#7ee0d3',
-  brightWhite: '#f2f3f5'
+  background: '#000000',
+  foreground: '#ece8e3',
+  cursor: '#d97757',
+  cursorAccent: '#000000',
+  selectionBackground: '#2e2a26',
+  black: '#1c1917',
+  red: '#e0685f',
+  green: '#94c47a',
+  yellow: '#dfb45e',
+  blue: '#7fa8d6',
+  magenta: '#c093c9',
+  cyan: '#6fbfae',
+  white: '#d6cfc7',
+  brightBlack: '#78706a',
+  brightRed: '#ef8078',
+  brightGreen: '#a9d491',
+  brightYellow: '#eeca7c',
+  brightBlue: '#9bbde3',
+  brightMagenta: '#d3aad9',
+  brightCyan: '#8ad2c2',
+  brightWhite: '#f5f1ec'
 }
 
 /**
@@ -58,9 +65,9 @@ export function useTerminal(
     const terminal = new Terminal({
       allowProposedApi: true,
       cursorBlink: true,
-      fontFamily: "'SF Mono', 'JetBrains Mono', Menlo, ui-monospace, monospace",
+      fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace",
       fontSize: 12.5,
-      lineHeight: 1.25,
+      lineHeight: 1.3,
       letterSpacing: 0,
       scrollback: 0, // l'historique est tenu par tmux, pas par xterm
       theme: THEME,

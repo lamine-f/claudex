@@ -45,7 +45,7 @@ test.describe('frappe au clavier', () => {
   })
 
   test("revenir sur un onglet lui rend le clavier", async () => {
-    await ctx.page.getByTitle('Nouveau terminal').click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
 
     // Basculer sur le premier onglet doit lui redonner le focus sans clic : sinon

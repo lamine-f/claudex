@@ -63,7 +63,7 @@ export function FilePreview(): React.JSX.Element | null {
       onClick={fermer}
     >
       <div
-        className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-bordure-forte bg-fond-panneau shadow-2xl"
+        className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-bordure bg-fond-panneau shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-bordure px-4 py-2.5">

@@ -5,6 +5,7 @@ import type {
   ClaudeSession,
   DoctorCheck,
   Entree,
+  EtatGit,
   Tab,
   Workspace
 } from '@shared/types'
@@ -87,6 +88,10 @@ const api = {
       uuid?: string,
       titre?: string
     ): Promise<Tab> => ipcRenderer.invoke('claude:ouvrir', workspaceId, intention, uuid, titre)
+  },
+  git: {
+    etat: (workspaceId: string): Promise<EtatGit | null> =>
+      ipcRenderer.invoke('git:etat', workspaceId)
   },
   doctor: {
     check: (): Promise<DoctorCheck[]> => ipcRenderer.invoke('doctor:check'),

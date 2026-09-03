@@ -6,31 +6,50 @@ interface Props {
   onChoisir: (id: string) => void
   onFermer: (id: string) => void
   onNouveau: () => void
+  onBifurquer: (tab: Tab) => void
 }
 
+/**
+ * En-tête du terminal : les onglets ouverts, et ce qu'on peut faire de celui
+ * qui est actif. La bifurcation n'a de sens que sur une conversation, pas sur
+ * un shell nu — elle n'apparaît donc que là.
+ */
 export function TerminalTabs({
   tabs,
   actifId,
   onChoisir,
   onFermer,
-  onNouveau
+  onNouveau,
+  onBifurquer
 }: Props): React.JSX.Element {
+  const actif = tabs.find((t) => t.id === actifId)
+
   return (
-    <div className="flex h-9 shrink-0 items-center gap-1 border-b border-bordure px-2">
+    <div className="flex h-12 shrink-0 items-center gap-1 border-b border-separateur px-3">
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {tabs.map((tab) => {
-          const actif = tab.id === actifId
+          const courant = tab.id === actifId
           return (
             <div
               key={tab.id}
-              className={`group flex h-7 shrink-0 items-center gap-1.5 rounded-md pr-1 pl-2.5 transition-colors ${
-                actif ? 'bg-fond-eleve text-texte' : 'text-texte-faible hover:bg-fond-survol'
+              className={`group flex h-8 shrink-0 items-center gap-2 rounded-md pr-1.5 pl-2.5 transition-colors ${
+                courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
               }`}
             >
+              {tab.claudeSessionId && (
+                <span
+                  aria-hidden
+                  className={`h-[6px] w-[6px] shrink-0 rounded-full ${
+                    courant ? 'bg-accent' : 'bg-texte-tenu'
+                  }`}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => onChoisir(tab.id)}
-                className="max-w-40 truncate font-mono text-[11.5px]"
+                className={`max-w-56 truncate text-[13px] ${
+                  courant ? 'text-texte' : 'text-texte-faible'
+                }`}
                 title={tab.cwd}
               >
                 {tab.title}
@@ -39,7 +58,7 @@ export function TerminalTabs({
                 type="button"
                 onClick={() => onFermer(tab.id)}
                 title="Fermer l'onglet et sa session tmux"
-                className="flex h-4 w-4 items-center justify-center rounded text-[11px] text-texte-faible opacity-0 transition-opacity group-hover:opacity-100 hover:bg-fond-survol hover:text-texte"
+                className="flex h-4 w-4 items-center justify-center rounded text-[11px] text-texte-tenu opacity-0 transition-opacity group-hover:opacity-100 hover:text-texte focus-visible:opacity-100"
               >
                 ✕
               </button>
@@ -48,11 +67,22 @@ export function TerminalTabs({
         })}
       </div>
 
+      {actif?.claudeSessionId && (
+        <button
+          type="button"
+          onClick={() => onBifurquer(actif)}
+          title="Bifurquer : repartir de ce contexte sans toucher à la conversation d'origine"
+          className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] text-texte-doux transition-colors hover:bg-fond-survol hover:text-accent"
+        >
+          ⑂ Bifurquer
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onNouveau}
-        title="Nouveau terminal"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
+        title="Nouveau terminal (⌘T)"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[15px] text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
       >
         +
       </button>

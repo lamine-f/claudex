@@ -87,3 +87,19 @@ export type Apercu =
   | { type: 'texte'; contenu: string; langage: string; octets: number }
   | { type: 'trop-gros'; octets: number }
   | { type: 'binaire'; octets: number }
+
+/** État git d'un projet, réduit à ce que la barre de statut affiche. */
+export interface EtatGit {
+  branche: string
+  modifies: number
+  nonSuivis: number
+}
+
+/**
+ * Où en est une conversation.
+ *
+ * `ouverte` se déduit des onglets. `attente` et `interrompue` demandent de
+ * savoir ce que fait l'agent : ils viendront des hooks de Claude Code, et
+ * jusque-là aucune session ne les porte.
+ */
+export type StatutSession = 'ouverte' | 'attente' | 'interrompue' | 'terminee'

@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { Entree } from '@shared/types'
 import { useStore } from '@renderer/state/store'
-import { Panneau } from '../ui/Panneau'
 
 interface Ligne {
   entree: Entree
@@ -56,8 +55,9 @@ export function FileTree(): React.JSX.Element {
     [courant, arbre, dossiersOuverts]
   )
 
+  // L'en-tête est porté par l'onglet de la colonne : le répéter ici ferait doublon.
   return (
-    <Panneau titre="Fichiers" className="border-l border-bordure">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       {!courant ? (
         <p className="px-3 py-2 text-[12px] text-texte-faible">Aucun projet sélectionné.</p>
       ) : lignes.length === 0 ? (
@@ -101,6 +101,6 @@ export function FileTree(): React.JSX.Element {
           })}
         </ul>
       )}
-    </Panneau>
+    </div>
   )
 }

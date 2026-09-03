@@ -75,7 +75,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
   })
 
   const colonne = (): ReturnType<Contexte['page']['getByLabel']> =>
-    ctx.page.getByLabel('Workspaces')
+    ctx.page.getByLabel('Sessions et fichiers')
 
   test('les conversations du dossier apparaissent avec leur titre', async () => {
     await expect(colonne().getByText('Refonte facturation')).toBeVisible()

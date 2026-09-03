@@ -18,6 +18,9 @@ test.describe('arborescence et aperçu', () => {
     await writeFile(join(p, 'image.bin'), Buffer.from([0x89, 0x50, 0x00, 0x01, 0x02]))
     await fermer(provisoire, { nettoyer: false })
     ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+    // L'arborescence partage sa colonne avec les conversations : il faut la
+    // demander, elle n'est plus visible en permanence.
+    await ctx.page.getByRole('button', { name: /FICHIERS/ }).click()
   })
 
   test.afterAll(async () => {

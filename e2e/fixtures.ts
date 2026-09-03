@@ -56,7 +56,7 @@ export async function lancer(options: { donnees?: string; projet?: string } = {}
   })
 
   const page = await app.firstWindow()
-  await page.waitForSelector('text=WORKSPACES')
+  await page.waitForSelector('text=SESSIONS')
   return { app, page, donnees, projet }
 }
 

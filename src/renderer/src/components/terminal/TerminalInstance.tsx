@@ -26,7 +26,7 @@ export function TerminalInstance({
 
   return (
     <div className={`absolute inset-0 ${actif ? 'visible' : 'invisible'}`} aria-hidden={!actif}>
-      <div ref={conteneur} className="absolute inset-0 px-2 py-1" />
+      <div ref={conteneur} className="absolute inset-0 overflow-hidden px-3 py-2" />
 
       {aRestaurer && (
         <RestoreBanner tab={tab} onReprendre={reprendre} onIgnorer={oublierRestauration} />

@@ -4,7 +4,7 @@ import { useStore } from '@renderer/state/store'
 
 const PASTILLE: Record<DoctorSeverity, string> = {
   ok: 'bg-succes',
-  warn: 'bg-alerte',
+  warn: 'bg-attention',
   error: 'bg-erreur'
 }
 
@@ -33,7 +33,7 @@ export function Diagnostic(): React.JSX.Element | null {
       onClick={() => fermer(false)}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-bordure-forte bg-fond-panneau shadow-2xl"
+        className="w-full max-w-lg rounded-xl border border-bordure bg-fond-panneau shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-bordure px-4 py-3">
@@ -59,7 +59,7 @@ export function Diagnostic(): React.JSX.Element | null {
                     type="button"
                     disabled={enCours}
                     onClick={() => void lancerCorrectif()}
-                    className="mt-2 rounded-md border border-accent-doux bg-accent-doux/25 px-2.5 py-1 text-[12px] text-accent transition-colors hover:bg-accent-doux/40 disabled:opacity-50"
+                    className="mt-2 rounded-md border border-accent-tenu bg-accent-tenu/25 px-2.5 py-1 text-[12px] text-accent transition-colors hover:bg-accent-tenu/40 disabled:opacity-50"
                   >
                     {enCours ? 'En cours…' : d.fix.label}
                   </button>

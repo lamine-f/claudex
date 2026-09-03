@@ -54,7 +54,7 @@ await page.addInitScript(() => {
 })
 await page.reload()
 await page.setViewportSize({ width: 1440, height: 900 })
-await page.waitForSelector('text=WORKSPACES')
+await page.waitForSelector('text=SESSIONS')
 
 const attendre = (ms) => page.waitForTimeout(ms)
 const capturer = async (nom) => {
@@ -85,6 +85,8 @@ await attendre(2500)
 await capturer('1-vue-principale')
 
 // 3. Arborescence dépliée
+await page.getByRole('button', { name: /FICHIERS/ }).click().catch(() => undefined)
+await attendre(700)
 const src = page.getByRole('button', { name: /^src$/ }).first()
 if (await src.isVisible().catch(() => false)) {
   await src.click()
@@ -103,7 +105,9 @@ if (await fichier.isVisible().catch(() => false)) {
 }
 
 // 5. Une conversation reprise : l'onglet porte son titre, l'agent occupe la colonne
-const session = page.getByLabel('Workspaces').getByText('Erreur de capture réseau').first()
+await page.getByRole('button', { name: /SESSIONS/ }).click().catch(() => undefined)
+await attendre(500)
+const session = page.getByLabel('Sessions et fichiers').getByText('Erreur de capture réseau').first()
 if (await session.isVisible().catch(() => false)) {
   await session.click()
   await attendre(9000)

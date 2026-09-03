@@ -26,7 +26,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('un second onglet vit sans éteindre le premier', async () => {
-    await ctx.page.getByTitle('Nouveau terminal').click()
+    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
 
     await expect

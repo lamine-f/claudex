@@ -6,7 +6,7 @@ import { fermer, lancer } from './fixtures'
 test('une conversation lancée à la main est rattachée à son onglet', async () => {
   const ctx = await lancer()
   try {
-    // Le projet est déplié : Claudex guette dès lors les conversations qui y naissent.
+    // Le projet est ouvert : Claudex guette dès lors les conversations qui y naissent.
     await expect(ctx.page.getByText('aucune session ici')).toBeVisible()
     await ctx.page.getByRole('button', { name: 'Ouvrir un terminal' }).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
@@ -26,7 +26,7 @@ test('une conversation lancée à la main est rattachée à son onglet', async (
     )
 
     // Elle apparaît dans la colonne sans intervention.
-    await expect(ctx.page.getByLabel('Workspaces').getByText('Lancée à la main')).toBeVisible({
+    await expect(ctx.page.getByLabel('Sessions et fichiers').getByText('Lancée à la main')).toBeVisible({
       timeout: 15_000
     })
 

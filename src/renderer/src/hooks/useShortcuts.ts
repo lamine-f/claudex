@@ -20,6 +20,13 @@ export function useShortcuts(): void {
         return
       }
 
+      // ⌘E : basculer entre les conversations et les fichiers.
+      if (evenement.key === 'e') {
+        evenement.preventDefault()
+        etat.choisirPanneau(etat.panneau === 'sessions' ? 'fichiers' : 'sessions')
+        return
+      }
+
       // ⌘W : fermer l'onglet courant, et avec lui sa session tmux.
       if (evenement.key === 'w') {
         evenement.preventDefault()
