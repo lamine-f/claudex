@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
@@ -49,6 +49,22 @@ async function semerTranscrits(projet: string): Promise<void> {
   await writeFile(
     join(dossier, 'bbbbbbbb-2222-2222-2222-222222222222.jsonl'),
     ligne({ type: 'ai-title', aiTitle: 'Migration DTO' })
+  )
+
+  // Les dates sont écartées à la main : écrits coup sur coup, ces transcrits
+  // porteraient des horodatages indiscernables et l'ordre de la liste
+  // dépendrait du hasard.
+  const heure = 3_600_000
+  const maintenant = Date.now()
+  await utimes(
+    join(dossier, 'aaaaaaaa-1111-1111-1111-111111111111.jsonl'),
+    new Date(maintenant - heure),
+    new Date(maintenant - heure)
+  )
+  await utimes(
+    join(dossier, 'bbbbbbbb-2222-2222-2222-222222222222.jsonl'),
+    new Date(maintenant - 5 * heure),
+    new Date(maintenant - 5 * heure)
   )
   // Sans conversation : ne doit jamais apparaître dans la colonne.
   await writeFile(
