@@ -6,25 +6,24 @@ import {
 } from '../src/main/util/paths'
 
 describe('encodeProjectDir', () => {
-  // Jeu de test relevé sur la machine : chaque paire a été vérifiée contre le
-  // contenu réel de ~/.claude/projects.
+  // Ces paires reprennent la forme de cas relevés sur une vraie machine —
+  // espaces, accents, apostrophes, tirets déjà présents, mélange de séparateurs
+  // — chacune vérifiée contre le contenu réel de ~/.claude/projects. Les noms
+  // sont neutres : ce qui compte ici est la ponctuation, jamais le mot.
   const cas: Array<[string, string]> = [
-    [
-      '/Users/ada/Workspace/Mon IDE fait maison',
-      '-Users-ada-Workspace-Mon-IDE-fait-maison'
-    ],
+    ['/Users/ada/Workspace/Mon IDE fait maison', '-Users-ada-Workspace-Mon-IDE-fait-maison'],
     [
       '/Users/ada/Workspace/Acme/Boutique/boutique_clients/web_clients/boutique_front',
       '-Users-ada-Workspace-Acme-Boutique-boutique-clients-web-clients-boutique-front'
     ],
     [
-      '/Users/lamine-f/Workspace/je porte la casquette sur mon app',
-      '-Users-lamine-f-Workspace-je-porte-la-casquette-sur-mon-app'
+      '/Users/ada/Workspace/je porte la casquette sur mon app',
+      '-Users-ada-Workspace-je-porte-la-casquette-sur-mon-app'
     ],
     // Accents et apostrophe : chaque caractère non alphanumérique compte pour un tiret.
     [
-      "/Users/lamine-f/Workspace/voir si le téléphone n'est pas éteint",
-      '-Users-lamine-f-Workspace-voir-si-le-t-l-phone-n-est-pas--teint'
+      "/Users/ada/Workspace/voir si le téléphone n'est pas éteint",
+      '-Users-ada-Workspace-voir-si-le-t-l-phone-n-est-pas--teint'
     ],
     ['/Users/ada/Downloads/tmp', '-Users-ada-Downloads-tmp'],
     // Un tiret déjà présent est conservé tel quel.

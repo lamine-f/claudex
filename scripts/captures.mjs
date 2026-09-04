@@ -8,31 +8,33 @@
  */
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { _electron as electron } from '@playwright/test'
 
 const sortie = resolve(process.argv[2] ?? 'captures')
 await mkdir(sortie, { recursive: true })
 
 const profil = await mkdtemp(join(tmpdir(), 'claudex-captures-'))
-const PROJETS = [
-  {
-    id: 'ws-0',
-    path: '/Users/ada/Workspace/Acme/Boutique/boutique_clients/web_clients/boutique_front',
-    name: 'boutique_front',
-    color: '#e8825a',
-    order: 0,
-    expanded: true
-  },
-  {
-    id: 'ws-claudex',
-    path: '/Users/ada/Workspace/Mon IDE fait maison/app',
-    name: 'Claudex',
-    color: '#5aa9e8',
-    order: 1,
-    expanded: false
-  }
-]
+
+/*
+ * Les projets à montrer, séparés par « : ». Par défaut le dossier courant : les
+ * captures ont plus d'allure sur un projet qui a des conversations derrière lui,
+ * mais aucun chemin de machine n'a sa place dans le dépôt.
+ *
+ *   CLAUDEX_CAPTURE_PROJETS=~/code/mon-app:~/code/autre node scripts/captures.mjs
+ */
+const ACCENTS = ['#e8825a', '#5aa9e8', '#7ec96f', '#c98fe0']
+const PROJETS = (process.env.CLAUDEX_CAPTURE_PROJETS ?? process.cwd())
+  .split(':')
+  .filter(Boolean)
+  .map((chemin, rang) => ({
+    id: `ws-${rang}`,
+    path: resolve(chemin),
+    name: basename(resolve(chemin)),
+    color: ACCENTS[rang % ACCENTS.length],
+    order: rang,
+    expanded: rang === 0
+  }))
 
 await writeFile(
   join(profil, 'state.json'),
@@ -40,7 +42,7 @@ await writeFile(
     workspaces: PROJETS,
     tabs: [],
     layout: { leftWidth: 260, middleWidth: 300 },
-    activeWorkspaceId: 'ws-0'
+    activeWorkspaceId: PROJETS[0].id
   })
 )
 
@@ -112,7 +114,8 @@ if (await fichier.isVisible().catch(() => false)) {
 // 5. Une conversation reprise : l'onglet porte son titre, l'agent occupe la colonne
 await page.getByRole('button', { name: 'Conversations', exact: true }).click().catch(() => undefined)
 await attendre(500)
-const session = page.getByLabel('Sessions et fichiers').getByText('Erreur de capture réseau').first()
+// La première conversation venue : le contenu dépend du projet qu'on capture.
+const session = page.getByLabel('Sessions et fichiers').locator('li button').first()
 if (await session.isVisible().catch(() => false)) {
   await session.click()
   await attendre(9000)
