@@ -182,8 +182,28 @@ accents des commentaires en ressortaient abîmés, et une chaîne accentuée —
 bifurcation — faisait échouer l'analyse du script. Le script de hook comme les scripts d'amorce
 sont écrits avec leur BOM.
 
-**Le hook a besoin de `-ExecutionPolicy Bypass`.** La politique par défaut d'un poste Windows
-refuse d'exécuter un script local, et le hook échouait sans que rien ne le dise.
+**Tout `.ps1` lancé par Claudex a besoin de `-ExecutionPolicy Bypass`.** La politique par défaut
+d'un poste Windows refuse d'exécuter un script local. Cela vaut pour le script de hook comme pour
+le script d'amorce d'un terminal, et l'oubli sur le second a été livré : le terminal s'ouvrait sur
+« l'exécution de scripts est désactivée sur ce système » au lieu d'une invite.
+
+**Et il a fallu le livrer pour le voir, parce que l'environnement de test était plus permissif que
+celui de l'utilisateur.** Un terminal ouvert en `-ExecutionPolicy Bypass` pose
+`PSExecutionPolicyPreference` dans son environnement, et tout ce qu'il lance en hérite, de proche
+en proche : la suite de tests, Electron, le pty, le shell. La politique effective y était donc
+`Bypass` alors qu'elle est `Restricted` pour une application ouverte depuis le menu Démarrer.
+Les deux suites retirent maintenant cette variable avant de lancer quoi que ce soit — c'est ce qui
+fait qu'un test échoue si le drapeau disparaît à nouveau.
+
+La règle générale, apprise là : **une suite qui hérite de l'environnement du développeur ne teste
+pas la machine de l'utilisateur.** C'est le deuxième cas de la même famille dans ce dépôt, après
+l'écran d'état qui dépendait de la rétention configurée sur la machine de qui lançait les tests.
+
+Reste une limite connue : `-ExecutionPolicy Bypass` ne l'emporte pas sur une politique posée par
+stratégie de groupe. Sur un poste d'entreprise verrouillé, les deux scripts échoueraient encore.
+Le remède serait de passer par `-EncodedCommand`, à quoi la politique d'exécution ne s'applique
+pas puisqu'il n'y a plus de fichier. Personne n'a signalé le cas, et l'échange se paierait en
+lisibilité : on ne peut plus lire sur le disque ce qui a été joué.
 
 **`process.env.HOME` n'existe pas.** `os.homedir()` lit `USERPROFILE`. Un test qui forçait
 `HOME` pour se donner une maison jetable écrivait en réalité dans le vrai `~/.claude`.
