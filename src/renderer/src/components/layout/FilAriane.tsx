@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { estMac } from '@renderer/plateforme'
 import { useStore } from '@renderer/state/store'
 import {
   IconeBranche,
@@ -95,8 +96,13 @@ export function FilAriane(): React.JSX.Element {
   const claude = version('claude')
   const soucis = diagnostics.filter((d) => d.severity !== 'ok').length
 
+  // Les 88 px de gauche laissent la place aux feux du système, que macOS pose
+  // sur cette barre. Ailleurs la fenêtre garde son cadre, les feux sont dessus,
+  // et le retrait ne ferait qu'un trou au bord de la barre.
   return (
-    <header className="zone-glissable relative flex h-9 shrink-0 items-center gap-2 border-b border-separateur pr-4 pl-[88px]">
+    <header
+      className={`zone-glissable relative flex h-9 shrink-0 items-center gap-2 border-b border-separateur pr-4 ${estMac ? 'pl-[88px]' : 'pl-2'}`}
+    >
       <BoutonRepli
         actif={Boolean(layout.railReplie)}
         titre={layout.railReplie ? 'Afficher les projets' : 'Masquer les projets'}

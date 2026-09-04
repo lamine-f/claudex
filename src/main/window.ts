@@ -1,6 +1,21 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, shell } from 'electron'
 
+/**
+ * Barre de titre escamotée, feux du système posés sur la barre de Claudex : le
+ * réglage n'existe que sur macOS. Electron l'ignore ailleurs, et le laisser
+ * traîner ferait croire à une intention que rien n'honore.
+ *
+ * Les autres systèmes gardent donc leur cadre. Le dessiner nous-mêmes
+ * demanderait de refaire les boutons de fenêtre, leur ordre — que chaque bureau
+ * range à sa façon — et le redimensionnement aux bords : beaucoup de code pour
+ * une barre de moins, et une fenêtre qui ne ressemblerait plus à ses voisines.
+ */
+const CADRE_MACOS = {
+  titleBarStyle: 'hiddenInset',
+  trafficLightPosition: { x: 14, y: 11 }
+} as const
+
 export function createWindow(): BrowserWindow {
   const fenetre = new BrowserWindow({
     width: 1440,
@@ -9,8 +24,7 @@ export function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#000000',
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 14, y: 11 },
+    ...(process.platform === 'darwin' ? CADRE_MACOS : {}),
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
