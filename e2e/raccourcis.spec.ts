@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { attendreInvite, fermer, lancer, NOUVEAU_TERMINAL, type Contexte } from './fixtures'
 
@@ -59,5 +62,51 @@ test.describe('raccourcis clavier', () => {
     // la session tmux et le travail avec elle.
     await ctx.page.keyboard.press('Control+W')
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+  })
+})
+
+/**
+ * Les chiffres font exception : ils se passent de Majuscule hors de macOS.
+ *
+ * Le shell ne revendique pas Contrôle+chiffre, il n'y a donc rien à lui laisser.
+ * Et `Ctrl+Maj+1` ne rapporte pas le même `key` d'une disposition à l'autre.
+ */
+test.describe('bascule entre projets', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const donnees = await mkdtemp(join(tmpdir(), 'claudex-e2e-'))
+    const premier = await mkdtemp(join(tmpdir(), 'claudex-projet-'))
+    const second = await mkdtemp(join(tmpdir(), 'claudex-projet-'))
+
+    await writeFile(
+      join(donnees, 'state.json'),
+      JSON.stringify({
+        workspaces: [
+          { id: 'ws1', path: premier, name: 'Premier projet', color: '#e8825a', order: 0 },
+          { id: 'ws2', path: second, name: 'Second projet', color: '#7aa2f7', order: 1 }
+        ],
+        tabs: [],
+        layout: { leftWidth: 260, middleWidth: 300 },
+        activeWorkspaceId: 'ws1'
+      })
+    )
+
+    ctx = await lancer({ donnees, projet: premier })
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('le chiffre seul suffit à changer de projet', async () => {
+    const entete = ctx.page.locator('header').first()
+    await expect(entete).toContainText('Premier projet')
+
+    await ctx.page.keyboard.press(process.platform === 'darwin' ? 'Meta+2' : 'Control+2')
+    await expect(entete).toContainText('Second projet')
+
+    await ctx.page.keyboard.press(process.platform === 'darwin' ? 'Meta+1' : 'Control+1')
+    await expect(entete).toContainText('Premier projet')
   })
 })
