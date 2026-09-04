@@ -96,11 +96,11 @@ Debian déclare tmux dans ses dépendances et l'installe avec l'application ; l'
 de rien et ne s'installe pas.
 
 ```sh
-sudo apt install ./claudex_0.2.0_amd64.deb
+sudo apt install ./claudex_0.2.1_amd64.deb
 
 # ou, sans installation
-chmod +x Claudex-0.2.0.AppImage
-./Claudex-0.2.0.AppImage
+chmod +x Claudex-0.2.1.AppImage
+./Claudex-0.2.1.AppImage
 ```
 
 Les deux se refabriquent depuis les sources avec `npm run dist:linux`, et sortent dans `dist/`.
