@@ -94,7 +94,13 @@ export default function App(): React.JSX.Element {
       window.claudex.claude.onSessionDetectee((chemin) => {
         const etat = useStore.getState()
         const cible = etat.workspaces.find((w) => w.path === chemin)
-        if (cible) void etat.chargerSessions(cible.id)
+        if (!cible) return
+        void etat.chargerSessions(cible.id)
+        // Les onglets aussi : le processus principal vient de rattacher la
+        // conversation à l'un d'eux, et l'interface l'ignorait. Cliquer la
+        // conversation dans la colonne ouvrait alors un second onglet sur ce
+        // qui était déjà à l'écran, ce qui se voyait après chaque bifurcation.
+        if (cible.id === etat.activeWorkspaceId) void etat.chargerOnglets(cible.id)
       }),
     []
   )

@@ -39,6 +39,20 @@ test('une conversation lancée à la main est rattachée à son onglet', async (
         return onglets[0]?.claudeSessionId
       })
       .toBe(uuid)
+
+    // Et l'interface le sait, pas seulement le processus principal. Elle
+    // l'ignorait : cliquer la conversation dans la colonne ouvrait un second
+    // onglet sur ce qui était déjà à l'écran. Le cas se voyait après chaque
+    // bifurcation, dont l'onglet n'a son identifiant qu'une fois Claude Code
+    // parti écrire son transcrit.
+    const colonne = ctx.page.getByLabel('Sessions et fichiers')
+    await colonne.getByText('Lancée à la main').click()
+    await expect(colonne.getByText('à l’écran')).toBeVisible()
+
+    // Le compte se lit côté processus principal : sur l'écran, le second onglet
+    // met un instant à paraître, et une assertion pressée le manquerait.
+    const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+    expect(onglets).toHaveLength(1)
   } finally {
     const { rm } = await import('node:fs/promises')
     await rm(

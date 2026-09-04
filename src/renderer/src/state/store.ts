@@ -299,7 +299,14 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   chargerOnglets: async (workspaceId) => {
     const tabs = await window.claudex.term.list(workspaceId)
-    set({ tabs, activeTabId: tabs.at(-1)?.id })
+    // L'onglet regardé le reste s'il est toujours là. Relire la liste sert aussi
+    // à rattraper ce que le processus principal a changé de son côté, et cela ne
+    // doit pas déplacer l'écran sous les yeux de qui n'a rien demandé.
+    const courant = get().activeTabId
+    set({
+      tabs,
+      activeTabId: tabs.some((t) => t.id === courant) ? courant : tabs.at(-1)?.id
+    })
   },
 
   chargerSessions: async (workspaceId) => {
