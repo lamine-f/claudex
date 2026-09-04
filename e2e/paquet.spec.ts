@@ -1,10 +1,14 @@
+import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
 import { _electron as electron } from '@playwright/test'
 import { fermerEcranEtat, NOUVEAU_TERMINAL } from './fixtures'
+
+const run = promisify(execFile)
 
 /**
  * L'application empaquetée, lancée depuis son bundle.
@@ -15,10 +19,19 @@ import { fermerEcranEtat, NOUVEAU_TERMINAL } from './fixtures'
  * risque est le même, avec un binaire de plus à trouver : node-pty y traîne
  * `conpty.dll` et `OpenConsole.exe`, que l'archive rendrait illisibles.
  */
-const BINAIRE =
-  process.platform === 'win32'
-    ? resolve('dist/win-unpacked/Claudex.exe')
-    : resolve('dist/mac-arm64/Claudex.app/Contents/MacOS/Claudex')
+const CHEMINS: Partial<Record<NodeJS.Platform, string>> = {
+  win32: 'dist/win-unpacked/Claudex.exe',
+  darwin: 'dist/mac-arm64/Claudex.app/Contents/MacOS/Claudex',
+  // electron-builder tire le nom de l'exécutable du `name` du package.json, en
+  // minuscules : le paquet Linux s'appelle donc `claudex`, sans capitale.
+  linux: 'dist/linux-unpacked/claudex'
+}
+
+// Une table plutôt qu'un ternaire, pour que l'oubli d'un système se voie. Écrit
+// en ternaire, Linux retombait sur le chemin de macOS : le fichier n'existant
+// pas, le cas s'ignorait de lui-même et `npm run dist:linux` annonçait un
+// succès sans avoir rien vérifié.
+const BINAIRE = resolve(CHEMINS[process.platform] ?? '')
 
 // Ce cas vise le bundle, pas les sources : lancé dans la suite courante il
 // contrôlerait un paquet périmé, ce qui ne prouve rien. Il est réservé à
@@ -27,6 +40,29 @@ test.skip(
   process.env.CLAUDEX_TEST_PAQUET !== '1' || !existsSync(BINAIRE),
   'réservé à npm run dist'
 )
+
+const SOCKET_PAQUET = 'claudex-paquet'
+
+/**
+ * Met le serveur tmux du paquet debout avant de lancer l'application.
+ *
+ * Même raison que dans les fixtures : un serveur démarré par Electron hérite de
+ * ses descripteurs de fichiers et lui survit en les gardant ouverts, si bien que
+ * `app.close()` ne rend jamais la main. Le cas ne se voyait qu'une fois, sur une
+ * machine où ce socket n'avait pas encore servi. Le serveur laissé par cet échec
+ * faisait passer toutes les tentatives suivantes.
+ *
+ * Sans objet sur Windows, où aucun serveur ne se tient derrière les terminaux.
+ */
+async function assurerServeurDuPaquet(): Promise<void> {
+  if (process.platform === 'win32') return
+  const sentinelle = 'claudex_sentinelle'
+  await run('tmux', ['-L', SOCKET_PAQUET, 'has-session', '-t', `=${sentinelle}`]).catch(() =>
+    run('tmux', ['-L', SOCKET_PAQUET, 'new-session', '-d', '-s', sentinelle]).catch(
+      () => undefined
+    )
+  )
+}
 
 test('le paquet ouvre un vrai terminal', async () => {
   const binaire = BINAIRE
@@ -45,10 +81,12 @@ test('le paquet ouvre un vrai terminal', async () => {
     })
   )
 
+  await assurerServeurDuPaquet()
+
   const app = await electron.launch({
     executablePath: binaire,
     args: [`--user-data-dir=${profil}`],
-    env: { ...process.env, CLAUDEX_TMUX_SOCKET: 'claudex-paquet' }
+    env: { ...process.env, CLAUDEX_TMUX_SOCKET: SOCKET_PAQUET }
   })
   const page = await app.firstWindow()
 
