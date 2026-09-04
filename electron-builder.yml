@@ -59,7 +59,13 @@ linux:
       arch: [x64]
     - target: deb
       arch: [x64]
-  icon: build/icon.png
+  # Un dossier de tailles, et non le seul `build/icon.png` des deux autres
+  # systèmes. Fourni en 1024 il n'était installé que dans `hicolor/1024x1024`,
+  # que le thème de Debian 13 ne déclare pas dans son `index.theme` : GTK n'y
+  # entrait jamais, l'icône était introuvable à toutes les tailles demandées, et
+  # le bureau retombait sur la générique. `node scripts/icone.mjs` le fabrique,
+  # en même temps que `build/icon.png`, et son contenu est versionné comme lui.
+  icon: build/icons
   # Catégorie freedesktop, et non la nomenclature d'Apple juste au-dessus : les
   # menus de bureau ne rangent l'application que s'ils la reconnaissent.
   category: Development
