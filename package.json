@@ -10,6 +10,7 @@
     "dev": "electron-vite dev",
     "build": "npm run icones && electron-vite build",
     "start": "electron-vite preview",
+    "pretypecheck": "npm run icones",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
