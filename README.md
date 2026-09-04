@@ -91,16 +91,16 @@ sudo apt install tmux
 ```
 
 Deux formats, au choix, dans les
-[paquets Debian](https://github.com/lamine-f/claudex/releases/tag/v0.1.0-debian.1). Le paquet
+[paquets Debian](https://github.com/lamine-f/claudex/releases/tag/v0.2.0-debian.1). Le paquet
 Debian déclare tmux dans ses dépendances et l'installe avec l'application ; l'AppImage ne dépend
 de rien et ne s'installe pas.
 
 ```sh
-sudo apt install ./claudex_0.1.0_amd64.deb
+sudo apt install ./claudex_0.2.0_amd64.deb
 
 # ou, sans installation
-chmod +x Claudex-0.1.0.AppImage
-./Claudex-0.1.0.AppImage
+chmod +x Claudex-0.2.0.AppImage
+./Claudex-0.2.0.AppImage
 ```
 
 Ces paquets sont une avant-première : ils sont construits depuis la branche du portage, que
