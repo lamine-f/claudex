@@ -42,7 +42,20 @@ decrire('intégration ConPTY', () => {
     return { lu: () => recu }
   }
 
+  /**
+   * La politique d'exécution héritée du shell qui lance les tests.
+   *
+   * Un terminal ouvert en `-ExecutionPolicy Bypass` pose
+   * `PSExecutionPolicyPreference` dans son environnement, et tout ce qu'il lance
+   * en hérite, de proche en proche. C'est ce qui a masqué un terminal incapable
+   * de s'ouvrir sur une machine ordinaire : la suite passait ici, l'application
+   * installée échouait sur « l'exécution de scripts est désactivée sur ce
+   * système ». Les cas partent donc sans elle, comme partirait un poste neuf.
+   */
+  const politiqueHeritee = process.env.PSExecutionPolicyPreference
+
   beforeAll(async () => {
+    delete process.env.PSExecutionPolicyPreference
     dossier = await mkdtemp(join(tmpdir(), 'claudex-conpty-'))
     projet = await mkdtemp(join(tmpdir(), 'claudex-projet-'))
     await pilote.preparerConfiguration(dossier)
@@ -56,6 +69,8 @@ decrire('intégration ConPTY', () => {
     const effacer = { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }
     await rm(dossier, effacer)
     await rm(projet, effacer)
+    if (politiqueHeritee === undefined) delete process.env.PSExecutionPolicyPreference
+    else process.env.PSExecutionPolicyPreference = politiqueHeritee
   })
 
   it("annonce qu'une session ne survit pas à l'application", () => {

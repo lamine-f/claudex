@@ -217,7 +217,11 @@ export const pilote: Multiplexeur = {
     // `-NoExit` rend la main à un shell interactif quand le script se termine,
     // pour que la session survive à la sortie de l'agent. C'est l'équivalent du
     // `exec $SHELL -l` que le pilote tmux met au bout de son amorce.
-    const args = ['-NoLogo', '-NoProfile', '-NoExit', '-File', script]
+    // `-ExecutionPolicy Bypass` n'est pas une précaution de plus : la politique
+    // par défaut d'un poste Windows refuse tout script local, et le terminal
+    // s'ouvrait sur « l'exécution de scripts est désactivée sur ce système ».
+    // Le script de hook le portait déjà, celui de l'amorce l'avait perdu.
+    const args = ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-NoExit', '-File', script]
 
     const processus = nodePty.spawn(shell(), args, {
       name: 'xterm-256color',

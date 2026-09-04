@@ -70,6 +70,28 @@ export async function simulerRedemarrage(): Promise<void> {
   await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
 }
 
+/**
+ * L'environnement de l'application sous test.
+ *
+ * `PSExecutionPolicyPreference` en est retirée : un terminal ouvert en
+ * `-ExecutionPolicy Bypass` la pose dans son environnement, et tout ce qu'il
+ * lance en hérite, de proche en proche. L'application y gagnait le droit
+ * d'exécuter des scripts que le menu Démarrer ne lui aurait jamais donné, et la
+ * suite s'exécutait donc sur une machine plus permissive que celle de
+ * l'utilisateur. Elle est ôtée plutôt que mise à `undefined` : une valeur
+ * indéfinie ressort en chaîne « undefined » dans l'environnement d'un enfant.
+ */
+function environnementPropre(supplement?: Record<string, string>): Record<string, string> {
+  const env: Record<string, string> = {
+    ...(process.env as Record<string, string>),
+    NODE_ENV: 'test',
+    CLAUDEX_TMUX_SOCKET: SOCKET_TEST,
+    ...supplement
+  }
+  delete env.PSExecutionPolicyPreference
+  return env
+}
+
 export interface Contexte {
   app: ElectronApplication
   page: Page
@@ -123,7 +145,7 @@ export async function lancer(
     args: [resolve('out/main/index.js'), `--user-data-dir=${donnees}`],
     // Socket tmux propre aux tests : sans lui, un `kill-server` de la suite
     // emporterait les sessions de l'application ouverte à côté.
-    env: { ...process.env, NODE_ENV: 'test', CLAUDEX_TMUX_SOCKET: SOCKET_TEST, ...options.env }
+    env: environnementPropre(options.env)
   })
 
   const page = await app.firstWindow()
