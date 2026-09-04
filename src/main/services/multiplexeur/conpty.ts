@@ -225,6 +225,12 @@ export const pilote: Multiplexeur = {
       rows: Math.max(rows, 5),
       cwd,
       env: environnement(),
+      // Le ConPTY du système, non la copie que node-pty embarque. Cette dernière
+      // supprime le message « AttachConsole failed » qu'un utilitaire de node-pty
+      // écrit sur stderr à chaque fermeture de pty, mais elle triple le temps que
+      // met une sortie à revenir — 30,6 s contre 14,2 s sur la suite unitaire, à
+      // `spawn` et `kill` pourtant identiques. Un message que personne ne lit
+      // coûte moins cher qu'un terminal qui traîne.
       useConpty: true
     })
 

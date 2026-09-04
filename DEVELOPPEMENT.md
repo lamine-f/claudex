@@ -29,6 +29,11 @@ Ils viennent d'un utilitaire que `node-pty` lance pour énumérer les processus 
 moment de tuer un pty, et qui échoue faute de console attachée. Vérifié : le pty et ses enfants
 sont bien tués malgré cela. C'est du bruit sur `stderr`, pas une fuite.
 
+L'option `useConptyDll` de node-pty le fait disparaître, et elle a été essayée puis écartée : à
+`spawn` et `kill` équivalents au milliseconde près, elle triple le temps que met une sortie à
+revenir — 30,6 s contre 14,2 s sur la suite unitaire, mesuré deux fois de chaque côté. Un
+message que personne ne lit coûte moins cher qu'un terminal qui traîne.
+
 ## Ce qu'il y a où
 
 ```
