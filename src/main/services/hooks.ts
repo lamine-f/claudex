@@ -13,8 +13,40 @@ import { claudeSettingsPath, claudexHooksDir } from '../util/paths'
 export const EVENEMENTS = ['Notification', 'Stop', 'UserPromptSubmit'] as const
 export type Evenement = (typeof EVENEMENTS)[number]
 
+const SUR_WINDOWS = process.platform === 'win32'
+
 export function cheminScript(): string {
-  return join(claudexHooksDir(), 'notifier.sh')
+  return join(claudexHooksDir(), SUR_WINDOWS ? 'notifier.ps1' : 'notifier.sh')
+}
+
+/**
+ * Ce qu'on écrit dans `settings.json` pour que Claude Code appelle le script.
+ *
+ * Sur Windows, le chemin ne suffit pas : un `.ps1` n'est pas exécutable en soi,
+ * il faut nommer l'interprète. `-ExecutionPolicy Bypass` est indispensable — la
+ * politique par défaut d'un poste Windows refuse d'exécuter un script local, et
+ * le hook échouerait sans que rien ne le dise.
+ */
+export function commandeHook(evenement: string): string {
+  return SUR_WINDOWS
+    ? `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${cheminScript()}" ${evenement}`
+    : `${cheminScript()} ${evenement}`
+}
+
+/**
+ * Le script et ses arguments, pour qui veut l'exécuter directement.
+ *
+ * Les tests s'en servent afin d'appeler le script exactement comme Claude Code
+ * l'appellera. Le dupliquer chez eux revenait à tester une autre commande que
+ * celle qu'on écrit dans la configuration.
+ */
+export function invocation(evenement: string): { fichier: string; args: string[] } {
+  return SUR_WINDOWS
+    ? {
+        fichier: 'powershell.exe',
+        args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', cheminScript(), evenement]
+      }
+    : { fichier: 'sh', args: [cheminScript(), evenement] }
 }
 
 export function cheminPresence(): string {
@@ -36,7 +68,7 @@ export function dossierEvenements(): string {
  * Le fichier est écrit à côté puis déplacé : un renommage est atomique, là où
  * une écriture directe donnerait à lire un fichier encore à moitié écrit.
  */
-const SCRIPT = `#!/bin/sh
+const SCRIPT_SH = `#!/bin/sh
 # Écrit par Claudex. Prévient l'application quand Claude Code réclame son
 # utilisateur. Retirer les hooks depuis l'écran d'état de Claudex, ou effacer
 # ce dossier, suffit à le désactiver.
@@ -53,6 +85,58 @@ tmp=$(mktemp "$dossier/evt.XXXXXX") || exit 0
 mv "$tmp" "$dossier/evenements/$(basename "$tmp").json" 2>/dev/null || rm -f "$tmp"
 exit 0
 `
+
+/**
+ * La même chose pour Windows, où rien de tout cela n'existe.
+ *
+ * `kill -0` devient `Get-Process -Id`, `mktemp` un GUID, et `mv` un
+ * `[IO.File]::Move` — le renommage reste la seule écriture atomique disponible.
+ *
+ * Le `try` englobe tout et la sortie est toujours zéro : Claude Code attend la
+ * fin de ses hooks, et un script qui échoue lui remonte une erreur pour un
+ * service qu'il n'a pas demandé.
+ *
+ * `$PID` est une variable automatique de PowerShell, qui désigne le processus
+ * courant. Nommer la nôtre ainsi faisait comparer Claudex à lui-même, et le hook
+ * écrivait alors pour toutes les conversations de la machine.
+ */
+const SCRIPT_PS1 = `# Écrit par Claudex. Prévient l'application quand Claude Code réclame son
+# utilisateur. Retirer les hooks depuis l'écran d'état de Claudex, ou effacer
+# ce dossier, suffit à le désactiver.
+try {
+  $dossier = Split-Path -Parent $MyInvocation.MyCommand.Path
+  $marque = Join-Path $dossier 'pid'
+  if (-not (Test-Path -LiteralPath $marque)) { exit 0 }
+
+  $vivant = (Get-Content -LiteralPath $marque -TotalCount 1 -ErrorAction SilentlyContinue)
+  if ([string]::IsNullOrWhiteSpace($vivant)) { exit 0 }
+  if (-not (Get-Process -Id ([int]$vivant.Trim()) -ErrorAction SilentlyContinue)) { exit 0 }
+
+  $evenements = Join-Path $dossier 'evenements'
+  New-Item -ItemType Directory -Force -Path $evenements | Out-Null
+
+  $nom = [guid]::NewGuid().ToString('N')
+  $tmp = Join-Path $dossier "evt.$nom"
+  $evenement = if ($args.Count -gt 0 -and $args[0]) { $args[0] } else { 'inconnu' }
+  $charge = [Console]::In.ReadToEnd()
+
+  [IO.File]::WriteAllText($tmp, "$evenement\`n$charge", (New-Object Text.UTF8Encoding($false)))
+  [IO.File]::Move($tmp, (Join-Path $evenements "$nom.json"))
+} catch {
+}
+exit 0
+`
+
+/**
+ * Le contenu à déposer, avec sa marque d'ordre des octets sur Windows.
+ *
+ * Windows PowerShell 5.1 lit un `.ps1` sans BOM selon la page de codes ANSI du
+ * poste : les accents des commentaires en ressortaient abîmés, et une chaîne
+ * accentuée aurait fait échouer l'analyse du script.
+ */
+function contenuScript(): string {
+  return SUR_WINDOWS ? `﻿${SCRIPT_PS1}` : SCRIPT_SH
+}
 
 interface EntreeHook {
   matcher?: string
@@ -118,8 +202,10 @@ export async function installer(): Promise<{ ok: boolean; message: string }> {
   }
 
   await mkdir(claudexHooksDir(), { recursive: true })
-  await writeFile(cheminScript(), SCRIPT, 'utf8')
-  await chmod(cheminScript(), 0o755)
+  await writeFile(cheminScript(), contenuScript(), 'utf8')
+  // Windows n'a pas de bit d'exécution : c'est l'extension qui décide, et le
+  // script est de toute façon lancé par un interprète nommé dans la commande.
+  if (!SUR_WINDOWS) await chmod(cheminScript(), 0o755)
 
   const { settings, existe } = charge
   const hooks = (settings.hooks ?? {}) as Record<string, EntreeHook[]>
@@ -131,7 +217,7 @@ export async function installer(): Promise<{ ok: boolean; message: string }> {
     if (dejaLa) continue
     entrees.push({
       matcher: '',
-      hooks: [{ type: 'command', command: `${cheminScript()} ${evenement}` }]
+      hooks: [{ type: 'command', command: commandeHook(evenement) }]
     })
   }
   settings.hooks = hooks
