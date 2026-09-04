@@ -1,4 +1,5 @@
 import type { Tab } from '@shared/types'
+import { IconeFermer } from '../ui/Icones'
 
 interface Props {
   tab: Tab
@@ -31,7 +32,20 @@ export function RestoreBanner({ tab, onReprendre, onIgnorer }: Props): React.JSX
   if (!agent && !commande) return null
 
   return (
-    <div className="absolute inset-x-3 top-3 z-10 rounded-lg border border-accent-tenu bg-fond-eleve/95 px-3 py-2.5 shadow-lg backdrop-blur">
+    <div className="absolute inset-x-3 top-3 z-10 rounded-lg border border-accent-tenu bg-fond-eleve/95 py-2.5 pr-9 pl-3 shadow-lg backdrop-blur">
+      {/* La croix écarte la bande sans rien décider. « Repartir à neuf » engage :
+          on renonce à ce qui était là. Fermer ne fait que rendre l'écran, et la
+          proposition revient au prochain lancement si rien n'a été tranché. */}
+      <button
+        type="button"
+        onClick={onIgnorer}
+        title="Fermer"
+        aria-label="Fermer"
+        className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded text-texte-tenu transition-colors hover:bg-fond-survol hover:text-texte"
+      >
+        <IconeFermer taille={12} />
+      </button>
+
       <p className="text-[12px] text-texte">
         {agent ? (
           <>

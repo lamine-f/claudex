@@ -88,6 +88,10 @@ test('une commande interrompue par le redémarrage est proposée à la relance',
       return onglets[0]?.lastCommand
     })
     expect(relancee).toContain('sleep 3600')
+
+    // La croix écarte la bande sans rien décider, et rend l'écran.
+    await second.page.getByLabel('Fermer').click()
+    await expect(second.page.getByText(/sleep 3600/)).toHaveCount(0)
   } finally {
     await fermer(second)
   }
