@@ -1,3 +1,4 @@
+import { raccourci } from '@renderer/plateforme'
 import type { Tab } from '@shared/types'
 import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
@@ -97,7 +98,7 @@ export function TerminalTabs({
       <button
         type="button"
         onClick={onNouveau}
-        title="Nouveau terminal (⌘T)"
+        title={`Nouveau terminal (${raccourci('T')})`}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte"
       >
         <IconePlus taille={16} />

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { raccourci } from '@renderer/plateforme'
 import { useStore } from '@renderer/state/store'
 import { FileTree } from '../files/FileTree'
 import {
@@ -111,7 +112,7 @@ export function ColonneLaterale(): React.JSX.Element {
           </>
         )}
 
-        <span className="pr-1 font-mono text-[10px] text-texte-tenu">⌘E</span>
+        <span className="pr-1 font-mono text-[10px] text-texte-tenu">{raccourci('E')}</span>
       </div>
 
       {!courant ? (

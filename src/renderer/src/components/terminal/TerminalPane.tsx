@@ -46,7 +46,7 @@ export function TerminalPane(): React.JSX.Element {
         {tabs.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             {/* Le logo seul : ouvrir un terminal se fait depuis l'en-tête, la
-                colonne des conversations ou ⌘T, et un bouton de plus au milieu
+                colonne des conversations ou au clavier, et un bouton de plus au milieu
                 de l'écran ne faisait que répéter ces chemins. */}
             <img src="./logo.png" alt="" aria-hidden className="w-32 opacity-20" />
           </div>

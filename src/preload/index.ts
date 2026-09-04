@@ -17,6 +17,12 @@ import type {
  * accès à `ipcRenderer` ni à quoi que ce soit de Node, uniquement à ces méthodes.
  */
 const api = {
+  /**
+   * Plateforme du processus main. Le renderer est bac à sable : `process` ne
+   * lui est pas accessible, et l'interface a pourtant à décider dès le premier
+   * rendu — la touche des raccourcis, la place des boutons de fenêtre.
+   */
+  plateforme: process.platform as string,
   state: {
     get: (): Promise<AppState> => ipcRenderer.invoke('state:get'),
     setLayout: (layout: Partial<AppState['layout']>): Promise<AppState['layout']> =>

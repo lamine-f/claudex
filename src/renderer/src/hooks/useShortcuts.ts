@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { estRaccourci } from '@renderer/plateforme'
 import { useStore } from '@renderer/state/store'
 
 /**
@@ -6,38 +7,49 @@ import { useStore } from '@renderer/state/store'
  *
  * Ils sont volontairement pris au niveau `document` en phase de capture : un
  * terminal xterm a le focus la plupart du temps et consommerait sinon les frappes.
+ *
+ * La combinaison qui les déclenche dépend du système, et `@shared/plateforme`
+ * en décide : Commande sur macOS, Contrôle+Majuscule ailleurs, où Contrôle seul
+ * revient au shell.
  */
 export function useShortcuts(): void {
   useEffect(() => {
     const surTouche = (evenement: KeyboardEvent): void => {
-      if (!evenement.metaKey || evenement.ctrlKey) return
+      if (!estRaccourci(evenement)) return
       const etat = useStore.getState()
 
-      // ⌘T : nouveau terminal dans le workspace courant.
-      if (evenement.key === 't') {
+      // La Majuscule tenue change `key` : la lettre arrive en capitale. La
+      // comparaison se fait donc en minuscule, sur la touche que porte le
+      // clavier — et non sur `code`, qui désignerait une autre lettre en azerty.
+      const lettre = evenement.key.toLowerCase()
+
+      // Nouveau terminal dans le workspace courant.
+      if (lettre === 't') {
         evenement.preventDefault()
         void etat.nouvelOnglet()
         return
       }
 
-      // ⌘E : basculer entre les conversations et les fichiers.
-      if (evenement.key === 'e') {
+      // Basculer entre les conversations et les fichiers.
+      if (lettre === 'e') {
         evenement.preventDefault()
         etat.choisirPanneau(etat.panneau === 'sessions' ? 'fichiers' : 'sessions')
         return
       }
 
-      // ⌘W : fermer l'onglet courant, et avec lui sa session tmux.
-      if (evenement.key === 'w') {
+      // Fermer l'onglet courant, et avec lui sa session tmux.
+      if (lettre === 'w') {
         evenement.preventDefault()
         if (etat.activeTabId) void etat.fermerOnglet(etat.activeTabId)
         return
       }
 
-      // ⌘1..⌘9 : bascule directe entre projets.
-      const rang = Number.parseInt(evenement.key, 10)
-      if (Number.isInteger(rang) && rang >= 1 && rang <= 9) {
-        const cible = etat.workspaces[rang - 1]
+      // Bascule directe entre projets. Les chiffres se lisent sur `code` : avec
+      // la Majuscule tenue, `key` rapporte le symbole de la touche — « ! » pour
+      // le 1 — et sur un clavier français il le rapporte même sans Majuscule.
+      const chiffre = /^Digit([1-9])$/.exec(evenement.code)
+      if (chiffre) {
+        const cible = etat.workspaces[Number(chiffre[1]) - 1]
         if (cible) {
           evenement.preventDefault()
           void etat.choisirWorkspace(cible.id)
