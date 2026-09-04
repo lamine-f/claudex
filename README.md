@@ -1,96 +1,105 @@
-# Claudex
+<div align="center">
+    <img src="build/icon.png" width=200 height=200>
+    <h1>Claudex</h1>
+</div>
 
-Un IDE de bureau dont l'unité de base n'est pas le fichier, mais la **conversation d'agent**.
-
-On ouvre un projet, on voit toutes les conversations Claude Code qui ont eu lieu dans ce
-dossier, on en choisit une : un terminal la reprend exactement là où elle s'était arrêtée.
-Y compris après un redémarrage de la machine.
+Claudex est un IDE de bureau dont l'unité de base n'est pas le fichier, mais la conversation
+d'agent. On ouvre un projet, on voit toutes les conversations Claude Code qui ont eu lieu dans
+ce dossier, on en choisit une. Un terminal la reprend exactement là où elle s'était arrêtée,
+même après un redémarrage de la machine.
 
 ![Claudex](docs/claudex.png)
 
+[![Télécharger](https://img.shields.io/github/v/release/lamine-f/claudex?style=flat-square&label=t%C3%A9l%C3%A9charger&color=brightgreen)](https://github.com/lamine-f/claudex/releases/latest)
+![Plateforme](https://img.shields.io/badge/plateforme-macOS%20Apple%20Silicon-blue?style=flat-square)
+![Prérequis](https://img.shields.io/badge/pr%C3%A9requis-tmux%20%2B%20Claude%20Code-fa4e49?style=flat-square)
+[![Licence](https://img.shields.io/github/license/lamine-f/claudex?style=flat-square)](LICENSE)
+
+> [!NOTE]
+> Claudex en est à sa première version publiée. Elle est utilisable au quotidien. Certaines
+> fonctions restent à venir, la feuille de route plus bas dit lesquelles.
+
+<details>
+<summary>Sommaire</summary>
+
+- [Installer](#installer)
+- [Fonctions et feuille de route](#fonctions-et-feuille-de-route)
+- [Raccourcis](#raccourcis)
+- [Galerie](#galerie)
+- [Comment ça tient debout](#comment-ça-tient-debout)
+- [Les notifications, en détail](#les-notifications-en-détail)
+- [Questions](#questions)
+- [Développer](#développer)
+- [Licence](#licence)
+
+</details>
+
 ## Installer
 
-**1. tmux.** Les terminaux de Claudex sont des sessions tmux : c'est ce qui leur permet de
-survivre à la fermeture de l'application. Si vous avez [Homebrew](https://brew.sh) :
+### Prérequis
+
+Les terminaux de Claudex sont des sessions tmux. C'est ce qui leur permet de survivre à la
+fermeture de l'application.
 
 ```sh
 brew install tmux
 ```
 
-Sinon, voir le [dépôt de tmux](https://github.com/tmux/tmux/wiki/Installing).
+Sans [Homebrew](https://brew.sh), voir le [dépôt de tmux](https://github.com/tmux/tmux/wiki/Installing).
 
-**2. Claude Code.** L'application ne remplace pas le CLI, elle l'orchestre — il faut donc
-l'avoir installé et connecté. Suivre la
-[documentation officielle](https://docs.claude.com/en/docs/claude-code/setup), puis lancer
-`claude` une fois dans un terminal pour s'authentifier.
+Claudex ne remplace pas le CLI Claude Code, il l'orchestre. Il faut donc l'avoir installé et
+connecté. Suivre la [documentation officielle](https://docs.claude.com/en/docs/claude-code/setup),
+puis lancer `claude` une fois dans un terminal pour s'authentifier.
 
-**3. Claudex.** Télécharger le DMG dans la
-[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest), l'ouvrir,
-glisser Claudex dans Applications.
+### Télécharger
 
-L'application n'est pas notarisée par Apple : au premier lancement, macOS refusera de
-l'ouvrir d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
+Prendre le DMG dans la [dernière version publiée](https://github.com/lamine-f/claudex/releases/latest),
+l'ouvrir, glisser Claudex dans le dossier Applications.
 
-> macOS sur Apple Silicon uniquement pour l'instant.
+L'application n'est pas notarisée par Apple. Au premier lancement, macOS refusera de l'ouvrir
+d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
 
-## Premiers pas
+## Fonctions et feuille de route
 
-**Ajouter un projet.** Le `+` en haut de la colonne de gauche ouvre un sélecteur de dossier.
-Un projet est un dossier de la machine, rien de plus : celui d'où vous lancez `claude`.
+### Conversations
 
-**Reprendre une conversation.** La colonne du milieu liste les conversations tenues dans ce
-dossier exact — comme `/resume`, sans remonter celles des sous-dossiers. Un clic en ouvre une
-dans un nouvel onglet, avec tout son contexte. Rien n'est jamais remplacé ; si elle est déjà
-ouverte, on bascule sur son onglet.
+- [x] Lister les conversations du dossier exact, comme `/resume`
+- [x] Les reprendre en un clic, avec tout leur contexte
+- [x] Bifurquer pour explorer une piste sans toucher à l'originale
+- [x] Renommer, étiqueter, mettre en favori, écarter vers une corbeille
+- [x] Rattacher une conversation lancée à la main dans un terminal
+- [ ] Archiver les transcrits en gzip avant que Claude Code ne les efface
 
-Chaque ligne dit où elle en est — celle qu'on a sous les yeux, celles qui patientent dans un
-autre onglet — avec sa branche git, sa date, l'étiquette qu'on lui a posée et l'étoile des
-favoris, qui passent en tête.
+### Rangement
 
-![Les conversations et leurs états](docs/conversations.png)
+- [x] Déplacer les conversations à la souris
+- [x] Les réunir en groupes nommés, et déplacer les groupes
+- [x] Filtrer sur le titre
+- [x] Retrouver le classement au lancement suivant
 
-**Bifurquer.** Sur une conversation, l'icône de branche repart du même contexte sous un
-nouvel identifiant : deux pistes explorées en parallèle, l'originale intacte. Le nom que vous
-donnez est transmis à Claude Code, qui l'affichera aussi dans son propre sélecteur.
+### Terminaux
 
-![Bifurquer une conversation](docs/bifurcation.png)
+- [x] Sessions tmux persistantes, sur un socket dédié
+- [x] Un onglet par conversation, plusieurs onglets par projet
+- [x] Reprise après un redémarrage de la machine
+- [ ] Découper un onglet en plusieurs volets
 
-**Ranger.** Les conversations se déplacent à la souris, se réunissent en groupes nommés, et
-les groupes se déplacent aussi, leur contenu avec eux. Tant qu'on n'a rien touché, la liste
-garde son ordre naturel ; dès qu'une conversation est rangée, elle garde sa place, et celles
-qui apparaissent ensuite passent devant.
+### Notifications
 
-![Un groupe de conversations](docs/groupes.png)
+- [x] Signaler l'agent qui demande une permission ou pose une question
+- [x] Notification du système quand la fenêtre n'a pas le focus
+- [x] Installer et retirer les hooks depuis l'application
+- [ ] Distinguer un agent interrompu d'un agent qui a fini
 
-Le clic droit fait le même travail sans viser — et c'est le seul chemin au clavier.
+### Projets et fichiers
 
-![Le menu d'une conversation](docs/menu.png)
+- [x] Ajouter un projet, lui donner une couleur, passer de l'un à l'autre
+- [x] Arborescence avec les icônes du type de fichier
+- [x] Aperçu en lecture seule, coloré selon le langage
+- [x] Écran d'état de l'environnement, avec ses correctifs
+- [ ] Windows et Linux
 
-**Être prévenu.** Quand un agent demande une permission ou pose une question, il s'arrête et
-attend. Claudex peut le signaler : une main levée sur la conversation, sur son onglet et sur
-son projet, plus une notification du système quand la fenêtre n'a pas le focus. À activer une
-fois depuis l'écran d'état → *Installer les notifications*.
-Voir [ce que cela ajoute](#les-notifications-en-detail) plus bas.
-
-![Un agent qui attend une réponse](docs/attente.png)
-
-**Regarder les fichiers.** `⌘E` bascule la colonne sur l'arborescence du projet, avec les
-icônes du type de fichier et les dossiers ignorés par git mis en retrait.
-
-![L'arborescence du projet](docs/fichiers.png)
-
-Un clic ouvre un aperçu en lecture seule, coloré selon le langage. Claudex ne prétend pas
-remplacer votre éditeur : il donne à lire, pas à écrire.
-
-![L'aperçu d'un fichier](docs/apercu.png)
-
-**Vérifier l'installation.** La pastille en haut à droite ouvre l'état de l'environnement :
-tmux, Claude Code, la rétention des conversations et les notifications. Ce qui peut être
-corrigé d'un clic l'est depuis là.
-
-![L'état de l'environnement](docs/etat.png)
-
-**Raccourcis.**
+## Raccourcis
 
 | | |
 |---|---|
@@ -99,50 +108,115 @@ corrigé d'un clic l'est depuis là.
 | `⌘E` | basculer entre les conversations et les fichiers |
 | `⌘1`…`⌘9` | passer d'un projet à l'autre |
 
-## Ce que ça change
+## Galerie
 
-Les terminaux modernes savent lister des sessions, mais ils ne connaissent pas la notion de
-projet, et rien n'y survit vraiment à un redémarrage. Claude Code, lui, sait reprendre une
-conversation — mais il ne sait pas laquelle appartient à quel onglet : son sélecteur oblige à
-choisir à la main, à chaque terminal, à chaque fois.
+#### Les conversations d'un projet, et leurs états
 
-Claudex mémorise l'association *onglet → conversation* et rejoue `claude -r <uuid>` tout seul.
-C'est là qu'est la valeur, pas dans une liste de plus.
+![Les conversations et leurs états](docs/conversations.png)
+
+Chaque ligne dit où elle en est. Celle qu'on a sous les yeux, celles qui patientent dans un
+autre onglet. La branche git, la date, l'étiquette posée à la main, l'étoile des favoris qui
+passent en tête.
+
+#### Bifurquer une conversation
+
+![Bifurquer une conversation](docs/bifurcation.png)
+
+La nouvelle conversation repart du même contexte sous un nouvel identifiant. L'originale reste
+intacte. Le nom donné est transmis à Claude Code, qui l'affichera dans son propre sélecteur.
+
+#### Ranger les conversations en groupes
+
+![Un groupe de conversations](docs/groupes.png)
+
+Tant qu'on n'a rien touché, la liste garde son ordre naturel. Dès qu'une conversation est
+rangée, elle garde sa place, et celles qui apparaissent ensuite passent devant.
+
+#### Tout faire au clic droit
+
+![Le menu d'une conversation](docs/menu.png)
+
+Le menu fait le même travail que la souris, sans viser. C'est aussi le seul chemin au clavier.
+
+#### Voir l'agent qui vous attend
+
+![Un agent qui attend une réponse](docs/attente.png)
+
+Une main levée sur la conversation, sur son onglet et sur son projet. Hors de l'application,
+une notification du système qui mène droit au bon onglet.
+
+#### Parcourir les fichiers du projet
+
+![L'arborescence du projet](docs/fichiers.png)
+
+`⌘E` bascule la colonne sur l'arborescence. Les icônes suivent le type de fichier, les entrées
+ignorées par git passent en retrait.
+
+#### Lire un fichier sans quitter l'application
+
+![L'aperçu d'un fichier](docs/apercu.png)
+
+L'aperçu est en lecture seule, coloré selon le langage. Claudex ne prétend pas remplacer votre
+éditeur. Il donne à lire, pas à écrire.
+
+#### Vérifier l'installation
+
+![L'état de l'environnement](docs/etat.png)
+
+La pastille en haut à droite ouvre l'état de l'environnement. Ce qui peut être corrigé d'un
+clic l'est depuis là.
 
 ## Comment ça tient debout
 
-**tmux, sur un socket dédié.** Toutes les commandes passent par `tmux -L claudex` : vos
-sessions personnelles ne sont ni touchées ni polluées. Un onglet = une session tmux. Fermer
-l'application détache les clients ; ce qui tournait tourne encore, et se retrouve au retour.
+**tmux, sur un socket dédié.** Toutes les commandes passent par `tmux -L claudex`. Vos sessions
+personnelles ne sont ni touchées ni polluées. Un onglet vaut une session tmux. Fermer
+l'application détache les clients, ce qui tournait tourne encore.
 
 **Le dossier des transcrits.** Claude Code range les conversations d'un dossier dans
-`~/.claude/projects/<chemin encodé>/`, où l'encodage remplace tout caractère non
-alphanumérique par un tiret. Claudex ne l'emploie que dans ce sens — projet vers dossier —
-jamais l'inverse, la transformation n'étant pas réversible.
+`~/.claude/projects/<chemin encodé>/`, où l'encodage remplace tout caractère non alphanumérique
+par un tiret. Claudex ne l'emploie que dans ce sens, du projet vers le dossier. La
+transformation n'est pas réversible.
 
 **Les en-têtes, lus en flux.** Un transcrit peut peser plus de cent mégaoctets. La lecture
-s'arrête dès qu'elle tient le titre, la branche et la date : plafond de 200 lignes ou 256 Ko.
+s'arrête dès qu'elle tient le titre, la branche et la date. Le plafond est de 200 lignes ou
+256 Ko.
 
-**Rien n'est effacé.** Écarter une conversation la déplace dans une corbeille propre à
-Claudex ; le transcrit reste récupérable. L'écran d'état propose aussi de porter la rétention
-de Claude Code à 365 jours : par défaut, il efface les conversations au bout de 30, et elles
-ne sont alors plus reprenables.
-
-<a id="les-notifications-en-detail"></a>
+**Rien n'est effacé.** Écarter une conversation la déplace dans une corbeille propre à Claudex.
+Le transcrit reste récupérable. L'écran d'état propose aussi de porter la rétention de Claude
+Code à 365 jours. Par défaut, il efface les conversations au bout de 30, et elles ne sont alors
+plus reprenables.
 
 ## Les notifications, en détail
 
-Les activer ajoute trois hooks à `~/.claude/settings.json` — `Notification` allume le voyant,
-`UserPromptSubmit` et `Stop` l'éteignent — qui appellent un script déposé dans
-`~/.claude/claudex/`. Une sauvegarde `.bak` est faite avant, et vos propres hooks ne sont pas
-touchés : ils sont complétés, jamais remplacés.
+Les activer ajoute trois hooks à `~/.claude/settings.json`. `Notification` allume le voyant,
+`UserPromptSubmit` et `Stop` l'éteignent. Ils appellent un script déposé dans
+`~/.claude/claudex/`. Une sauvegarde `.bak` est faite avant l'écriture, et vos propres hooks ne
+sont pas touchés. Ils sont complétés, jamais remplacés.
 
-Le script n'écrit rien quand Claudex ne tourne pas, et l'application ne réagit qu'aux
-conversations dont elle a l'onglet : le hook est posé pour toute la machine, mais les
-terminaux qu'elle ne connaît pas ne déclenchent rien.
+Le script n'écrit rien quand Claudex ne tourne pas. Et l'application ne réagit qu'aux
+conversations dont elle a l'onglet. Le hook est posé pour toute la machine, mais les terminaux
+qu'elle ne connaît pas ne déclenchent rien.
 
-Le même écran propose de les retirer, ce qui efface le script et rend la configuration à son
-état d'origine.
+Le même écran propose de les retirer. Le script est alors effacé et la configuration rendue à
+son état d'origine.
+
+## Questions
+
+**Pourquoi macOS uniquement ?**
+Le paquet est construit pour Apple Silicon. Le code ne dépend de rien qui soit propre à macOS,
+hors la signature et les notifications du système. Les autres plateformes viendront.
+
+**Est-ce que Claudex remplace Claude Code ?**
+Non. Il faut le CLI installé et connecté. Claudex lui donne des projets, des onglets qui
+survivent, et la mémoire de quelle conversation appartient à quel onglet.
+
+**Mes conversations existantes sont-elles visibles ?**
+Oui. Claudex lit ce que Claude Code a déjà écrit. Ajoutez un dossier où vous avez travaillé,
+ses conversations apparaissent aussitôt.
+
+**Que devient une session tmux quand je ferme l'application ?**
+Elle continue de tourner. Les clients se détachent, rien n'est tué. Fermer un onglet dans
+l'application, en revanche, ferme sa session pour de bon.
 
 ## Développer
 
@@ -150,4 +224,4 @@ Le code, la structure, les tests et l'empaquetage : voir [DEVELOPPEMENT.md](DEVE
 
 ## Licence
 
-MIT.
+Claudex est disponible sous [licence MIT](LICENSE).
