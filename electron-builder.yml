@@ -11,9 +11,16 @@ files:
   - package.json
 
 # node-pty embarque un binaire natif et un `spawn-helper` exécutable : dans une
-# archive asar ils ne sont ni chargeables ni exécutables.
+# archive asar ils ne sont ni chargeables ni exécutables. Sur Windows, la même
+# règle couvre conpty.dll, OpenConsole.exe et winpty-agent.exe.
 asarUnpack:
   - node_modules/node-pty/**
+
+# Pas de recompilation à l'empaquetage : elle a déjà eu lieu à l'installation, où
+# `scripts/apres-installation.mjs` appelle `electron-builder install-app-deps` sur
+# macOS. La refaire ici ne changerait rien, et sur Windows elle échoue faute de
+# Python et des outils de Visual Studio — pour rien, node-pty étant en Node-API.
+npmRebuild: false
 
 mac:
   category: public.app-category.developer-tools

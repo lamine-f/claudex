@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { _electron as electron } from '@playwright/test'
-import { NOUVEAU_TERMINAL } from './fixtures'
+import { fermerEcranEtat, NOUVEAU_TERMINAL } from './fixtures'
 
 /**
  * L'application empaquetée, lancée depuis son bundle.
@@ -54,6 +54,7 @@ test('le paquet ouvre un vrai terminal', async () => {
 
   try {
     await page.waitForSelector('[aria-label="Conversations"]')
+    await fermerEcranEtat(page)
     await page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(page.locator('.xterm')).toHaveCount(1)
 

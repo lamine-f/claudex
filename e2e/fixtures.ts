@@ -135,13 +135,26 @@ export async function lancer(
   // avait déjà été relevée, et échouait ailleurs sur un voile qui interceptait
   // chaque clic. On le referme comme le ferait l'utilisateur, plutôt que de
   // dépendre de la configuration personnelle de qui lance les tests.
-  const ecranEtat = page.getByRole('heading', { name: "État de l'environnement" })
-  if (await ecranEtat.isVisible().catch(() => false)) {
-    await page.getByRole('button', { name: '✕' }).click()
-    await expect(ecranEtat).toHaveCount(0)
-  }
+  await fermerEcranEtat(page)
 
   return { app, page, donnees, projet }
+}
+
+/**
+ * Referme l'écran d'état s'il s'est ouvert de lui-même.
+ *
+ * Il le fait devant une perte en cours, et la rétention par défaut de Claude Code
+ * en est une. Il lit le vrai ~/.claude/settings.json, que rien n'isole : la suite
+ * ne passait donc que sur une machine dont la rétention avait déjà été relevée, et
+ * échouait ailleurs sur un voile qui interceptait chaque clic. On le referme comme
+ * le ferait l'utilisateur, plutôt que de dépendre de la configuration personnelle
+ * de qui lance les tests.
+ */
+export async function fermerEcranEtat(page: Page): Promise<void> {
+  const ecran = page.getByRole('heading', { name: "État de l'environnement" })
+  if (!(await ecran.isVisible().catch(() => false))) return
+  await page.getByRole('button', { name: '✕' }).click()
+  await expect(ecran).toHaveCount(0)
 }
 
 export async function fermer(contexte: Contexte, options = { nettoyer: true }): Promise<void> {
