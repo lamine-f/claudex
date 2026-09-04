@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
+import { estCommande } from '@shared/raccourcis'
 import { useStore } from '@renderer/state/store'
-import { SUR_MAC } from '@renderer/systeme'
+import { SUR_MAC, PLATEFORME } from '@renderer/systeme'
 
 /**
  * Raccourcis globaux de l'application.
@@ -19,9 +20,7 @@ export function useShortcuts(): void {
      * rien retirer au terminal, comme le font Windows Terminal et VS Code.
      */
     const pourLApplication = (evenement: KeyboardEvent): boolean =>
-      SUR_MAC
-        ? evenement.metaKey && !evenement.ctrlKey
-        : evenement.ctrlKey && !evenement.metaKey && evenement.shiftKey
+      estCommande(evenement, PLATEFORME)
 
     const surTouche = (evenement: KeyboardEvent): void => {
       const etat = useStore.getState()
@@ -72,9 +71,12 @@ function basculerProjet(
   evenement: KeyboardEvent,
   etat: ReturnType<typeof useStore.getState>
 ): void {
-  const rang = Number.parseInt(evenement.key, 10)
-  if (!Number.isInteger(rang) || rang < 1 || rang > 9) return
-  const cible = etat.workspaces[rang - 1]
+  // Le chiffre se lit sur `code` et non sur `key` : sur un clavier français,
+  // la rangée des chiffres rapporte « & é " » tant que Majuscule n'est pas
+  // tenue, et le raccourci ne partait jamais. Le défaut valait aussi sur macOS.
+  const chiffre = /^Digit([1-9])$/.exec(evenement.code)
+  if (!chiffre) return
+  const cible = etat.workspaces[Number(chiffre[1]) - 1]
   if (!cible) return
   evenement.preventDefault()
   void etat.choisirWorkspace(cible.id)

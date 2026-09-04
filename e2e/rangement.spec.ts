@@ -42,6 +42,37 @@ async function ordre(page: Page, ...titres: string[]): Promise<string[]> {
   return hauteurs.sort((a, b) => a[1] - b[1]).map(([t]) => t)
 }
 
+/**
+ * Glisse une ligne sur une autre, par petits pas.
+ *
+ * `dragTo` déplace le curseur d'un seul bond. La liste suit le survol pour savoir
+ * où elle déposera, et un bond unique peut ne jamais la faire passer au-dessus de
+ * sa cible : le geste s'achevait alors sans que rien ne bouge. Le défaut ne se
+ * voyait qu'une fois sur trois, et seulement dans la suite entière, là où le
+ * premier glissement suit de près le chargement de la colonne.
+ *
+ * Le dernier point est envoyé deux fois. Le survol ne s'inscrit qu'au mouvement
+ * suivant son arrivée, et le relâchement partait sinon sur une cible encore vide.
+ */
+async function glisser(
+  page: Page,
+  source: Locator,
+  cible: Locator,
+  position?: { x: number; y: number }
+): Promise<void> {
+  const depart = await source.boundingBox()
+  const arrivee = await cible.boundingBox()
+  if (!depart || !arrivee) throw new Error("la source ou la cible n'est pas à l'écran")
+
+  await page.mouse.move(depart.x + depart.width / 2, depart.y + depart.height / 2)
+  await page.mouse.down()
+  const x = arrivee.x + (position?.x ?? arrivee.width / 2)
+  const y = arrivee.y + (position?.y ?? arrivee.height / 2)
+  await page.mouse.move(x, y, { steps: 12 })
+  await page.mouse.move(x, y)
+  await page.mouse.up()
+}
+
 test.describe('ranger les conversations à la main', () => {
   let ctx: Contexte
 
@@ -64,9 +95,7 @@ test.describe('ranger les conversations à la main', () => {
 
   test('une conversation se déplace où on la dépose', async () => {
     // Déposée dans la moitié haute d'Alpha : elle passe devant.
-    await ligne(ctx.page, 'Gamma').dragTo(ligne(ctx.page, 'Alpha'), {
-      targetPosition: { x: 60, y: 4 }
-    })
+    await glisser(ctx.page, ligne(ctx.page, 'Gamma'), ligne(ctx.page, 'Alpha'), { x: 60, y: 4 })
     await expect
       .poll(() => ordre(ctx.page, 'Alpha', 'Beta', 'Gamma'))
       .toEqual(['Gamma', 'Alpha', 'Beta'])
@@ -92,7 +121,7 @@ test.describe('ranger les conversations à la main', () => {
   })
 
   test('une conversation glissée sur le groupe le rejoint', async () => {
-    await ligne(ctx.page, 'Beta').dragTo(ctx.page.getByRole('button', { name: 'Attestation' }))
+    await glisser(ctx.page, ligne(ctx.page, 'Beta'), ctx.page.getByRole('button', { name: 'Attestation' }))
 
     const groupe = colonne(ctx.page).getByLabel('Conversations de Attestation')
     await expect(groupe.getByText('Beta')).toBeVisible()
@@ -101,9 +130,12 @@ test.describe('ranger les conversations à la main', () => {
   })
 
   test('le groupe se déplace avec son contenu', async () => {
-    await ctx.page
-      .getByRole('button', { name: 'Attestation' })
-      .dragTo(ligne(ctx.page, 'Alpha'), { targetPosition: { x: 60, y: 44 } })
+    await glisser(
+      ctx.page,
+      ctx.page.getByRole('button', { name: 'Attestation' }),
+      ligne(ctx.page, 'Alpha'),
+      { x: 60, y: 44 }
+    )
 
     await expect
       .poll(async () => (await hauteur(ctx.page, 'Alpha')) < (await hauteur(ctx.page, 'Beta')))

@@ -1,9 +1,5 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { attendreInvite, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, SOCKET_TEST, SUR_WINDOWS, taper, type Contexte } from './fixtures'
-
-const run = promisify(execFile)
+import { attendreInvite, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, simulerRedemarrage, SUR_WINDOWS, taper, type Contexte } from './fixtures'
 
 /**
  * Ce qui arrive quand la session disparaît sous un terminal ouvert : il ne
@@ -14,13 +10,19 @@ const run = promisify(execFile)
  * abattre par-dessous ; ConPTY n'en a pas, et le seul geste équivalent est de
  * faire sortir le shell lui-même. Dans les deux cas le pty se termine, ce qui est
  * exactement ce que ce test veut voir arriver à l'interface.
+ *
+ * Sur tmux le serveur est remis debout vide derrière, ce dont `simulerRedemarrage`
+ * se charge. Le laisser absent ferait démarrer le serveur par l'application au
+ * clic sur « Relancer », et celui-là hériterait de ses descripteurs de fichiers :
+ * `app.close()` ne rendrait plus la main, et c'est le worker Playwright qui
+ * tomberait en délai dépassé, loin du test qui a créé la session.
  */
 async function faireDisparaitreLaSession(ctx: Contexte): Promise<void> {
   if (SUR_WINDOWS) {
     await taper(ctx.page, 0, 'exit', '')
     return
   }
-  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
+  await simulerRedemarrage()
 }
 
 test.describe('terminal arrêté', () => {

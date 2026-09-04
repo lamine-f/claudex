@@ -14,8 +14,9 @@ npm install
 npm run dev
 ```
 
-`npm install` signe l'Electron de développement en ad hoc — sans quoi macOS lui refuse les
-notifications, en silence — et, sur macOS seulement, recompile `node-pty` pour l'ABI d'Electron.
+`npm install` signe l'Electron de développement en ad hoc, sans quoi macOS lui refuse les
+notifications en silence. La signature ne s'applique qu'à macOS et se passe ailleurs sans rien
+faire. Sur macOS seulement, `node-pty` est aussi recompilé pour l'ABI d'Electron.
 
 **Windows ne demande ni Python ni les outils de compilation de Visual Studio.** C'est le
 premier réflexe quand `node-gyp` échoue, et il est inutile ici : `node-pty` 1.1 est passé à
@@ -23,6 +24,9 @@ Node-API, dont l'ABI est stable d'une version de Node à l'autre et d'un Electro
 binaires livrés dans `prebuilds/win32-x64` se chargent tels quels. C'est
 `electron-builder install-app-deps` qui déclenchait une recompilation dont personne n'avait
 besoin, et `scripts/apres-installation.mjs` la saute là où elle n'apporte rien.
+
+`npm run dev` commence par `npm run icones`, qui fabrique un fichier ignoré par git. Sans lui
+un dépôt fraîchement cloné ne démarre pas, sur aucun système.
 
 Le premier `npm test` sur Windows affiche des `Error: AttachConsole failed` entre les résultats.
 Ils viennent d'un utilitaire que `node-pty` lance pour énumérer les processus d'une console au
@@ -111,13 +115,15 @@ Deux variables d'environnement servent à cet isolement, utiles aussi à la main
 ## Empaqueter
 
 ```sh
-npm run dist        # macOS  : dist/Claudex-<version>-arm64.dmg
+npm run dist        # macOS   : dist/Claudex-<version>-arm64.dmg
 npm run dist:win    # Windows : dist/Claudex Setup <version>.exe
+npm run dist:linux  # Linux   : dist/Claudex-<version>.AppImage et dist/claudex_<version>_amd64.deb
 ```
 
-L'installateur Windows est un NSIS posé pour l'utilisateur courant : il ne demande pas
-d'élévation, ce qui n'apporterait rien à une application rangée dans son propre dossier. Il
-n'est pas signé, et SmartScreen le dira au premier lancement.
+On empaquette pour le système sur lequel on se trouve : les trois commandes ne sont pas
+interchangeables. Le paquet Debian déclare tmux dans ses dépendances, l'AppImage ne peut rien
+déclarer du tout, et l'installateur Windows est un NSIS posé pour l'utilisateur courant. Aucun
+des trois n'est signé.
 
 Un crochet `afterPack` signe l'application en ad hoc et retire le dossier de sortie de l'index de Spotlight. Sans certificat de développeur, le
 paquet garderait l'identité de code du binaire Electron et sa signature ne vérifierait pas —
@@ -215,6 +221,18 @@ courant : `rm` répond `EBUSY`. Les nettoyages de test passent par `maxRetries`.
 installateur ne l'ajoute qu'à la session Windows suivante. Le pilote ConPTY l'ajoute au PATH des
 shells qu'il lance quand `claude.exe` s'y trouve, et l'écran d'état y cherche le binaire avant
 de conclure qu'il manque.
+
+**Le serveur tmux hérite des descripteurs d'Electron.** Lancé par l'application, il garde
+ouverts ses caches et ses tuyaux de sortie — et il lui survit, donc il les garde longtemps.
+Vu sur Debian : un serveur tmux tenait encore le port du débogueur deux heures après la
+fermeture de l'application, empêchant toute relance de `npm run dev:debug`. Les tests de bout
+en bout mettent pour cette raison le serveur debout eux-mêmes, avant de lancer l'application ;
+sans quoi `app.close()` de Playwright attend une fin de flux qui ne vient jamais.
+
+**Ce qui dépend du système passe par `@shared/plateforme` ou un test sur `process.platform`.**
+Le renderer est en bac à sable et n'a pas accès à `process` : le pont lui donne la plateforme
+de façon synchrone, parce que la barre du haut et les libellés des raccourcis en dépendent dès
+le premier rendu.
 
 ## Langue
 

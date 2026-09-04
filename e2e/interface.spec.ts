@@ -84,3 +84,28 @@ test.describe('recherche de projet', () => {
     await ctx.page.getByLabel('Rechercher un projet').fill('')
   })
 })
+
+/**
+ * La barre du haut réserve 88 px à gauche pour les feux du système, que macOS
+ * pose dessus. Ailleurs la fenêtre garde son cadre : le retrait n'y laisserait
+ * qu'un trou, le nom du projet flottant au milieu de rien.
+ */
+test.describe('barre du haut', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('ne réserve la place des feux que sur macOS', async () => {
+    const retrait = await ctx.page.evaluate(() => {
+      const barre = document.querySelector('header.zone-glissable')
+      return barre ? getComputedStyle(barre).paddingLeft : ''
+    })
+    expect(retrait).toBe(process.platform === 'darwin' ? '88px' : '8px')
+  })
+})

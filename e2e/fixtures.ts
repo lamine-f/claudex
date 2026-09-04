@@ -22,6 +22,46 @@ export const SUR_WINDOWS = process.platform === 'win32'
 export const NOUVEAU_TERMINAL = `Nouveau terminal (${raccourci(process.platform, 'T')})`
 export const FERMER_ONGLET = "Fermer l'onglet et sa session"
 
+/**
+ * Session qui ne sert qu'à tenir le serveur tmux debout.
+ *
+ * tmux arrête son serveur dès qu'il n'a plus une seule session, et le démarrage
+ * du serveur doit rester le fait des tests, jamais de l'application.
+ *
+ * Un serveur lancé depuis Electron hérite en effet de ses descripteurs de
+ * fichiers, caches de Chromium et tuyaux de sortie compris, et les garde ouverts
+ * bien après la fermeture de l'application, puisqu'il lui survit. Playwright
+ * attend la fin de ces flux pour rendre la main sur `app.close()` : il l'attend
+ * alors pour toujours. Le défaut vaut hors des tests et reste à corriger côté
+ * application ; le reproduire ici ne mettrait à l'épreuve que lui.
+ *
+ * Sans objet sur Windows, où aucun serveur ne se tient derrière les terminaux.
+ */
+const SENTINELLE = 'claudex_sentinelle'
+
+/** Démarre le serveur tmux des tests, s'il ne tourne pas déjà. */
+export async function assurerServeurTmux(): Promise<void> {
+  if (SUR_WINDOWS) return
+  await run('tmux', ['-L', SOCKET_TEST, 'has-session', '-t', `=${SENTINELLE}`]).catch(() =>
+    run('tmux', ['-L', SOCKET_TEST, 'new-session', '-d', '-s', SENTINELLE]).catch(() => undefined)
+  )
+}
+
+/**
+ * Rejoue la disparition du multiplexeur, comme après un redémarrage de machine.
+ *
+ * Le serveur est tué puis remis debout vide. Pour l'application les deux états
+ * se valent : aucune de ses sessions ne subsiste, et elle les recrée toutes.
+ *
+ * Sur Windows il n'y a rien à faire. Les sessions sont mortes avec l'application
+ * qu'on vient de fermer, et c'est justement ce que ce geste vaut de dire.
+ */
+export async function simulerRedemarrage(): Promise<void> {
+  if (SUR_WINDOWS) return
+  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
+  await assurerServeurTmux()
+}
+
 /** Ouvre un terminal depuis l'en-tête, comme le ferait l'utilisateur. */
 export async function nouveauTerminal(page: Page): Promise<void> {
   await page.getByTitle(NOUVEAU_TERMINAL).click()
@@ -57,17 +97,6 @@ export async function commandesDeDepart(donnees: string): Promise<string[]> {
   } catch {
     return []
   }
-}
-
-/**
- * Reproduit l'état d'après-redémarrage : plus une session ne subsiste.
- *
- * Sur Windows il n'y a rien à faire — les sessions sont mortes avec l'application
- * qu'on vient de fermer. C'est justement ce que ce geste vaut de dire.
- */
-export async function simulerRedemarrage(): Promise<void> {
-  if (SUR_WINDOWS) return
-  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
 }
 
 /**
@@ -140,6 +169,8 @@ export async function lancer(
       })
     )
   }
+
+  await assurerServeurTmux()
 
   const app = await electron.launch({
     args: [resolve('out/main/index.js'), `--user-data-dir=${donnees}`],

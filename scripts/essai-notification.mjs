@@ -29,7 +29,18 @@ try {
   process.exit(1)
 }
 
-const etat = join(homedir(), 'Library', 'Application Support', 'Claudex', 'state.json')
+/**
+ * Là où Electron range `userData`, selon le système. Le chemin est recopié
+ * plutôt que demandé : ce script tourne sous Node, hors de l'application.
+ */
+function dossierDonnees() {
+  if (process.platform === 'darwin') {
+    return join(homedir(), 'Library', 'Application Support', 'Claudex')
+  }
+  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), 'Claudex')
+}
+
+const etat = join(dossierDonnees(), 'state.json')
 let session = process.argv[2]
 let titre = ''
 if (!session) {

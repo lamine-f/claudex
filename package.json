@@ -7,7 +7,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "npm run icones && electron-vite dev",
     "build": "npm run icones && electron-vite build",
     "start": "electron-vite preview",
     "pretypecheck": "npm run icones",
@@ -17,7 +17,8 @@
     "postinstall": "node scripts/apres-installation.mjs",
     "dist": "npm run build && electron-builder --mac --arm64 && node scripts/essai-paquet.mjs",
     "dist:win": "npm run build && electron-builder --win --x64 && node scripts/essai-paquet.mjs",
-    "dev:debug": "electron-vite dev -- --remote-debugging-port=9222",
+    "dist:linux": "npm run build && electron-builder --linux --x64 && node scripts/essai-paquet.mjs",
+    "dev:debug": "npm run icones && electron-vite dev -- --remote-debugging-port=9222",
     "capture": "node scripts/cdp.mjs shot",
     "test:e2e": "npm run build && playwright test",
     "test:all": "npm run test && npm run test:e2e",

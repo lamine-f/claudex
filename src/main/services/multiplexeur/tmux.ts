@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { userInfo } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { IPty } from 'node-pty'
@@ -154,7 +155,7 @@ export async function ensureSession(
   // entrée, et avalerait silencieusement une frappe envoyée trop tôt.
   // `exec $SHELL -l` rend la main à un shell interactif quand la commande se
   // termine, pour que la session survive à la sortie de l'agent.
-  const shell = process.env.SHELL ?? '/bin/zsh'
+  const shell = shellDeConnexion()
   const amorce = commandeInitiale ? [`${commandeInitiale}; exec ${shell} -l`] : []
 
   try {
@@ -347,4 +348,23 @@ export const pilote: Multiplexeur = {
   info: paneInfo,
   commandeComplete: (info) => commandeComplete(info.tty),
   proteger
+}
+
+/**
+ * Le shell auquel rendre la main quand la commande d'amorçage se termine.
+ *
+ * `$SHELL` d'abord, parce que c'est le choix de l'utilisateur. La variable peut
+ * pourtant manquer : une application lancée depuis un menu du bureau hérite d'un
+ * environnement plus maigre que celle lancée depuis un terminal. Le compte
+ * système porte alors la même réponse. Le dernier recours est `/bin/sh` et non
+ * un shell supposé présent. Un `exec` sur un binaire absent tuerait la session,
+ * et l'onglet se refermerait à l'instant de son ouverture.
+ */
+function shellDeConnexion(): string {
+  if (process.env.SHELL) return process.env.SHELL
+  try {
+    return userInfo().shell || '/bin/sh'
+  } catch {
+    return '/bin/sh'
+  }
 }
