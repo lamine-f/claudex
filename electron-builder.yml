@@ -28,10 +28,15 @@ mac:
   # une application locale.
   identity: null
 
-# Mais une identité de code, il en faut une : sans elle le paquet garde celle du
+# Le dossier de sortie est retiré de l'index de Spotlight avant d'être rempli :
+# sans cela, une recherche remonte l'application installée et sa copie de
+# construction, et l'on lance l'une pour l'autre.
+beforePack: build/avant-paquet.mjs
+
+# Une identité de code, il en faut une : sans elle le paquet garde celle du
 # binaire Electron, sa signature ne vérifie pas, et macOS lui refuse les
 # notifications en silence. Le crochet la pose en ad hoc, avant le DMG.
-afterPack: build/signer-adhoc.mjs
+afterPack: build/apres-paquet.mjs
 
 dmg:
   title: Claudex

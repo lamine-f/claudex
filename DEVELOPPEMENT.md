@@ -63,7 +63,7 @@ Deux variables d'environnement servent à cet isolement, utiles aussi à la main
 npm run dist        # dist/Claudex-<version>-arm64.dmg
 ```
 
-Un crochet `afterPack` signe l'application en ad hoc. Sans certificat de développeur, le
+Un crochet `afterPack` signe l'application en ad hoc et retire le dossier de sortie de l'index de Spotlight. Sans certificat de développeur, le
 paquet garderait l'identité de code du binaire Electron et sa signature ne vérifierait pas —
 et macOS refuse les notifications à une application dans cet état, sans rien dire. Une
 signature ad hoc ne prouve aucune provenance : elle rend seulement le paquet cohérent avec
