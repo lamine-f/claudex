@@ -8,86 +8,112 @@ Y compris après un redémarrage de la machine.
 
 ![Claudex](docs/claudex.png)
 
-## D'où ça vient
+## Installer
+
+**1. tmux.** Les terminaux de Claudex sont des sessions tmux : c'est ce qui leur permet de
+survivre à la fermeture de l'application. Si vous avez [Homebrew](https://brew.sh) :
+
+```sh
+brew install tmux
+```
+
+Sinon, voir le [dépôt de tmux](https://github.com/tmux/tmux/wiki/Installing).
+
+**2. Claude Code.** L'application ne remplace pas le CLI, elle l'orchestre — il faut donc
+l'avoir installé et connecté. Suivre la
+[documentation officielle](https://docs.claude.com/en/docs/claude-code/setup), puis lancer
+`claude` une fois dans un terminal pour s'authentifier.
+
+**3. Claudex.** Télécharger le DMG dans la
+[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest), l'ouvrir,
+glisser Claudex dans Applications.
+
+L'application n'est pas notarisée par Apple : au premier lancement, macOS refusera de
+l'ouvrir d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
+
+> macOS sur Apple Silicon uniquement pour l'instant.
+
+## Premiers pas
+
+**Ajouter un projet.** Le `+` en haut de la colonne de gauche ouvre un sélecteur de dossier.
+Un projet est un dossier de la machine, rien de plus : celui d'où vous lancez `claude`.
+
+**Reprendre une conversation.** La colonne du milieu liste les conversations tenues dans ce
+dossier exact — comme `/resume`, sans remonter celles des sous-dossiers. Un clic en ouvre une
+dans un nouvel onglet, avec tout son contexte. Rien n'est jamais remplacé ; si elle est déjà
+ouverte, on bascule sur son onglet.
+
+**Bifurquer.** Sur une conversation, l'icône de branche repart du même contexte sous un
+nouvel identifiant : deux pistes explorées en parallèle, l'originale intacte. Le nom que vous
+donnez est transmis à Claude Code, qui l'affichera aussi dans son propre sélecteur.
+
+**Ranger.** Les conversations se déplacent à la souris, se réunissent en groupes nommés, et
+les groupes se déplacent aussi. Le clic droit fait la même chose sans viser : réunir, sortir
+du groupe, renommer, mettre en favori, étiqueter, écarter. Le classement se garde.
+
+**Être prévenu.** Quand un agent demande une permission ou pose une question, il s'arrête et
+attend. Claudex peut le signaler : une main levée sur la conversation, sur son onglet et sur
+son projet, plus une notification du système quand la fenêtre n'a pas le focus. À activer une
+fois depuis l'écran d'état, la pastille en haut à droite → *Installer les notifications*.
+Voir [ce que cela ajoute](#les-notifications-en-detail) plus bas.
+
+**Raccourcis.**
+
+| | |
+|---|---|
+| `⌘T` | nouveau terminal |
+| `⌘W` | fermer l'onglet, et sa session tmux avec lui |
+| `⌘E` | basculer entre les conversations et les fichiers |
+| `⌘1`…`⌘9` | passer d'un projet à l'autre |
+
+## Ce que ça change
 
 Les terminaux modernes savent lister des sessions, mais ils ne connaissent pas la notion de
-projet, et rien n'y survit vraiment à un reboot. Claude Code, lui, sait reprendre une
+projet, et rien n'y survit vraiment à un redémarrage. Claude Code, lui, sait reprendre une
 conversation — mais il ne sait pas laquelle appartient à quel onglet : son sélecteur oblige à
-choisir à la main, à chaque terminal, à chaque redémarrage.
+choisir à la main, à chaque terminal, à chaque fois.
 
 Claudex mémorise l'association *onglet → conversation* et rejoue `claude -r <uuid>` tout seul.
 C'est là qu'est la valeur, pas dans une liste de plus.
 
-## Ce qu'il fait
-
-- **Projets** ajoutés à la main, chacun avec sa couleur, reprise du rail jusqu'aux onglets.
-- **Conversations du dossier exact**, comme `/resume` : un dossier parent ne remonte pas
-  celles de ses sous-projets. Titre, branche git, date, étiquette, favori.
-- **Reprise en un clic** dans un nouvel onglet, **bifurcation** (`--fork-session`) pour
-  explorer deux pistes depuis un même contexte sans toucher à l'originale.
-- **Rangement à la main** : on déplace les conversations, on les réunit en groupes nommés,
-  on déplace les groupes. Le classement se garde d'une session à l'autre.
-- **Notifications** quand un agent demande une permission ou pose une question — une main
-  levée dans la colonne, sur l'onglet, sur le projet, et une notification du système quand
-  la fenêtre n'a pas le focus.
-- **Terminaux persistants** adossés à tmux : fermer l'application ne tue rien.
-- **Explorateur de fichiers** avec aperçu en lecture seule.
-
 ## Comment ça tient debout
 
-**tmux, sur un socket dédié.** Toutes les commandes passent par `tmux -L claudex` : les
-sessions personnelles ne sont ni touchées ni polluées. Un onglet = une session tmux = un
-`xterm`. Fermer l'application détache les clients ; ce qui tournait tourne encore.
+**tmux, sur un socket dédié.** Toutes les commandes passent par `tmux -L claudex` : vos
+sessions personnelles ne sont ni touchées ni polluées. Un onglet = une session tmux. Fermer
+l'application détache les clients ; ce qui tournait tourne encore, et se retrouve au retour.
 
 **Le dossier des transcrits.** Claude Code range les conversations d'un dossier dans
 `~/.claude/projects/<chemin encodé>/`, où l'encodage remplace tout caractère non
-alphanumérique par un tiret. La transformation est à sens unique : Claudex ne l'emploie que
-dans le sens projet → dossier, jamais l'inverse.
+alphanumérique par un tiret. Claudex ne l'emploie que dans ce sens — projet vers dossier —
+jamais l'inverse, la transformation n'étant pas réversible.
 
 **Les en-têtes, lus en flux.** Un transcrit peut peser plus de cent mégaoctets. La lecture
-s'arrête dès qu'elle tient le titre, la branche et la date — plafond de 200 lignes ou 256 Ko.
+s'arrête dès qu'elle tient le titre, la branche et la date : plafond de 200 lignes ou 256 Ko.
 
-**Les hooks.** Trois hooks facultatifs, posés depuis l'écran d'état de l'application :
-`Notification` allume le voyant, `UserPromptSubmit` et `Stop` l'éteignent. Ils appellent un
-script qui n'écrit rien quand Claudex ne tourne pas, et l'application ne réagit qu'aux
-conversations dont elle a l'onglet.
+**Rien n'est effacé.** Écarter une conversation la déplace dans une corbeille propre à
+Claudex ; le transcrit reste récupérable. L'écran d'état propose aussi de porter la rétention
+de Claude Code à 365 jours : par défaut, il efface les conversations au bout de 30, et elles
+ne sont alors plus reprenables.
 
-## Prérequis
+<a id="les-notifications-en-detail"></a>
 
-macOS (Apple Silicon), [tmux](https://github.com/tmux/tmux), le CLI
-[Claude Code](https://claude.com/claude-code), et Node 22 ou plus.
+## Les notifications, en détail
 
-## Lancer
+Les activer ajoute trois hooks à `~/.claude/settings.json` — `Notification` allume le voyant,
+`UserPromptSubmit` et `Stop` l'éteignent — qui appellent un script déposé dans
+`~/.claude/claudex/`. Une sauvegarde `.bak` est faite avant, et vos propres hooks ne sont pas
+touchés : ils sont complétés, jamais remplacés.
 
-```sh
-npm install
-npm run dev
-```
+Le script n'écrit rien quand Claudex ne tourne pas, et l'application ne réagit qu'aux
+conversations dont elle a l'onglet : le hook est posé pour toute la machine, mais les
+terminaux qu'elle ne connaît pas ne déclenchent rien.
 
-Empaqueter une application installable :
+Le même écran propose de les retirer, ce qui efface le script et rend la configuration à son
+état d'origine.
 
-```sh
-npm run dist        # dist/Claudex-<version>-arm64.dmg
-```
+## Développer
 
-## Tests
-
-```sh
-npm test            # unitaires et intégration (vitest)
-npm run test:e2e    # bout en bout, sur l'application réelle (playwright)
-```
-
-Les tests de bout en bout lancent Claudex sur un profil jetable et un serveur tmux à part
-(`claudex-test`) : ils ne touchent ni à l'état ni aux sessions de l'application ouverte à côté.
-
-## Signature sur macOS
-
-Sans signature valide, macOS refuse les notifications à une application — sans rien dire.
-Le paquet est donc signé en ad hoc à l'empaquetage, et l'Electron de développement après
-chaque installation de dépendances. Une signature ad hoc ne prouve aucune provenance : elle
-donne seulement au paquet une identité de code cohérente, ce que le système exige avant de
-laisser notifier. Au premier lancement, macOS demandera confirmation, comme pour toute
-application locale non notarisée.
+Le code, la structure, les tests et l'empaquetage : voir [DEVELOPPEMENT.md](DEVELOPPEMENT.md).
 
 ## Licence
 
