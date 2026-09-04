@@ -10,7 +10,7 @@
  * Le rendu passe par Chromium, déjà là pour les tests, plutôt que par une
  * bibliothèque d'images de plus.
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { chromium } from '@playwright/test'
 
@@ -78,5 +78,27 @@ for (const [chemin, taille] of [
   await writeFile(resolve(chemin), Buffer.from(url.split(',')[1], 'base64'))
   console.log('  écrit :', chemin, `${taille}×${taille}`)
 }
+
+/**
+ * Le jeu d'icônes des paquets Linux.
+ *
+ * Un seul PNG ne suffit pas, et le fournir en 1024 revenait à n'en fournir
+ * aucun : la spécification freedesktop veut qu'un thème d'icônes ne soit
+ * parcouru que dans les tailles déclarées par son `index.theme`, et celui du
+ * thème `hicolor` s'arrête à 512 sur Debian 13. Le dossier `1024x1024` existait
+ * bien sur le disque, mais GTK ne l'ouvrait jamais — l'icône était introuvable
+ * à toutes les tailles demandées, et le bureau retombait sur la générique.
+ *
+ * electron-builder lit la taille dans le nom du fichier, d'où `512x512.png`.
+ */
+const TAILLES_LINUX = [16, 24, 32, 48, 64, 128, 256, 512]
+
+await mkdir(resolve('build/icons'), { recursive: true })
+for (const taille of TAILLES_LINUX) {
+  const url = await rendre(taille)
+  const chemin = `build/icons/${taille}x${taille}.png`
+  await writeFile(resolve(chemin), Buffer.from(url.split(',')[1], 'base64'))
+}
+console.log('  écrit : build/icons/', `${TAILLES_LINUX.length} tailles de ${TAILLES_LINUX[0]} à ${TAILLES_LINUX.at(-1)}`)
 
 await navigateur.close()
