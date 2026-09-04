@@ -68,8 +68,11 @@ export function FilePreview(): React.JSX.Element | null {
       >
         <div className="flex shrink-0 items-center justify-between border-b border-bordure px-4 py-2.5">
           <div className="min-w-0">
+            {/* Les deux séparateurs, parce que le chemin vient du système : sur
+                Windows il est en antislash, et découper sur la seule barre
+                oblique affichait le chemin entier en guise de nom de fichier. */}
             <p className="truncate font-mono text-[12.5px] text-texte">
-              {chemin.split('/').pop()}
+              {chemin.split(/[\\/]/).pop()}
             </p>
             <p className="truncate text-[11px] text-texte-faible">{chemin}</p>
           </div>
