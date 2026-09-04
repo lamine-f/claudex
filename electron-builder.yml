@@ -28,6 +28,24 @@ mac:
   # une application locale.
   identity: null
 
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+  # Pas de certificat de signature : Windows montrera un avertissement SmartScreen
+  # au premier lancement, comme macOS demande confirmation. Rien à cacher, et
+  # signer avec un certificat absent ferait échouer la construction.
+
+nsis:
+  # Installation pour l'utilisateur courant : demander l'élévation pour un IDE
+  # posé dans son propre dossier n'apporte rien et bloque qui n'est pas
+  # administrateur de sa machine.
+  perMachine: false
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Claudex
+
 # Le dossier de sortie est retiré de l'index de Spotlight avant d'être rempli :
 # sans cela, une recherche remonte l'application installée et sa copie de
 # construction, et l'on lance l'une pour l'autre.
