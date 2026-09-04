@@ -134,13 +134,19 @@ export function FilAriane(): React.JSX.Element {
       )}
 
       {/* Centré sur la fenêtre, non sur la place qui reste : le nom doit tomber
-          au milieu quel que soit ce qui l'entoure. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] text-texte-tenu"
-      >
-        Claudex
-      </span>
+          au milieu quel que soit ce qui l'entoure.
+
+          Sur macOS il remplit une barre de titre effacée. Ailleurs, la barre du
+          système est là et porte déjà le nom de la fenêtre : le répéter juste
+          en dessous ne dit rien de plus. */}
+      {SUR_MAC && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] text-texte-tenu"
+        >
+          Claudex
+        </span>
+      )}
 
       <div className="min-w-4 flex-1" />
 
