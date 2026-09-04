@@ -43,19 +43,52 @@ dossier exact — comme `/resume`, sans remonter celles des sous-dossiers. Un cl
 dans un nouvel onglet, avec tout son contexte. Rien n'est jamais remplacé ; si elle est déjà
 ouverte, on bascule sur son onglet.
 
+Chaque ligne dit où elle en est — celle qu'on a sous les yeux, celles qui patientent dans un
+autre onglet — avec sa branche git, sa date, l'étiquette qu'on lui a posée et l'étoile des
+favoris, qui passent en tête.
+
+![Les conversations et leurs états](docs/conversations.png)
+
 **Bifurquer.** Sur une conversation, l'icône de branche repart du même contexte sous un
 nouvel identifiant : deux pistes explorées en parallèle, l'originale intacte. Le nom que vous
 donnez est transmis à Claude Code, qui l'affichera aussi dans son propre sélecteur.
 
+![Bifurquer une conversation](docs/bifurcation.png)
+
 **Ranger.** Les conversations se déplacent à la souris, se réunissent en groupes nommés, et
-les groupes se déplacent aussi. Le clic droit fait la même chose sans viser : réunir, sortir
-du groupe, renommer, mettre en favori, étiqueter, écarter. Le classement se garde.
+les groupes se déplacent aussi, leur contenu avec eux. Tant qu'on n'a rien touché, la liste
+garde son ordre naturel ; dès qu'une conversation est rangée, elle garde sa place, et celles
+qui apparaissent ensuite passent devant.
+
+![Un groupe de conversations](docs/groupes.png)
+
+Le clic droit fait le même travail sans viser — et c'est le seul chemin au clavier.
+
+![Le menu d'une conversation](docs/menu.png)
 
 **Être prévenu.** Quand un agent demande une permission ou pose une question, il s'arrête et
 attend. Claudex peut le signaler : une main levée sur la conversation, sur son onglet et sur
 son projet, plus une notification du système quand la fenêtre n'a pas le focus. À activer une
-fois depuis l'écran d'état, la pastille en haut à droite → *Installer les notifications*.
+fois depuis l'écran d'état → *Installer les notifications*.
 Voir [ce que cela ajoute](#les-notifications-en-detail) plus bas.
+
+![Un agent qui attend une réponse](docs/attente.png)
+
+**Regarder les fichiers.** `⌘E` bascule la colonne sur l'arborescence du projet, avec les
+icônes du type de fichier et les dossiers ignorés par git mis en retrait.
+
+![L'arborescence du projet](docs/fichiers.png)
+
+Un clic ouvre un aperçu en lecture seule, coloré selon le langage. Claudex ne prétend pas
+remplacer votre éditeur : il donne à lire, pas à écrire.
+
+![L'aperçu d'un fichier](docs/apercu.png)
+
+**Vérifier l'installation.** La pastille en haut à droite ouvre l'état de l'environnement :
+tmux, Claude Code, la rétention des conversations et les notifications. Ce qui peut être
+corrigé d'un clic l'est depuis là.
+
+![L'état de l'environnement](docs/etat.png)
 
 **Raccourcis.**
 
