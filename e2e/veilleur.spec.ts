@@ -1,14 +1,14 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer } from './fixtures'
+import { boutonNouveauTerminal, fermer, lancer } from './fixtures'
 
 test('une conversation lancée à la main est rattachée à son onglet', async () => {
   const ctx = await lancer()
   try {
     // Le projet est ouvert : Claudex guette dès lors les conversations qui y naissent.
     await expect(ctx.page.getByText('aucune session ici')).toBeVisible()
-    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
+    await boutonNouveauTerminal(ctx.page).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // Un `claude` tapé à la main écrirait exactement ce transcript.

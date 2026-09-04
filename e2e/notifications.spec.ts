@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
-import { fermer, lancer, type Contexte } from './fixtures'
+import { boutonNouveauTerminal, fermer, lancer, type Contexte } from './fixtures'
 
 const SESSION = 'aaaaaaaa-1111-1111-1111-111111111111'
 
@@ -49,7 +49,7 @@ test.describe('un agent qui réclame son utilisateur', () => {
 
     // Puis on la laisse derrière : la question n'est utile que pour ce qu'on
     // n'a pas sous les yeux.
-    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
+    await boutonNouveauTerminal(ctx.page).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
   })
 

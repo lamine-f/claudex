@@ -53,7 +53,10 @@ describe('intégration tmux', () => {
     const info = await paneInfo(session)
     // macOS expose /var/folders via le lien /private : on compare les suffixes.
     expect(info?.cwd.endsWith(dossier.replace('/private', ''))).toBe(true)
-    expect(info?.tty).toMatch(/tty/)
+    // Les deux systèmes ne nomment pas le terminal pareil — `/dev/ttys002` sur
+    // macOS, `/dev/pts/2` sur Linux. Ce qui compte est ce qu'en fait
+    // `commandeComplete` : retirer `/dev/` et passer le reste à `ps -t`.
+    expect(info?.tty).toMatch(/^\/dev\/.+/)
   })
 
   it("capture le contenu du pane, y compris ce qu'on y écrit", async () => {

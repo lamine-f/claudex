@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { attendreInvite, fermer, lancer, lireTerminaux, taper, type Contexte } from './fixtures'
+import { attendreInvite, boutonNouveauTerminal, fermer, lancer, lireTerminaux, taper, type Contexte } from './fixtures'
 
 test.describe('terminaux tmux', () => {
   let ctx: Contexte
@@ -13,7 +13,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('le premier terminal ouvert affiche son invite', async () => {
-    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
+    await boutonNouveauTerminal(ctx.page).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // Régression : le premier onglet restait muet, car l'attachement du client —
@@ -26,7 +26,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('un second onglet vit sans éteindre le premier', async () => {
-    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
+    await boutonNouveauTerminal(ctx.page).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
 
     await expect

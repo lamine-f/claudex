@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, lireTerminaux, taper, SOCKET_TEST } from './fixtures'
+import { boutonNouveauTerminal, fermer, lancer, lireTerminaux, taper, SOCKET_TEST } from './fixtures'
 
 const run = promisify(execFile)
 
@@ -24,7 +24,7 @@ test('un terminal survit à la fermeture de l’application', async () => {
   const initiales = await sessionsClaudex()
   const premier = await lancer()
 
-  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
+  await boutonNouveauTerminal(premier.page).click()
   await expect(premier.page.locator('.xterm')).toHaveCount(1)
 
   await taper(premier.page, 0, 'echo MARQUE_PERSISTANCE', 'MARQUE_PERSISTANCE')

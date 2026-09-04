@@ -1,10 +1,47 @@
+import { execFile } from 'node:child_process'
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
+
+const run = promisify(execFile)
 
 /** Serveur tmux réservé aux tests, distinct de celui de l'application. */
 export const SOCKET_TEST = 'claudex-test'
+
+/**
+ * Session qui ne sert qu'à tenir le serveur tmux debout.
+ *
+ * tmux arrête son serveur dès qu'il n'a plus une seule session, et le démarrage
+ * du serveur doit rester le fait des tests, jamais de l'application.
+ *
+ * Un serveur lancé depuis Electron hérite en effet de ses descripteurs de
+ * fichiers — caches de Chromium, tuyaux de sortie — et les garde ouverts bien
+ * après la fermeture de l'application, puisqu'il lui survit. Playwright attend
+ * la fin de ces flux pour rendre la main sur `app.close()` : il l'attend alors
+ * pour toujours. Le défaut vaut hors des tests et reste à corriger côté
+ * application ; le reproduire ici ne mettrait à l'épreuve que lui.
+ */
+const SENTINELLE = 'claudex_sentinelle'
+
+/** Démarre le serveur tmux des tests, s'il ne tourne pas déjà. */
+export async function assurerServeurTmux(): Promise<void> {
+  await run('tmux', ['-L', SOCKET_TEST, 'has-session', '-t', `=${SENTINELLE}`]).catch(() =>
+    run('tmux', ['-L', SOCKET_TEST, 'new-session', '-d', '-s', SENTINELLE]).catch(() => undefined)
+  )
+}
+
+/**
+ * Rejoue la disparition du serveur tmux, comme après un redémarrage de machine.
+ *
+ * Le serveur est tué puis remis debout vide. Pour l'application les deux états
+ * se valent : aucune de ses sessions ne subsiste, et elle les recrée toutes.
+ */
+export async function simulerRedemarrage(): Promise<void> {
+  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
+  await assurerServeurTmux()
+}
 
 export interface Contexte {
   app: ElectronApplication
@@ -24,6 +61,7 @@ export interface Contexte {
 export async function lancer(
   options: { donnees?: string; projet?: string; env?: Record<string, string> } = {}
 ): Promise<Contexte> {
+  await assurerServeurTmux()
   const donnees = options.donnees ?? (await mkdtemp(join(tmpdir(), 'claudex-e2e-')))
   const projet = options.projet ?? (await mkdtemp(join(tmpdir(), 'claudex-projet-')))
 
@@ -79,6 +117,18 @@ export async function fermer(contexte: Contexte, options = { nettoyer: true }): 
       { recursive: true, force: true }
     )
   }
+}
+
+/**
+ * Le bouton d'ouverture d'un terminal.
+ *
+ * Son infobulle porte le raccourci, qui n'est pas le même partout — `⌘T` sur
+ * macOS, `Ctrl+Maj+T` ailleurs. Le titre en entier était écrit dans treize
+ * fichiers, et les treize tombaient dès qu'on quittait macOS. Le préfixe suffit
+ * à désigner le bouton, et ne dit rien du clavier.
+ */
+export function boutonNouveauTerminal(page: Page): ReturnType<Page['getByTitle']> {
+  return page.getByTitle(/^Nouveau terminal /)
 }
 
 /**

@@ -1,9 +1,5 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { attendreInvite, fermer, lancer, lireTerminaux, SOCKET_TEST, type Contexte } from './fixtures'
-
-const run = promisify(execFile)
+import { attendreInvite, boutonNouveauTerminal, fermer, lancer, lireTerminaux, simulerRedemarrage, type Contexte } from './fixtures'
 
 /**
  * Ce qui arrive quand le serveur tmux disparaît sous un terminal ouvert : il ne
@@ -22,10 +18,10 @@ test.describe('terminal arrêté', () => {
   })
 
   test("l'arrêt est signalé au lieu de laisser un écran mort", async () => {
-    await ctx.page.getByTitle('Nouveau terminal (⌘T)').click()
+    await boutonNouveauTerminal(ctx.page).click()
     await attendreInvite(ctx.page, 0)
 
-    await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
+    await simulerRedemarrage()
 
     await expect(ctx.page.getByText("Ce terminal s'est arrêté.")).toBeVisible({ timeout: 15_000 })
     await expect(ctx.page.getByRole('button', { name: /Relancer/ })).toBeVisible()

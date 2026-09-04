@@ -1,18 +1,9 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { attendreInvite, fermer, lancer, lireTerminaux, taper, SOCKET_TEST } from './fixtures'
-
-const run = promisify(execFile)
-
-/** Reproduit l'état d'après-redémarrage : le serveur tmux n'existe plus. */
-async function simulerRedemarrage(): Promise<void> {
-  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
-}
+import { attendreInvite, boutonNouveauTerminal, fermer, lancer, lireTerminaux, simulerRedemarrage, taper } from './fixtures'
 
 test('un terminal se relève après un redémarrage de la machine', async () => {
   const premier = await lancer()
-  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
+  await boutonNouveauTerminal(premier.page).click()
   await attendreInvite(premier.page, 0)
   await taper(premier.page, 0, 'echo TRACE_AVANT_REDEMARRAGE', 'TRACE_AVANT_REDEMARRAGE')
 
@@ -42,7 +33,7 @@ test('un terminal se relève après un redémarrage de la machine', async () => 
 
 test("l'écran restitué n'est pas rejoué dans le shell", async () => {
   const premier = await lancer()
-  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
+  await boutonNouveauTerminal(premier.page).click()
   await attendreInvite(premier.page, 0)
   await taper(premier.page, 0, 'echo MARQUE_INERTE', 'MARQUE_INERTE')
   await fermer(premier, { nettoyer: false })
@@ -68,7 +59,7 @@ test("l'écran restitué n'est pas rejoué dans le shell", async () => {
 
 test('une commande interrompue par le redémarrage est proposée à la relance', async () => {
   const premier = await lancer()
-  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
+  await boutonNouveauTerminal(premier.page).click()
   await attendreInvite(premier.page, 0)
 
   // Une commande longue, du genre de celles qu'un redémarrage interrompt : un

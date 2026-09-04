@@ -83,6 +83,11 @@ describe('le script appelé par Claude Code', () => {
 
   const appeler = async (evenement: string): Promise<void> => {
     const enfant = run('sh', [hooks.cheminScript(), evenement])
+    // Quand Claudex ne tourne pas, le script sort sans lire son entrée : c'est
+    // tout son intérêt. L'écriture tombe alors dans un tuyau déjà fermé, et
+    // l'EPIPE remonte hors de la promesse — il faisait échouer le fichier
+    // entier, au hasard de qui du script ou du test allait le plus vite.
+    enfant.child.stdin?.on('error', () => undefined)
     enfant.child.stdin?.end(charge)
     await enfant
   }
