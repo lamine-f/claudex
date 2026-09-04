@@ -90,8 +90,8 @@ Les raccourcis prennent `Ctrl+Maj` au lieu de `⌘` : `Ctrl` seul appartient au 
 sudo apt install tmux
 ```
 
-Deux formats, au choix, dans les
-[paquets Debian](https://github.com/lamine-f/claudex/releases/tag/v0.2.0-debian.1). Le paquet
+Deux formats, au choix, dans la
+[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest). Le paquet
 Debian déclare tmux dans ses dépendances et l'installe avec l'application ; l'AppImage ne dépend
 de rien et ne s'installe pas.
 
@@ -103,9 +103,7 @@ chmod +x Claudex-0.2.0.AppImage
 ./Claudex-0.2.0.AppImage
 ```
 
-Ces paquets sont une avant-première : ils sont construits depuis la branche du portage, que
-`main` n'a pas encore reprise. Ils se refabriquent depuis les sources avec `npm run dist:linux`,
-et sortent dans `dist/`.
+Les deux se refabriquent depuis les sources avec `npm run dist:linux`, et sortent dans `dist/`.
 
 Vérifié sur Debian 13 (trixie), GNOME sous Wayland, x86-64. Rien n'y est propre à Debian : une
 autre distribution récente devrait convenir, elle n'a simplement pas été essayée.
