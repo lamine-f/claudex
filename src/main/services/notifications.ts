@@ -182,6 +182,17 @@ export async function demarrer(): Promise<void> {
   // d'être supposé, faute de quoi les premiers événements passeraient à l'as.
   await mkdir(dossier, { recursive: true }).catch(() => undefined)
 
+  // Une demande dont l'onglet a disparu ne peut plus recevoir de réponse : son
+  // agent est parti avec sa session tmux. La garder allumerait un voyant que
+  // rien n'éteindrait jamais.
+  store.update((etat) => {
+    const sollicitations = etat.sollicitations
+    if (!sollicitations) return
+    for (const uuid of Object.keys(sollicitations)) {
+      if (!etat.tabs.some((t) => t.claudeSessionId === uuid)) delete sollicitations[uuid]
+    }
+  })
+
   const restes = await readdir(dossier).catch(() => [])
   await Promise.all(
     restes.map((f) => rm(join(dossier, f), { force: true }).catch(() => undefined))

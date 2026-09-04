@@ -141,6 +141,23 @@ type Poser = (partiel: Partial<EtatUi>) => void
 type Lire = () => EtatUi
 
 /**
+ * Éteint le voyant de la conversation qu'un onglet porte.
+ *
+ * Appelée depuis tous les chemins qui amènent un onglet à l'écran sur un geste
+ * de l'utilisateur : le clic sur l'onglet, mais aussi le clic sur la
+ * conversation dans la colonne, qui ouvre l'onglet sans passer par le premier.
+ * Le voyant restait alors allumé devant la conversation qu'on était en train
+ * de lire.
+ *
+ * Le démarrage n'en fait pas partie : une demande arrivée pendant l'absence
+ * doit être encore là au retour.
+ */
+function apaiserOnglet(get: Lire, tabId?: string): void {
+  const uuid = get().tabs.find((t) => t.id === tabId)?.claudeSessionId
+  if (uuid && get().sollicitations[uuid]) void window.claudex.claude.apaiser(uuid)
+}
+
+/**
  * Applique un rangement : à l'écran d'abord, sur le disque ensuite.
  *
  * Un déplacement doit se voir à l'instant où on lâche la souris ; attendre
@@ -309,12 +326,14 @@ export const useStore = create<EtatUi>((set, get) => ({
       const existant = get().tabs.find((t) => t.claudeSessionId === uuid)
       if (existant) {
         set({ activeTabId: existant.id })
+        apaiserOnglet(get, existant.id)
         return
       }
     }
     if (get().activeWorkspaceId !== workspaceId) await get().choisirWorkspace(workspaceId)
     const tab = await window.claudex.claude.ouvrir(workspaceId, intention, uuid, titre)
     set({ tabs: [...get().tabs, tab], activeTabId: tab.id })
+    apaiserOnglet(get, tab.id)
   },
 
   deroulerTout: (workspaceId) =>
@@ -489,15 +508,16 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   choisirOnglet: (id) => {
     set({ activeTabId: id })
-    // Revenir sur un onglet, c'est répondre à ce qu'il demandait : le voyant
-    // s'éteint sans qu'on ait à le dire.
-    const uuid = get().tabs.find((t) => t.id === id)?.claudeSessionId
-    if (uuid && get().sollicitations[uuid]) void window.claudex.claude.apaiser(uuid)
+    apaiserOnglet(get, id)
   },
 
   poserSollicitations: (sollicitations) => set({ sollicitations }),
 
   fermerOnglet: async (id) => {
+    // Fermer l'onglet emporte sa session tmux, et l'agent avec elle : sa
+    // demande n'a plus personne pour y répondre.
+    const uuid = get().tabs.find((t) => t.id === id)?.claudeSessionId
+    if (uuid && get().sollicitations[uuid]) void window.claudex.claude.apaiser(uuid)
     await window.claudex.term.close(id)
     const restants = get().tabs.filter((t) => t.id !== id)
     set({

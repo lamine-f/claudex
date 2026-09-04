@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
@@ -100,6 +100,24 @@ test.describe('un agent qui réclame son utilisateur', () => {
     await expect(conversation().getByText('vous attend')).toHaveCount(0)
   })
 
+  test('ouvrir la conversation depuis la colonne éteint le voyant', async () => {
+    // Le cas rencontré : on clique la conversation dans la colonne, l'onglet
+    // s'ouvre, et le voyant restait allumé devant ce qu'on était en train de
+    // lire. Il ne s'éteignait qu'en cliquant l'onglet en haut.
+    await ctx.page.getByRole('button', { name: 'Terminal', exact: true }).last().click()
+    await deposer(hooks, 'Notification', { session_id: SESSION, message: 'needs permission' })
+    await expect(conversation().getByText('vous attend')).toBeVisible()
+
+    await ctx.page
+      .getByLabel('Sessions et fichiers')
+      .getByText('Migration DTO')
+      .click()
+    await expect(conversation().getByText('à l’écran')).toBeVisible()
+
+    await ctx.page.getByRole('button', { name: 'Terminal', exact: true }).last().click()
+    await expect(conversation().getByText('vous attend')).toHaveCount(0)
+  })
+
   test('une conversation inconnue de Claudex est ignorée', async () => {
     await deposer(hooks, 'Notification', { session_id: 'inconnue-9999', message: 'coucou' })
     // Rien ne doit apparaître : le hook est posé pour toute la machine, et
@@ -120,5 +138,27 @@ test.describe('un agent qui réclame son utilisateur', () => {
     // L'agent est toujours bloqué dans sa session tmux : le voyant doit se
     // retrouver allumé, sinon la demande se perd avec la fenêtre.
     await expect(conversation().getByText('vous attend')).toBeVisible()
+  })
+
+  test("une demande dont l'onglet a disparu est oubliée", async () => {
+    // Le cas rencontré : l'onglet n'était plus là, mais le voyant restait
+    // allumé au démarrage. Sans onglet, l'agent est parti avec sa session
+    // tmux : plus personne ne peut répondre, et rien ne l'éteindrait jamais.
+    await deposer(hooks, 'Notification', { session_id: SESSION, message: 'needs permission' })
+    await expect(conversation().getByText('vous attend')).toBeVisible()
+
+    await fermer(ctx, { nettoyer: false })
+    const etat = join(ctx.donnees, 'state.json')
+    const contenu = JSON.parse(await readFile(etat, 'utf8'))
+    contenu.tabs = contenu.tabs.filter((t: { claudeSessionId?: string }) => t.claudeSessionId !== SESSION)
+    await writeFile(etat, JSON.stringify(contenu))
+
+    ctx = await lancer({
+      donnees: ctx.donnees,
+      projet: ctx.projet,
+      env: { CLAUDEX_HOOKS_DIR: hooks }
+    })
+    await expect(conversation()).toBeVisible()
+    await expect(ctx.page.getByText('vous attend')).toHaveCount(0)
   })
 })
