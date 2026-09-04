@@ -28,6 +28,43 @@ mac:
   # une application locale.
   identity: null
 
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  icon: build/icon.png
+  # Catégorie freedesktop, et non la nomenclature d'Apple juste au-dessus : les
+  # menus de bureau ne rangent l'application que s'ils la reconnaissent.
+  category: Development
+  synopsis: IDE dont l'unité de base est la conversation d'agent
+  # Le bureau relie une fenêtre à son lanceur en comparant deux noms. Sans cette
+  # option ils diffèrent, et l'icône reste générique dans le dock comme dans le
+  # sélecteur de fenêtres. Le nom retenu est celui de l'exécutable, `claudex`.
+  syncDesktopName: true
+
+deb:
+  # Un paquet Debian doit nommer un mainteneur. L'adresse de redirection que
+  # GitHub réserve au compte évite d'inscrire une adresse personnelle dans un
+  # dépôt public ; elle se remplace par la vôtre le jour d'une vraie diffusion.
+  maintainer: lamine-f <lamine-f@users.noreply.github.com>
+  # La liste par défaut d'electron-builder est reprise telle quelle, tmux en
+  # plus : sans lui aucun terminal ne s'ouvre, et l'application se réduit à son
+  # écran de diagnostic. La répéter est le prix à payer pour ajouter une ligne,
+  # `depends` remplaçant la valeur par défaut au lieu de s'y ajouter.
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+    - tmux
+
 # Le dossier de sortie est retiré de l'index de Spotlight avant d'être rempli :
 # sans cela, une recherche remonte l'application installée et sa copie de
 # construction, et l'on lance l'une pour l'autre.
