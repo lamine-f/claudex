@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="build/icon.png" width=200 height=200>
+    <img src="docs/logo.png" width=200 height=200>
     <h1>Claudex</h1>
 </div>
 

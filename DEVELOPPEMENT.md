@@ -77,10 +77,15 @@ terminal, seule façon de vérifier que `node-pty` a survécu à l'archive asar.
 ```sh
 node scripts/essai-notification.mjs          # déclenche une notification comme le ferait un agent
 node scripts/vitrine.mjs docs                # regénère la galerie du README
+node scripts/icone.mjs                       # recompose l'icône depuis le logo
 CLAUDEX_CAPTURE_PROJETS=~/code/a:~/code/b \
   npm run captures                           # captures sur de vrais projets
 npm run capture                              # capture par CDP, sans perturber la fenêtre
 ```
+
+`icone.mjs` compose `build/icon.png` et `docs/logo.png` à partir de
+`src/renderer/public/logo.png`, sur fond transparent. Un carré blanc derrière l'icône se voyait
+dans le Dock et en tête de la page du dépôt.
 
 `vitrine.mjs` fabrique tout ce qu'il montre — un dépôt jetable dans `/tmp/atelier`, des
 conversations inventées, un profil neuf — et remplace l'invite du shell : les captures du
