@@ -1,6 +1,6 @@
 {
   "name": "claudex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "IDE desktop dont l'unité de base est la session d'agent : projets, conversations Claude Code reprenables et terminaux tmux persistants",
   "main": "./out/main/index.js",
   "author": "lamine-f",
@@ -10,6 +10,7 @@
     "dev": "npm run icones && electron-vite dev",
     "build": "npm run icones && electron-vite build",
     "start": "electron-vite preview",
+    "pretypecheck": "npm run icones",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -184,6 +184,8 @@ le shell ne les revendiquant pas.
 
 ## Galerie
 
+Les captures sont prises sur macOS, sauf celles de la dernière section.
+
 #### Les conversations d'un projet, et leurs états
 
 ![Les conversations et leurs états](docs/conversations.png)
@@ -239,6 +241,21 @@ L'aperçu est en lecture seule, coloré selon le langage. Claudex ne prétend pa
 
 La pastille en haut à droite ouvre l'état de l'environnement. Ce qui peut être corrigé d'un
 clic l'est depuis là.
+
+#### Sur Windows
+
+C'est la même application, et refaire la galerie entière ne montrerait que des jumelles. Deux
+captures suffisent à dire ce qui change.
+
+![Claudex sur Windows](docs/windows/claudex.png)
+
+La barre de titre reste celle du système, et la bande du haut ne lui réserve donc plus de place
+à gauche. Les raccourcis affichés passent en `Ctrl+Maj`.
+
+![L'état de l'environnement sur Windows](docs/windows/etat.png)
+
+L'écran d'état porte l'avertissement propre à ce portage : un terminal ne survit pas à la
+fermeture de l'application.
 
 ## Comment ça tient debout
 

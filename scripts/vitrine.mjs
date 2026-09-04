@@ -14,14 +14,28 @@ import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { _electron as electron } from '@playwright/test'
 
-const sortie = resolve(process.argv[2] ?? 'docs')
+const SUR_WINDOWS = process.platform === 'win32'
+
+/**
+ * Chaque plateforme écrit chez elle.
+ *
+ * Windows ne refait pas toute la galerie : l'application y est la même, et huit
+ * captures jumelles doubleraient la page du dépôt sans rien apprendre. Seules
+ * sont reprises celles où le système se voit — le cadre de la fenêtre, et
+ * l'écran d'état qui porte l'avertissement propre à ce portage.
+ */
+const VOULUES = SUR_WINDOWS ? new Set(['claudex', 'etat']) : null
+
+const sortie = resolve(process.argv[2] ?? (SUR_WINDOWS ? join('docs', 'windows') : 'docs'))
 await mkdir(sortie, { recursive: true })
 
 const profil = await mkdtemp(join(tmpdir(), 'claudex-vitrine-'))
 const hooks = join(profil, 'hooks')
 // Un chemin court et lisible plutôt qu'un dossier temporaire : il s'affiche
-// dans l'aperçu de fichier et dans le terminal.
-const projet = '/tmp/atelier'
+// dans l'aperçu de fichier et dans le terminal. Sur Windows, le dossier public
+// tient le même rôle que /tmp : court, écrivable sans droits, et sans nom
+// d'utilisateur à masquer ensuite.
+const projet = SUR_WINDOWS ? join(process.env.PUBLIC ?? 'C:\\Users\\Public', 'atelier') : '/tmp/atelier'
 await rm(projet, { recursive: true, force: true })
 
 // ── Un dépôt qui a l'air d'un vrai projet ────────────────────────────────────
@@ -37,7 +51,9 @@ await writeFile(join(projet, 'src', 'facturation', 'facture.test.ts'), "import {
 await writeFile(join(projet, 'public', 'style.css'), 'body { margin: 0 }\n')
 await writeFile(join(projet, 'package.json'), '{\n  "name": "atelier",\n  "version": "1.0.0"\n}\n')
 await writeFile(join(projet, 'README.md'), '# atelier\n')
-sh('git', ['init', '-q'])
+// La branche est nommée explicitement : sans cela le décor prend le défaut de la
+// machine, et la capture montrait `master` ici et `main` ailleurs.
+sh('git', ['init', '-q', '-b', 'main'])
 sh('git', ['add', '.'])
 sh('git', ['-c', 'user.email=a@b.c', '-c', 'user.name=atelier', 'commit', '-qm', 'premier jet'])
 await writeFile(join(projet, 'src', 'index.ts'), "export const bonjour = () => 'bonjour'\n")
@@ -103,6 +119,9 @@ const ligne = (titre) => colonne.locator('li', { hasText: titre }).last()
 const COLONNES = { x: 0, y: 0, width: 490, height: 470 }
 
 async function capturer(nom, clip) {
+  // Le scénario est joué en entier partout — il éprouve l'application au passage
+  // — mais chaque plateforme ne garde que ce qu'elle a à montrer.
+  if (VOULUES && !VOULUES.has(nom)) return
   await pause(250)
   await page.screenshot({ path: join(sortie, `${nom}.png`), ...(clip ? { clip } : {}) })
   console.log('  ', `${nom}.png`)
@@ -117,19 +136,29 @@ if (await page.getByText("État de l'environnement").isVisible().catch(() => fal
 // ── 1. Vue principale ────────────────────────────────────────────────────────
 // Un terminal ordinaire d'abord : reprendre une conversation lance un vrai
 // `claude`, dont l'écran d'accueil dirait moins de l'application que la sienne.
-await page.getByTitle('Nouveau terminal (⌘T)').click()
+// Le titre porte le raccourci, qui change avec le système : le début suffit à
+// désigner le bouton, et ce script n'a pas à savoir lequel des deux il verra.
+await page.getByTitle(/^Nouveau terminal/).click()
 await page.waitForSelector('.xterm')
 await pause(2500)
 const shell = await page.evaluate(() => Object.keys(window.__claudex ?? {})[0])
 const taper = async (commande, attente = 1200) => {
-  await page.evaluate(([id, c]) => window.claudex.term.input(id, `${c}\n`), [shell, commande])
+  // Un retour chariot, comme un vrai terminal : PSReadLine ne prend pas un saut
+  // de ligne pour une validation.
+  await page.evaluate(([id, c]) => window.claudex.term.input(id, `${c}\r`), [shell, commande])
   await pause(attente)
 }
 // L'invite du shell porte le nom de la machine : on la remplace avant de capturer.
-await taper("PROMPT='%F{244}atelier%f %# '", 800)
+await taper(
+  SUR_WINDOWS ? "function prompt { 'atelier> ' }" : "PROMPT='%F{244}atelier%f %# '",
+  800
+)
 await taper('clear', 600)
 await taper('git -c color.ui=always status --short --branch')
-await taper('ls src/facturation')
+// `Get-ChildItem -Name` plutôt que `ls` : la sortie tabulaire de PowerShell
+// commence par le chemin complet du dossier, qui n'a rien à faire dans une
+// capture publiée.
+await taper(SUR_WINDOWS ? 'Get-ChildItem -Name src\\facturation' : 'ls src/facturation')
 await capturer('claudex')
 const ongletShell = page.getByRole('button', { name: 'Terminal', exact: true }).last()
 
@@ -229,4 +258,6 @@ await app.close()
 await rm(dossier, { recursive: true, force: true })
 await rm(profil, { recursive: true, force: true })
 await rm(projet, { recursive: true, force: true })
-execFileSync('tmux', ['-L', 'claudex-vitrine', 'kill-server'], { stdio: 'ignore' })
+// Le serveur tmux du décor n'existe que là où il y a un tmux : ailleurs, les
+// sessions sont mortes avec l'application qu'on vient de fermer.
+if (!SUR_WINDOWS) execFileSync('tmux', ['-L', 'claudex-vitrine', 'kill-server'], { stdio: 'ignore' })
