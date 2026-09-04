@@ -259,8 +259,16 @@ export async function commandeComplete(tty: string): Promise<string | null> {
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
-      // Le shell lui-même n'est pas une commande à relancer.
-      .filter((l) => !/^-?(zsh|bash|sh|fish)\b/.test(l))
+      // Le shell lui-même n'est pas une commande à relancer. Le reconnaître
+      // demande de regarder le nom du binaire et non la ligne entière : `ps`
+      // rapporte ici « /bin/zsh -l », que le motif d'origine laissait passer
+      // faute de commencer par le nom du shell. Claudex proposait alors de
+      // relancer le shell après un redémarrage, ce qui ne veut rien dire.
+      .filter((ligne) => {
+        const binaire = ligne.split(/\s+/)[0] ?? ''
+        const nom = binaire.replace(/^-/, '').split('/').pop() ?? ''
+        return !/^(zsh|bash|sh|fish|dash|ksh|csh|tcsh)$/.test(nom)
+      })
     return lignes.at(-1) ?? null
   } catch {
     return null
