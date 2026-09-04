@@ -4,6 +4,7 @@
   "description": "IDE desktop dont l'unité de base est la session d'agent : projets, conversations Claude Code reprenables et terminaux tmux persistants",
   "main": "./out/main/index.js",
   "author": "lamine-f",
+  "desktopName": "claudex.desktop",
   "private": true,
   "type": "module",
   "scripts": {
