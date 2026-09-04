@@ -4,15 +4,21 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { _electron as electron } from '@playwright/test'
+import { NOUVEAU_TERMINAL } from './fixtures'
 
 /**
  * L'application empaquetée, lancée depuis son bundle.
  *
  * C'est le seul moyen de vérifier que le module natif du terminal survit à
  * l'empaquetage : sorti de l'archive asar, il ne se charge que si le chemin
- * décompressé est correct — et cela ne se voit qu'à l'exécution.
+ * décompressé est correct — et cela ne se voit qu'à l'exécution. Sur Windows le
+ * risque est le même, avec un binaire de plus à trouver : node-pty y traîne
+ * `conpty.dll` et `OpenConsole.exe`, que l'archive rendrait illisibles.
  */
-const BINAIRE = resolve('dist/mac-arm64/Claudex.app/Contents/MacOS/Claudex')
+const BINAIRE =
+  process.platform === 'win32'
+    ? resolve('dist/win-unpacked/Claudex.exe')
+    : resolve('dist/mac-arm64/Claudex.app/Contents/MacOS/Claudex')
 
 // Ce cas vise le bundle, pas les sources : lancé dans la suite courante il
 // contrôlerait un paquet périmé, ce qui ne prouve rien. Il est réservé à
@@ -22,7 +28,7 @@ test.skip(
   'réservé à npm run dist'
 )
 
-test('le paquet macOS ouvre un vrai terminal', async () => {
+test('le paquet ouvre un vrai terminal', async () => {
   const binaire = BINAIRE
   const profil = await mkdtemp(join(tmpdir(), 'claudex-paquet-'))
   const projet = await mkdtemp(join(tmpdir(), 'claudex-projet-'))
@@ -48,7 +54,7 @@ test('le paquet macOS ouvre un vrai terminal', async () => {
 
   try {
     await page.waitForSelector('[aria-label="Conversations"]')
-    await page.getByTitle('Nouveau terminal (⌘T)').click()
+    await page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(page.locator('.xterm')).toHaveCount(1)
 
     // Le terminal doit réellement parler : c'est la preuve que node-pty a été

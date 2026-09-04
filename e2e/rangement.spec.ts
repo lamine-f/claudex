@@ -1,4 +1,5 @@
 import { mkdir, rm, utimes, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { fermer, lancer, type Contexte } from './fixtures'
@@ -6,7 +7,7 @@ import { fermer, lancer, type Contexte } from './fixtures'
 const ligneJson = (o: unknown): string => `${JSON.stringify(o)}\n`
 
 function dossierTranscrits(projet: string): string {
-  return join(process.env.HOME!, '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
+  return join(homedir(), '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
 }
 
 /** Trois conversations d'âges nettement distincts : Alpha, Beta, Gamma. */

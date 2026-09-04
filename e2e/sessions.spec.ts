@@ -1,39 +1,19 @@
-import { execFile } from 'node:child_process'
 import { mkdir, readdir, rm, utimes, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, type Contexte, SOCKET_TEST } from './fixtures'
-
-const run = promisify(execFile)
-
-/**
- * Commande avec laquelle chaque session tmux a été lancée.
- *
- * L'amorce fait partie de la création de la session — elle n'est pas tapée dans le
- * terminal — c'est donc tmux, et non l'écran, qui en porte la trace.
- */
-async function commandesDeDepart(): Promise<string[]> {
-  try {
-    const { stdout } = await run('tmux', [
-      '-L',
-      SOCKET_TEST,
-      'list-panes',
-      '-a',
-      '-F',
-      '#{pane_start_command}'
-    ])
-    return stdout.split('\n').filter(Boolean)
-  } catch {
-    return []
-  }
-}
+import { commandesDeDepart, FERMER_ONGLET, fermer, lancer, type Contexte } from './fixtures'
 
 const ligne = (o: unknown): string => `${JSON.stringify(o)}\n`
 
-/** Dossier de transcrits que Claude Code utiliserait pour ce projet. */
+/**
+ * Dossier de transcrits que Claude Code utiliserait pour ce projet.
+ *
+ * Par `homedir()` et non par `HOME` : Windows ne renseigne pas cette variable, et
+ * le chemin partait alors de la chaîne `undefined`.
+ */
 function dossierTranscrits(projet: string): string {
-  return join(process.env.HOME!, '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
+  return join(homedir(), '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
 }
 
 /** Reproduit l'arborescence de transcrits de Claude Code pour un projet donné. */
@@ -113,7 +93,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
 
     // Et la session tmux a bien été lancée sur la commande de reprise.
     await expect
-      .poll(async () => (await commandesDeDepart()).join('\n'))
+      .poll(async () => (await commandesDeDepart(ctx.donnees)).join('\n'))
       .toContain('claude -r aaaaaaaa-1111-1111-1111-111111111111')
   })
 
@@ -139,7 +119,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
     await dialogue.getByRole('button', { name: 'Bifurquer', exact: true }).click()
 
     await expect
-      .poll(async () => (await commandesDeDepart()).join('\n'))
+      .poll(async () => (await commandesDeDepart(ctx.donnees)).join('\n'))
       .toContain("--name 'Migration DTO -- essai rapide'")
   })
 
@@ -169,7 +149,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
       .toBe('Refonte facturation -- piste sans cache')
 
     await expect(ctx.page.locator('.xterm')).toHaveCount(avant + 1)
-    await expect.poll(async () => (await commandesDeDepart()).join('\n')).toContain('--fork-session')
+    await expect.poll(async () => (await commandesDeDepart(ctx.donnees)).join('\n')).toContain('--fork-session')
 
     const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
     // L'origine reste en préfixe : la branche se situe sans avoir à la rouvrir.
@@ -211,7 +191,7 @@ test.describe('fermer un onglet', () => {
 
     // Fermer détruit la session tmux, jamais le transcrit : c'est lui qui porte
     // la conversation, et il vit dans ~/.claude/projects.
-    await ctx.page.getByTitle("Fermer l'onglet et sa session tmux").click()
+    await ctx.page.getByTitle(FERMER_ONGLET).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(0)
 
     await expect(colonne.getByText('Refonte facturation')).toBeVisible()

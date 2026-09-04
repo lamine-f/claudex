@@ -125,6 +125,37 @@ export function proteger(valeur: string): string {
 }
 
 /**
+ * Ne garde du flux capturé que ce qui se relit.
+ *
+ * `capture-pane` de tmux rend un écran déjà composé ; ici le tampon est le flux
+ * brut sorti du pty, et un flux contient les ordres qui l'ont dessiné. Réafficher
+ * tel quel donnait un terminal vide : le shell commence par `ESC[2J`, et rejouer
+ * cet effacement emportait tout ce qui venait d'être écrit au-dessus.
+ *
+ * Les séquences de couleur sont conservées, tout le reste est jeté :
+ * déplacements de curseur, effacements, écran alterné, titres de fenêtre. Une
+ * barre de progression réaffichée s'étale alors sur plusieurs lignes au lieu de
+ * se réécrire sur place — c'est le prix à payer, et il est moindre qu'un écran
+ * blanc.
+ */
+export function lisible(brut: string): string {
+  // Les échappements sont écrits en `\u001b` : un caractère d'échappement posé
+  // tel quel dans une expression régulière ne se voit pas à la relecture, et une
+  // recherche dans le fichier ne le trouve pas.
+  const OSC = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g
+  // Toutes les séquences CSI sauf celles finissant par `m` : les couleurs restent.
+  const CSI_SAUF_COULEURS = /\u001b\[[0-9;?]*[A-Za-ln-z]/g
+  // Échappements à deux caractères : jeux de caractères, mode clavier, curseur.
+  const ECHAPPEMENTS_COURTS = /\u001b(?:[()][0-9A-Za-z]|[=>78])/g
+
+  return brut
+    .replace(OSC, '')
+    .replace(CSI_SAUF_COULEURS, '')
+    .replace(ECHAPPEMENTS_COURTS, '')
+    .replace(/^\s*\n/, '')
+}
+
+/**
  * Écrit le script joué au lancement d'une session, et rend son chemin.
  *
  * Passer par un fichier plutôt que par `-Command` évite d'avoir à citer une
@@ -246,7 +277,7 @@ export const pilote: Multiplexeur = {
   capturer(nom, lignes = 5000) {
     const session = sessions.get(nom)
     if (!session) return Promise.resolve('')
-    const contenu = session.tampon.join('')
+    const contenu = lisible(session.tampon.join(''))
     // Le tampon est une suite d'octets, pas de lignes : on le recoupe à la
     // demande pour tenir la même promesse que `capture-pane -S -<lignes>`.
     const coupees = contenu.split('\n')

@@ -1,10 +1,74 @@
-import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
+import { raccourci } from '../src/shared/raccourcis'
+
+const run = promisify(execFile)
 
 /** Serveur tmux réservé aux tests, distinct de celui de l'application. */
 export const SOCKET_TEST = 'claudex-test'
+
+export const SUR_WINDOWS = process.platform === 'win32'
+
+/**
+ * Les titres par lesquels les tests désignent les boutons.
+ *
+ * Ils portent le raccourci du système : les écrire en dur revenait à faire passer
+ * la suite sur macOS et échouer partout ailleurs, sur un bouton pourtant présent.
+ */
+export const NOUVEAU_TERMINAL = `Nouveau terminal (${raccourci(process.platform, 'T')})`
+export const FERMER_ONGLET = "Fermer l'onglet et sa session"
+
+/** Ouvre un terminal depuis l'en-tête, comme le ferait l'utilisateur. */
+export async function nouveauTerminal(page: Page): Promise<void> {
+  await page.getByTitle(NOUVEAU_TERMINAL).click()
+}
+
+/**
+ * Ce qui a été joué au lancement de chaque session.
+ *
+ * L'amorce fait partie de la création de la session — elle n'est pas tapée dans le
+ * terminal — et c'est donc le multiplexeur, non l'écran, qui en porte la trace :
+ * tmux dans la propriété de son pane, ConPTY dans le script qu'il dépose.
+ */
+export async function commandesDeDepart(donnees: string): Promise<string[]> {
+  if (SUR_WINDOWS) {
+    const dossier = join(donnees, 'amorces')
+    const fichiers = await readdir(dossier).catch(() => [])
+    return Promise.all(
+      fichiers
+        .filter((f) => f.endsWith('.ps1'))
+        .map((f) => readFile(join(dossier, f), 'utf8'))
+    )
+  }
+  try {
+    const { stdout } = await run('tmux', [
+      '-L',
+      SOCKET_TEST,
+      'list-panes',
+      '-a',
+      '-F',
+      '#{pane_start_command}'
+    ])
+    return stdout.split('\n').filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Reproduit l'état d'après-redémarrage : plus une session ne subsiste.
+ *
+ * Sur Windows il n'y a rien à faire — les sessions sont mortes avec l'application
+ * qu'on vient de fermer. C'est justement ce que ce geste vaut de dire.
+ */
+export async function simulerRedemarrage(): Promise<void> {
+  if (SUR_WINDOWS) return
+  await run('tmux', ['-L', SOCKET_TEST, 'kill-server']).catch(() => undefined)
+}
 
 export interface Contexte {
   app: ElectronApplication
@@ -64,6 +128,19 @@ export async function lancer(
 
   const page = await app.firstWindow()
   await page.waitForSelector('[aria-label="Conversations"]')
+
+  // L'écran d'état s'ouvre de lui-même devant une perte en cours, et la rétention
+  // par défaut de Claude Code en est une. Il lit le vrai ~/.claude/settings.json,
+  // que rien n'isole : la suite passait donc sur une machine dont la rétention
+  // avait déjà été relevée, et échouait ailleurs sur un voile qui interceptait
+  // chaque clic. On le referme comme le ferait l'utilisateur, plutôt que de
+  // dépendre de la configuration personnelle de qui lance les tests.
+  const ecranEtat = page.getByRole('heading', { name: "État de l'environnement" })
+  if (await ecranEtat.isVisible().catch(() => false)) {
+    await page.getByRole('button', { name: '✕' }).click()
+    await expect(ecranEtat).toHaveCount(0)
+  }
+
   return { app, page, donnees, projet }
 }
 
@@ -119,6 +196,11 @@ export async function attendreInvite(page: Page, index = 0): Promise<string> {
  * invite avant d'être prêt à lire son entrée, et avale alors ce qu'on lui envoie.
  * C'est le comportement normal d'un terminal, pas un défaut de l'application —
  * mais un test ne peut pas s'y fier.
+ *
+ * La ligne est validée par un retour chariot, ce qu'envoie un vrai terminal et
+ * ce que xterm envoie déjà. Un saut de ligne passait sur un shell POSIX, où le
+ * pty traduit l'un en l'autre, mais PSReadLine ne le prend pas pour une
+ * validation : un `exit` envoyé ainsi n'arrêtait rien.
  */
 export async function taper(
   page: Page,
@@ -133,7 +215,7 @@ export async function taper(
   // Sans attendu, on se contente d'envoyer la commande une fois.
   if (!attendu) {
     await page.evaluate(
-      ([id, texte]) => window.claudex.term.input(id!, `${texte!}\n`),
+      ([id, texte]) => window.claudex.term.input(id!, `${texte!}\r`),
       [onglet, commande] as const
     )
     return
@@ -141,7 +223,7 @@ export async function taper(
 
   for (let essai = 0; essai < 5; essai++) {
     await page.evaluate(
-      ([id, texte]) => window.claudex.term.input(id!, `${texte!}\n`),
+      ([id, texte]) => window.claudex.term.input(id!, `${texte!}\r`),
       [onglet, commande] as const
     )
     const limite = Date.now() + 3000

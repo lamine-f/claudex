@@ -115,7 +115,14 @@ decrire('intégration ConPTY', () => {
 
     // Personne ne tient l'historique à notre place : sans ce tampon, une session
     // recréée repartirait d'un écran vide.
-    expect(await pilote.capturer(nom, 200)).toContain('CAPTURE_OK')
+    const capture = await pilote.capturer(nom, 200)
+    expect(capture).toContain('CAPTURE_OK')
+
+    // Et il ne doit plus porter d'ordre de dessin. Le shell commence par un
+    // effacement d'écran ; le rejouer emportait tout ce qui venait d'être écrit
+    // au-dessus, et l'écran restitué revenait vide.
+    expect(capture).not.toContain('\u001b[2J')
+    expect(capture).not.toMatch(/\u001b\[[0-9;?]*[A-Za-ln-z]/)
   })
 
   it('détruit la session, et ce qu’elle avait retenu avec elle', async () => {
