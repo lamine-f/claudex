@@ -7,17 +7,25 @@ import { toutArreter } from './services/session-watcher'
 import * as pty from './services/pty'
 import * as scrollback from './services/scrollback'
 import * as store from './services/store'
-import * as tmux from './services/tmux'
+import { multiplexeur } from './services/multiplexeur'
 import { createWindow } from './window'
 
 app.setName('Claudex')
+
+// Windows attache les notifications à l'identifiant du modèle d'application, et
+// non au processus qui les émet. Sans lui, elles s'affichent sous le nom
+// « electron.app.Claudex », et en développement elles ne s'affichent pas du tout.
+// La valeur est celle de `appId` dans electron-builder.yml : les deux doivent
+// rester d'accord, sinon l'application installée notifie sous une autre identité
+// que celle qui a posé son raccourci.
+if (process.platform === 'win32') app.setAppUserModelId('com.laminef.claudex')
 
 /**
  * Une fermeture concurrente de veilleur ne doit pas emporter l'application.
  *
  * chokidar gèle l'objet qui porte une surveillance dès qu'il la referme, puis
- * réécrit un de ses champs si le même chemin est refermé une seconde fois —
- * ce qui arrive quand on arrête un veilleur pendant son parcours initial. Le
+ * réécrit un de ses champs si le même chemin est refermé une seconde fois.
+ * Cela arrive quand on arrête un veilleur pendant son parcours initial. Le
  * défaut est chez lui, et il est sans conséquence : la surveillance était de
  * toute façon en train de disparaître. Le laisser remonter afficherait une
  * boîte d'erreur et tuerait le processus principal, avec tous les terminaux.
@@ -49,7 +57,7 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   void app.whenReady().then(async () => {
-    await tmux.preparerConfiguration(app.getPath('userData'))
+    await multiplexeur.preparerConfiguration(app.getPath('userData'))
     await store.load()
     registerIpc()
     createWindow()

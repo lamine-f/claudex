@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { fermer, lancer, type Contexte } from './fixtures'
@@ -9,7 +9,7 @@ const VIOLET = '#c98fe0'
 const VIOLET_RGB = 'rgb(201, 143, 224)'
 
 function dossierTranscrits(projet: string): string {
-  return join(process.env.HOME!, '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
+  return join(homedir(), '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
 }
 
 /**

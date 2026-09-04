@@ -1,10 +1,17 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
+import type { IPty } from 'node-pty'
+import type { Amorce, InfoSession, Multiplexeur } from './types'
 
 const run = promisify(execFile)
+
+// node-pty est un module natif : il doit être chargé en CommonJS depuis le main.
+const require_ = createRequire(import.meta.url)
+const nodePty = require_('node-pty') as typeof import('node-pty')
 
 /**
  * Configuration du serveur tmux de Claudex.
@@ -219,15 +226,7 @@ export async function capturePane(nom: string, lignes = 5000): Promise<string> {
   }
 }
 
-export interface PaneInfo {
-  cwd: string
-  /** Nom du processus au premier plan : `zsh`, `node`, `claude`… */
-  commande: string
-  /** Terminal du pane, qui permet de retrouver la ligne de commande complète. */
-  tty: string
-}
-
-export async function paneInfo(nom: string): Promise<PaneInfo | null> {
+export async function paneInfo(nom: string): Promise<InfoSession | null> {
   try {
     const sortie = await tmux(
       'display-message',
@@ -275,4 +274,77 @@ export async function serveurVivant(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/**
+ * Assemble l'amorce en une seule ligne de shell.
+ *
+ * L'écran d'avant passe par un `cat` joué dans la session plutôt que par une
+ * écriture dans xterm : tmux efface l'écran à l'arrivée d'un client et
+ * emporterait tout. Passer par la session met le contenu dans l'historique de
+ * tmux, où il reste consultable et défilable.
+ */
+function composer(amorce?: Amorce): string | undefined {
+  const morceaux: string[] = []
+  if (amorce?.ecranPrecedent) morceaux.push(`cat -- ${proteger(amorce.ecranPrecedent)}`)
+  if (amorce?.commande) morceaux.push(amorce.commande)
+  return morceaux.length ? morceaux.join('; ') : undefined
+}
+
+/**
+ * Le pilote tmux, tel que le reste de l'application le voit.
+ *
+ * Il ne fait qu'habiller les fonctions ci-dessus : le comportement sur macOS
+ * est celui d'avant le portage, à la lettre.
+ */
+export const pilote: Multiplexeur = {
+  nom: 'tmux',
+  persistant: true,
+
+  async preparerConfiguration(dossier) {
+    await preparerConfiguration(dossier)
+  },
+
+  async version() {
+    try {
+      const { stdout } = await run('tmux', ['-V'], { timeout: 5000 })
+      return stdout.trim().match(/\d[\w.-]*/)?.[0] ?? null
+    } catch {
+      return null
+    }
+  },
+
+  existe: hasSession,
+
+  assurer: (nom, cwd, cols, rows, amorce) =>
+    ensureSession(nom, cwd, cols, rows, composer(amorce)),
+
+  detruire: killSession,
+
+  attacher: (nom, cols, rows): IPty =>
+    nodePty.spawn('tmux', attachArgs(nom), {
+      name: 'xterm-256color',
+      cols: Math.max(cols, 20),
+      rows: Math.max(rows, 5),
+      cwd: process.env.HOME,
+      env: {
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor'
+      }
+    }),
+
+  // Le pty n'est qu'un client de la session : le tuer détache, il ne détruit rien.
+  detacher: (processus) => {
+    try {
+      processus.kill()
+    } catch {
+      /* déjà mort */
+    }
+  },
+
+  capturer: capturePane,
+  info: paneInfo,
+  commandeComplete: (info) => commandeComplete(info.tty),
+  proteger
 }

@@ -1,10 +1,12 @@
 import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { copyFile, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { DoctorCheck } from '@shared/types'
-import { claudeProjectsRoot, claudeSettingsPath } from '../util/paths'
+import { binaireClaude, claudeProjectsRoot, claudeSettingsPath } from '../util/paths'
 import { installes } from './hooks'
+import { multiplexeur } from './multiplexeur'
 
 const run = promisify(execFile)
 
@@ -73,10 +75,21 @@ async function sessionsBientotEffacees(
   return compte
 }
 
+/**
+ * Version de Claude Code, en repassant par le binaire déposé dans `~/.local/bin`
+ * quand la commande n'est pas sur le PATH.
+ */
+async function versionClaude(): Promise<string | null> {
+  const surLeChemin = await versionDe('claude', ['--version'])
+  if (surLeChemin) return surLeChemin
+  const binaire = binaireClaude()
+  return existsSync(binaire) ? versionDe(binaire, ['--version']) : null
+}
+
 export async function check(): Promise<DoctorCheck[]> {
-  const [tmux, claude, settings] = await Promise.all([
-    versionDe('tmux', ['-V']),
-    versionDe('claude', ['--version']),
+  const [terminal, claude, settings] = await Promise.all([
+    multiplexeur.version(),
+    versionClaude(),
     lireSettings()
   ])
 
@@ -87,13 +100,13 @@ export async function check(): Promise<DoctorCheck[]> {
   const bientot = await sessionsBientotEffacees(retention, 7)
 
   const checks: DoctorCheck[] = [
-    tmux
-      ? { id: 'tmux', label: 'tmux', severity: 'ok', detail: tmux }
+    terminal
+      ? { id: 'multiplexeur', label: multiplexeur.nom, severity: 'ok', detail: terminal }
       : {
-          id: 'tmux',
-          label: 'tmux',
+          id: 'multiplexeur',
+          label: multiplexeur.nom,
           severity: 'error',
-          detail: "tmux est introuvable. Les terminaux persistants en dépendent : installe-le avec `brew install tmux`."
+          detail: `${multiplexeur.nom} est introuvable. Les terminaux persistants en dépendent : installe-le avec \`brew install tmux\`.`
         },
     claude
       ? { id: 'claude', label: 'Claude Code', severity: 'ok', detail: claude }
@@ -104,6 +117,21 @@ export async function check(): Promise<DoctorCheck[]> {
           detail: "La commande `claude` est introuvable. Les terminaux fonctionneront, mais les sessions d'agent ne seront pas disponibles."
         }
   ]
+
+  // Une promesse que le pilote ne tient pas se dit à l'écran d'état, jamais par
+  // la surprise d'un agent disparu à la réouverture de l'application.
+  if (!multiplexeur.persistant) {
+    checks.push({
+      id: 'persistance',
+      label: 'Persistance des terminaux',
+      severity: 'warn',
+      detail:
+        `${multiplexeur.nom} n'a pas de serveur derrière lui : une session vit dans ` +
+        `Claudex et meurt avec lui. Les onglets et les conversations sont retrouvés ` +
+        `au lancement suivant, avec l'écran d'avant, mais ce qui tournait a été ` +
+        `interrompu. Fermer l'application pendant qu'un agent travaille l'arrête.`
+    })
+  }
 
   if (retention >= RETENTION_CIBLE) {
     checks.push({

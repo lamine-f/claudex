@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '@renderer/state/store'
+import { SUR_MAC } from '@renderer/systeme'
 
 /**
  * Raccourcis globaux de l'application.
@@ -9,43 +10,72 @@ import { useStore } from '@renderer/state/store'
  */
 export function useShortcuts(): void {
   useEffect(() => {
+    /**
+     * Vrai quand la frappe s'adresse à l'application et non au terminal.
+     *
+     * Sur macOS, Commande est libre : le shell ne s'en sert pas. Sur Windows il
+     * n'existe pas d'équivalent, et `Ctrl+E` comme `Ctrl+W` ont déjà un sens dans
+     * la ligne de commande. Y ajouter Majuscule les rend à l'application sans
+     * rien retirer au terminal, comme le font Windows Terminal et VS Code.
+     */
+    const pourLApplication = (evenement: KeyboardEvent): boolean =>
+      SUR_MAC
+        ? evenement.metaKey && !evenement.ctrlKey
+        : evenement.ctrlKey && !evenement.metaKey && evenement.shiftKey
+
     const surTouche = (evenement: KeyboardEvent): void => {
-      if (!evenement.metaKey || evenement.ctrlKey) return
       const etat = useStore.getState()
 
-      // ⌘T : nouveau terminal dans le workspace courant.
-      if (evenement.key === 't') {
+      // Les chiffres se passent de Majuscule : le shell ne les revendique pas, et
+      // `Ctrl+Maj+1` ne donne pas partout le même `key` selon la disposition.
+      if (!SUR_MAC && evenement.ctrlKey && !evenement.shiftKey && !evenement.metaKey) {
+        basculerProjet(evenement, etat)
+        return
+      }
+
+      if (!pourLApplication(evenement)) return
+
+      // Majuscule change la casse de `key` : on compare sur une base commune.
+      const touche = evenement.key.toLowerCase()
+
+      // ⌘T / Ctrl+Maj+T : nouveau terminal dans le workspace courant.
+      if (touche === 't') {
         evenement.preventDefault()
         void etat.nouvelOnglet()
         return
       }
 
-      // ⌘E : basculer entre les conversations et les fichiers.
-      if (evenement.key === 'e') {
+      // ⌘E / Ctrl+Maj+E : basculer entre les conversations et les fichiers.
+      if (touche === 'e') {
         evenement.preventDefault()
         etat.choisirPanneau(etat.panneau === 'sessions' ? 'fichiers' : 'sessions')
         return
       }
 
-      // ⌘W : fermer l'onglet courant, et avec lui sa session tmux.
-      if (evenement.key === 'w') {
+      // ⌘W / Ctrl+Maj+W : fermer l'onglet courant, et avec lui sa session.
+      if (touche === 'w') {
         evenement.preventDefault()
         if (etat.activeTabId) void etat.fermerOnglet(etat.activeTabId)
         return
       }
 
-      // ⌘1..⌘9 : bascule directe entre projets.
-      const rang = Number.parseInt(evenement.key, 10)
-      if (Number.isInteger(rang) && rang >= 1 && rang <= 9) {
-        const cible = etat.workspaces[rang - 1]
-        if (cible) {
-          evenement.preventDefault()
-          void etat.choisirWorkspace(cible.id)
-        }
-      }
+      if (SUR_MAC) basculerProjet(evenement, etat)
     }
 
     document.addEventListener('keydown', surTouche, true)
     return () => document.removeEventListener('keydown', surTouche, true)
   }, [])
+}
+
+/** ⌘1..⌘9, Ctrl+1..Ctrl+9 : bascule directe entre projets. */
+function basculerProjet(
+  evenement: KeyboardEvent,
+  etat: ReturnType<typeof useStore.getState>
+): void {
+  const rang = Number.parseInt(evenement.key, 10)
+  if (!Number.isInteger(rang) || rang < 1 || rang > 9) return
+  const cible = etat.workspaces[rang - 1]
+  if (!cible) return
+  evenement.preventDefault()
+  void etat.choisirWorkspace(cible.id)
 }

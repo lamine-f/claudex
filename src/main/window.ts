@@ -1,6 +1,21 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, shell } from 'electron'
 
+/**
+ * Le cadre de la fenêtre.
+ *
+ * Sur macOS, la barre de titre s'efface et ses feux viennent se poser dans la
+ * bande du haut de Claudex, qui porte déjà le contexte. Windows garde son cadre
+ * ordinaire : le dessiner soi-même obligerait à refaire les boutons, l'ancrage
+ * des fenêtres et le survol du bouton d'agrandissement qui propose les
+ * dispositions, pour au mieux les imiter. La bande de Claudex reste alors ce
+ * qu'elle est, un contenu, sous une barre de titre qui appartient au système.
+ */
+const cadre =
+  process.platform === 'darwin'
+    ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 11 } }
+    : {}
+
 export function createWindow(): BrowserWindow {
   const fenetre = new BrowserWindow({
     width: 1440,
@@ -9,8 +24,7 @@ export function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#000000',
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 14, y: 11 },
+    ...cadre,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -61,7 +75,8 @@ export function createWindow(): BrowserWindow {
   fenetre.webContents.on('before-input-event', (evenement, saisie) => {
     const bascule =
       saisie.key === 'F12' ||
-      (saisie.meta && saisie.alt && saisie.key.toLowerCase() === 'i')
+      (saisie.meta && saisie.alt && saisie.key.toLowerCase() === 'i') ||
+      (saisie.control && saisie.shift && saisie.key.toLowerCase() === 'i')
     if (saisie.type === 'keyDown' && bascule) {
       evenement.preventDefault()
       fenetre.webContents.toggleDevTools()

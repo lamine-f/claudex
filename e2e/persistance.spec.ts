@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, lireTerminaux, taper, SOCKET_TEST } from './fixtures'
+import { FERMER_ONGLET, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, SOCKET_TEST, SUR_WINDOWS, taper } from './fixtures'
 
 const run = promisify(execFile)
 
@@ -17,14 +17,22 @@ async function sessionsClaudex(): Promise<string[]> {
 /**
  * La promesse centrale de Claudex : fermer l'application ne détruit rien.
  * Les sessions tmux survivent, et les rouvrir restitue l'écran tel qu'il était.
+ *
+ * Le pilote ConPTY ne la tient pas : la session est le pty, et il meurt avec
+ * l'application. Ce cas est donc écarté sur Windows plutôt que réécrit à sa
+ * mesure — le réécrire lui ferait dire l'inverse de son titre. Ce que Windows
+ * sait faire à la place est vérifié par `reboot.spec.ts`, qui part précisément
+ * d'un état où plus aucune session ne subsiste.
  */
+test.skip(SUR_WINDOWS, 'le pilote ConPTY ne fait pas survivre les sessions')
+
 test('un terminal survit à la fermeture de l’application', async () => {
   // Le socket peut porter des sessions d'autres tests : on ne raisonne que sur
   // celles que ce test crée lui-même.
   const initiales = await sessionsClaudex()
   const premier = await lancer()
 
-  await premier.page.getByTitle('Nouveau terminal (⌘T)').click()
+  await premier.page.getByTitle(NOUVEAU_TERMINAL).click()
   await expect(premier.page.locator('.xterm')).toHaveCount(1)
 
   await taper(premier.page, 0, 'echo MARQUE_PERSISTANCE', 'MARQUE_PERSISTANCE')
@@ -50,7 +58,7 @@ test('un terminal survit à la fermeture de l’application', async () => {
       .toContain('MARQUE_PERSISTANCE')
   } finally {
     // Fermeture définitive de l'onglet : cette fois la session doit disparaître.
-    await second.page.getByTitle("Fermer l'onglet et sa session tmux").last().click()
+    await second.page.getByTitle(FERMER_ONGLET).last().click()
     await expect(second.page.locator('.xterm')).toHaveCount(0)
     await fermer(second)
   }
