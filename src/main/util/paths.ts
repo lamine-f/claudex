@@ -57,14 +57,36 @@ export function claudexHooksDir(): string {
 }
 
 /**
+ * Forme d'un chemin destinée à la seule comparaison.
+ *
+ * Windows ne distingue pas la casse dans ses chemins : `C:\Projet` et
+ * `c:\projet` sont le même dossier, et une comparaison exacte refusait le second
+ * comme s'il sortait du workspace. Le repli en minuscules ne vaut donc que là ;
+ * ailleurs, deux chemins qui ne diffèrent que par la casse désignent bien deux
+ * fichiers distincts, et les confondre relâcherait le garde-fou.
+ *
+ * `toLowerCase` suit la table Unicode, non celle de NTFS. Les rares caractères
+ * sur lesquels les deux divergent ne donnent pas d'échappatoire : un chemin
+ * accepté à tort par cette comparaison désigne soit le même dossier que la
+ * racine, soit un chemin qui n'existe pas.
+ */
+function comparable(chemin: string): string {
+  return process.platform === 'win32' ? chemin.toLowerCase() : chemin
+}
+
+/**
  * Garde-fou : refuse tout chemin qui sort des workspaces enregistrés. Appelé par
  * chaque opération de lecture de fichier exposée au renderer.
+ *
+ * Le chemin rendu garde sa casse d'origine : c'est lui qui sert ensuite à ouvrir
+ * le fichier, et le rendre en minuscules donnerait un chemin trompeur à lire.
  */
 export function assertInsideWorkspace(target: string, workspaceRoots: string[]): string {
   const resolved = resolve(target)
+  const compare = comparable(resolved)
   const allowed = workspaceRoots.some((root) => {
-    const base = resolve(root)
-    return resolved === base || resolved.startsWith(base.endsWith(sep) ? base : base + sep)
+    const base = comparable(resolve(root))
+    return compare === base || compare.startsWith(base.endsWith(sep) ? base : base + sep)
   })
   if (!allowed) {
     throw new Error(`Chemin hors des workspaces autorisés : ${resolved}`)
