@@ -49,6 +49,15 @@ const charge = JSON.stringify({
   hook_event_name: 'Notification'
 })
 
+// Claudex se tait quand sa fenêtre a le focus : le compte à rebours laisse le
+// temps de passer ailleurs, faute de quoi l'essai ne prouverait rien.
+const attente = Number(process.env.CLAUDEX_ESSAI_DELAI ?? 5)
+for (let reste = attente; reste > 0; reste--) {
+  process.stdout.write(`\rPassez sur une autre application… dépôt dans ${reste} s `)
+  await new Promise((suite) => setTimeout(suite, 1000))
+}
+process.stdout.write('\r'.padEnd(50, ' ') + '\r')
+
 const enfant = spawn('sh', [script, 'Notification'], { stdio: ['pipe', 'inherit', 'inherit'] })
 enfant.stdin.end(charge)
 enfant.on('exit', (code) => {

@@ -22,10 +22,16 @@ mac:
       arch: [arm64]
   icon: build/icon.png
   darkModeSupport: true
-  # Aucun certificat de développeur ici : signer échouerait et empêcherait
-  # l'application d'être construite. macOS demandera confirmation au premier
-  # lancement, ce qui est le comportement attendu pour une application locale.
+  # Aucun certificat de développeur ici : signer avec un vrai certificat
+  # échouerait et empêcherait l'application d'être construite. macOS demandera
+  # confirmation au premier lancement, ce qui est le comportement attendu pour
+  # une application locale.
   identity: null
+
+# Mais une identité de code, il en faut une : sans elle le paquet garde celle du
+# binaire Electron, sa signature ne vérifie pas, et macOS lui refuse les
+# notifications en silence. Le crochet la pose en ad hoc, avant le DMG.
+afterPack: build/signer-adhoc.mjs
 
 dmg:
   title: Claudex
