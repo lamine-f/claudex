@@ -2,7 +2,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { Tab } from '@shared/types'
-import { capturePane, commandeComplete, paneInfo } from './tmux'
+import { multiplexeur } from './multiplexeur'
 import * as store from './store'
 
 /**
@@ -21,9 +21,9 @@ function fichier(tabId: string): string {
   return join(dossier(), `${tabId}.txt`)
 }
 
-/** Capture l'écran d'une session tmux, séquences de couleur comprises. */
+/** Capture l'écran d'une session, séquences de couleur comprises. */
 export async function sauvegarder(tabId: string, sessionTmux: string): Promise<void> {
-  const contenu = await capturePane(sessionTmux, 5000)
+  const contenu = await multiplexeur.capturer(sessionTmux, 5000)
   if (!contenu.trim()) return
   await mkdir(dossier(), { recursive: true })
   await writeFile(fichier(tabId), contenu, 'utf8')
@@ -57,9 +57,9 @@ export async function oublier(tabId: string): Promise<void> {
  * au fil du travail, et la commande longue en cours, qu'on proposera de relancer.
  */
 async function releverContexte(tab: Tab): Promise<void> {
-  const info = await paneInfo(tab.tmuxSession)
+  const info = await multiplexeur.info(tab.tmuxSession)
   if (!info) return
-  const commande = await commandeComplete(info.tty)
+  const commande = await multiplexeur.commandeComplete(info)
 
   store.update((etat) => {
     const cible = etat.tabs.find((t) => t.id === tab.id)

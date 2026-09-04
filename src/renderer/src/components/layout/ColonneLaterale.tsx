@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { raccourci } from '@renderer/plateforme'
 import { useStore } from '@renderer/state/store'
+import { raccourci } from '@renderer/systeme'
 import { FileTree } from '../files/FileTree'
 import {
   IconeArborescence,

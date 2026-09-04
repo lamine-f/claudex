@@ -1,13 +1,13 @@
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
-import { boutonNouveauTerminal, fermer, lancer, type Contexte } from './fixtures'
+import { fermer, lancer, NOUVEAU_TERMINAL, type Contexte } from './fixtures'
 
 const SESSION = 'aaaaaaaa-1111-1111-1111-111111111111'
 
 function dossierTranscrits(projet: string): string {
-  return join(process.env.HOME!, '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
+  return join(homedir(), '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
 }
 
 /**
@@ -49,7 +49,7 @@ test.describe('un agent qui réclame son utilisateur', () => {
 
     // Puis on la laisse derrière : la question n'est utile que pour ce qu'on
     // n'a pas sous les yeux.
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
   })
 

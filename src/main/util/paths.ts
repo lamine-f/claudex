@@ -33,6 +33,18 @@ export function claudeSettingsPath(): string {
 }
 
 /**
+ * Où l'installateur natif de Claude Code dépose son binaire.
+ *
+ * Il n'ajoute ce dossier au PATH qu'à la session suivante de l'utilisateur, et
+ * sur Windows le PATH hérité par l'application ne le contient donc pas toujours.
+ * Sans ce recours, l'écran d'état annonce Claude Code introuvable sur une machine
+ * où il est installé et fonctionne.
+ */
+export function binaireClaude(): string {
+  return join(homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude')
+}
+
+/**
  * Dossier où Claudex pose ce qu'il donne à Claude Code : le script de
  * notification, sa marque de présence, et les événements qu'il dépose.
  *

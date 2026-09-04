@@ -1,5 +1,5 @@
-import { raccourci } from '@renderer/plateforme'
 import type { Tab } from '@shared/types'
+import { raccourci } from '@renderer/systeme'
 import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
@@ -73,7 +73,7 @@ export function TerminalTabs({
               <button
                 type="button"
                 onClick={() => onFermer(tab.id)}
-                title="Fermer l'onglet et sa session tmux"
+                title="Fermer l'onglet et sa session"
                 className="flex h-4 w-4 items-center justify-center rounded text-texte-tenu opacity-0 transition-opacity group-hover:opacity-100 hover:text-texte focus-visible:opacity-100"
               >
                 <IconeFermer taille={11} />

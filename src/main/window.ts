@@ -2,19 +2,19 @@ import { join } from 'node:path'
 import { app, BrowserWindow, shell } from 'electron'
 
 /**
- * Barre de titre escamotée, feux du système posés sur la barre de Claudex : le
- * réglage n'existe que sur macOS. Electron l'ignore ailleurs, et le laisser
- * traîner ferait croire à une intention que rien n'honore.
+ * Le cadre de la fenêtre.
  *
- * Les autres systèmes gardent donc leur cadre. Le dessiner nous-mêmes
- * demanderait de refaire les boutons de fenêtre, leur ordre — que chaque bureau
- * range à sa façon — et le redimensionnement aux bords : beaucoup de code pour
- * une barre de moins, et une fenêtre qui ne ressemblerait plus à ses voisines.
+ * Sur macOS, la barre de titre s'efface et ses feux viennent se poser dans la
+ * bande du haut de Claudex, qui porte déjà le contexte. Windows garde son cadre
+ * ordinaire : le dessiner soi-même obligerait à refaire les boutons, l'ancrage
+ * des fenêtres et le survol du bouton d'agrandissement qui propose les
+ * dispositions, pour au mieux les imiter. La bande de Claudex reste alors ce
+ * qu'elle est, un contenu, sous une barre de titre qui appartient au système.
  */
-const CADRE_MACOS = {
-  titleBarStyle: 'hiddenInset',
-  trafficLightPosition: { x: 14, y: 11 }
-} as const
+const cadre =
+  process.platform === 'darwin'
+    ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 11 } }
+    : {}
 
 export function createWindow(): BrowserWindow {
   const fenetre = new BrowserWindow({
@@ -24,7 +24,7 @@ export function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#000000',
-    ...(process.platform === 'darwin' ? CADRE_MACOS : {}),
+    ...cadre,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -75,7 +75,8 @@ export function createWindow(): BrowserWindow {
   fenetre.webContents.on('before-input-event', (evenement, saisie) => {
     const bascule =
       saisie.key === 'F12' ||
-      (saisie.meta && saisie.alt && saisie.key.toLowerCase() === 'i')
+      (saisie.meta && saisie.alt && saisie.key.toLowerCase() === 'i') ||
+      (saisie.control && saisie.shift && saisie.key.toLowerCase() === 'i')
     if (saisie.type === 'keyDown' && bascule) {
       evenement.preventDefault()
       fenetre.webContents.toggleDevTools()

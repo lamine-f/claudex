@@ -24,6 +24,7 @@ const ATTENDU: Record<string, string[]> = {
     'apaiser'
   ],
   git: ['etat'],
+  systeme: ['plateforme'],
   doctor: ['check', 'appliquer']
 }
 

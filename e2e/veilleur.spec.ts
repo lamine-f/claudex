@@ -1,19 +1,20 @@
 import { mkdir, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { boutonNouveauTerminal, fermer, lancer } from './fixtures'
+import { fermer, lancer, NOUVEAU_TERMINAL } from './fixtures'
 
 test('une conversation lancée à la main est rattachée à son onglet', async () => {
   const ctx = await lancer()
   try {
     // Le projet est ouvert : Claudex guette dès lors les conversations qui y naissent.
     await expect(ctx.page.getByText('aucune session ici')).toBeVisible()
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // Un `claude` tapé à la main écrirait exactement ce transcript.
     const dossier = join(
-      process.env.HOME!,
+      homedir(),
       '.claude',
       'projects',
       ctx.projet.replace(/[^a-zA-Z0-9-]/g, '-')
@@ -41,7 +42,7 @@ test('une conversation lancée à la main est rattachée à son onglet', async (
   } finally {
     const { rm } = await import('node:fs/promises')
     await rm(
-      join(process.env.HOME!, '.claude', 'projects', ctx.projet.replace(/[^a-zA-Z0-9-]/g, '-')),
+      join(homedir(), '.claude', 'projects', ctx.projet.replace(/[^a-zA-Z0-9-]/g, '-')),
       { recursive: true, force: true }
     )
     await fermer(ctx)

@@ -14,16 +14,24 @@ import {
   killSession,
   paneInfo,
   sendKeys
-} from '../src/main/services/tmux'
+} from '../src/main/services/multiplexeur/tmux'
 
 const run = promisify(execFile)
+
+/**
+ * Ces cas éprouvent le pilote tmux, pas la plateforme qui exécute la suite : sur
+ * Windows il n'y a pas de tmux à piloter, et le pilote ConPTY a ses propres cas
+ * dans `conpty.integration.test.ts`. Ils sont écartés plutôt que supprimés, pour
+ * que la suite reste celle de macOS quand elle y tourne.
+ */
+const decrire = process.platform === 'win32' ? describe.skip : describe
 
 /**
  * Test d'intégration : il pilote un vrai serveur tmux, sur le socket dédié de
  * Claudex. Le socket par défaut de l'utilisateur n'est jamais touché — c'est
  * précisément ce que le dernier cas vérifie.
  */
-describe('intégration tmux', () => {
+decrire('intégration tmux', () => {
   const session = `cdx_test_${process.pid}`
   let dossier = ''
 
@@ -102,7 +110,7 @@ describe('intégration tmux', () => {
   })
 })
 
-describe('création concurrente', () => {
+decrire('création concurrente', () => {
   const session = `cdx_race_${process.pid}`
 
   afterAll(async () => {
@@ -123,7 +131,7 @@ describe('création concurrente', () => {
   })
 })
 
-describe("commande d'amorçage", () => {
+decrire("commande d'amorçage", () => {
   const session = `cdx_amorce_${process.pid}`
 
   afterAll(async () => {
@@ -155,7 +163,7 @@ describe("commande d'amorçage", () => {
   })
 })
 
-describe('configuration du serveur', () => {
+decrire('configuration du serveur', () => {
   const session = `cdx_conf_${process.pid}`
 
   afterAll(async () => {

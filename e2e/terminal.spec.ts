@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { attendreInvite, boutonNouveauTerminal, fermer, lancer, lireTerminaux, taper, type Contexte } from './fixtures'
+import { attendreInvite, FERMER_ONGLET, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, taper, type Contexte } from './fixtures'
 
-test.describe('terminaux tmux', () => {
+test.describe('terminaux', () => {
   let ctx: Contexte
 
   test.beforeAll(async () => {
@@ -13,7 +13,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('le premier terminal ouvert affiche son invite', async () => {
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     // Régression : le premier onglet restait muet, car l'attachement du client —
@@ -26,7 +26,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('un second onglet vit sans éteindre le premier', async () => {
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
 
     await expect
@@ -42,7 +42,7 @@ test.describe('terminaux tmux', () => {
   })
 
   test('fermer un onglet libère sa session sans toucher aux autres', async () => {
-    await ctx.page.getByTitle("Fermer l'onglet et sa session tmux").last().click()
+    await ctx.page.getByTitle(FERMER_ONGLET).last().click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     const terminaux = await lireTerminaux(ctx.page)

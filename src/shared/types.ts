@@ -118,7 +118,7 @@ export interface Sollicitation {
 export type DoctorSeverity = 'ok' | 'warn' | 'error'
 
 export interface DoctorCheck {
-  id: 'tmux' | 'claude' | 'retention' | 'notifications' | 'pont'
+  id: 'multiplexeur' | 'persistance' | 'claude' | 'retention' | 'notifications' | 'pont'
   label: string
   severity: DoctorSeverity
   detail: string

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estCommande, libelleRaccourci, type Modificateurs } from '../src/shared/plateforme'
+import { estCommande, raccourci, type Modificateurs } from '../src/shared/raccourcis'
 
 /** Un événement clavier réduit à ce que la décision regarde. */
 const touche = (mods: Partial<Modificateurs>): Modificateurs => ({
@@ -50,9 +50,9 @@ describe('estCommande', () => {
   })
 })
 
-describe('libelleRaccourci', () => {
+describe('raccourci', () => {
   it('suit la plateforme', () => {
-    expect(libelleRaccourci('T', 'darwin')).toBe('⌘T')
-    expect(libelleRaccourci('T', 'linux')).toBe('Ctrl+Maj+T')
+    expect(raccourci('darwin', 'T')).toBe('⌘T')
+    expect(raccourci('linux', 'T')).toBe('Ctrl+Maj+T')
   })
 })

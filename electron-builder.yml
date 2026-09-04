@@ -11,9 +11,16 @@ files:
   - package.json
 
 # node-pty embarque un binaire natif et un `spawn-helper` exécutable : dans une
-# archive asar ils ne sont ni chargeables ni exécutables.
+# archive asar ils ne sont ni chargeables ni exécutables. Sur Windows, la même
+# règle couvre conpty.dll, OpenConsole.exe et winpty-agent.exe.
 asarUnpack:
   - node_modules/node-pty/**
+
+# Pas de recompilation à l'empaquetage : elle a déjà eu lieu à l'installation, où
+# `scripts/apres-installation.mjs` appelle `electron-builder install-app-deps` sur
+# macOS. La refaire ici ne changerait rien, et sur Windows elle échoue faute de
+# Python et des outils de Visual Studio — pour rien, node-pty étant en Node-API.
+npmRebuild: false
 
 mac:
   category: public.app-category.developer-tools
@@ -27,6 +34,24 @@ mac:
   # confirmation au premier lancement, ce qui est le comportement attendu pour
   # une application locale.
   identity: null
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+  # Pas de certificat de signature : Windows montrera un avertissement SmartScreen
+  # au premier lancement, comme macOS demande confirmation. Rien à cacher, et
+  # signer avec un certificat absent ferait échouer la construction.
+
+nsis:
+  # Installation pour l'utilisateur courant : demander l'élévation pour un IDE
+  # posé dans son propre dossier n'apporte rien et bloque qui n'est pas
+  # administrateur de sa machine.
+  perMachine: false
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Claudex
 
 linux:
   target:

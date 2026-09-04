@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boutonNouveauTerminal, fermer, lancer, type Contexte } from './fixtures'
+import { fermer, lancer, NOUVEAU_TERMINAL, type Contexte } from './fixtures'
 
 /**
  * Replier une colonne doit rendre sa largeur au terminal : sans cela le repli
@@ -8,7 +8,7 @@ import { boutonNouveauTerminal, fermer, lancer, type Contexte } from './fixtures
 test('replier la colonne élargit vraiment le terminal', async () => {
   const ctx: Contexte = await lancer()
   try {
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
     const largeur = async (): Promise<number> =>

@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { attendreInvite, boutonNouveauTerminal, fermer, lancer, lireTerminaux, simulerRedemarrage, taper } from './fixtures'
+import { attendreInvite, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, simulerRedemarrage, SUR_WINDOWS, taper } from './fixtures'
 
 test('un terminal se relève après un redémarrage de la machine', async () => {
   const premier = await lancer()
-  await boutonNouveauTerminal(premier.page).click()
+  await premier.page.getByTitle(NOUVEAU_TERMINAL).click()
   await attendreInvite(premier.page, 0)
   await taper(premier.page, 0, 'echo TRACE_AVANT_REDEMARRAGE', 'TRACE_AVANT_REDEMARRAGE')
 
@@ -33,7 +33,7 @@ test('un terminal se relève après un redémarrage de la machine', async () => 
 
 test("l'écran restitué n'est pas rejoué dans le shell", async () => {
   const premier = await lancer()
-  await boutonNouveauTerminal(premier.page).click()
+  await premier.page.getByTitle(NOUVEAU_TERMINAL).click()
   await attendreInvite(premier.page, 0)
   await taper(premier.page, 0, 'echo MARQUE_INERTE', 'MARQUE_INERTE')
   await fermer(premier, { nettoyer: false })
@@ -58,8 +58,15 @@ test("l'écran restitué n'est pas rejoué dans le shell", async () => {
 })
 
 test('une commande interrompue par le redémarrage est proposée à la relance', async () => {
+  // La bande de reprise nomme la commande qui tournait, et le pilote ConPTY ne
+  // sait pas la lire : il faudrait interroger WMI pour chaque onglet toutes les
+  // trente secondes afin d'obtenir la ligne de commande du processus au premier
+  // plan. Le cas est écarté sur Windows plutôt que désarmé — il redeviendra vrai
+  // le jour où le pilote saura répondre.
+  test.skip(SUR_WINDOWS, 'le pilote ConPTY ne relève pas la commande en cours')
+
   const premier = await lancer()
-  await boutonNouveauTerminal(premier.page).click()
+  await premier.page.getByTitle(NOUVEAU_TERMINAL).click()
   await attendreInvite(premier.page, 0)
 
   // Une commande longue, du genre de celles qu'un redémarrage interrompt : un

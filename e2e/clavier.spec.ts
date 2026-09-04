@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { attendreInvite, boutonNouveauTerminal, fermer, lancer, lireTerminaux, type Contexte } from './fixtures'
+import { attendreInvite, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, type Contexte } from './fixtures'
 
 /**
  * Le chemin qu'emprunte réellement l'utilisateur : cliquer dans le terminal, puis
@@ -11,7 +11,7 @@ test.describe('frappe au clavier', () => {
 
   test.beforeAll(async () => {
     ctx = await lancer()
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await attendreInvite(ctx.page, 0)
   })
 
@@ -45,7 +45,7 @@ test.describe('frappe au clavier', () => {
   })
 
   test("revenir sur un onglet lui rend le clavier", async () => {
-    await boutonNouveauTerminal(ctx.page).click()
+    await ctx.page.getByTitle(NOUVEAU_TERMINAL).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(2)
 
     // Basculer sur le premier onglet doit lui redonner le focus sans clic : sinon

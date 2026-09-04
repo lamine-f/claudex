@@ -11,8 +11,8 @@ même après un redémarrage de la machine.
 ![Claudex](docs/claudex.png)
 
 [![Télécharger](https://img.shields.io/github/v/release/lamine-f/claudex?style=flat-square&label=t%C3%A9l%C3%A9charger&color=brightgreen)](https://github.com/lamine-f/claudex/releases/latest)
-![Plateforme](https://img.shields.io/badge/plateformes-macOS%20Apple%20Silicon%20%C2%B7%20Debian%20x86--64-blue?style=flat-square)
-![Prérequis](https://img.shields.io/badge/pr%C3%A9requis-tmux%20%2B%20Claude%20Code-fa4e49?style=flat-square)
+![Plateforme](https://img.shields.io/badge/plateformes-macOS%20%C2%B7%20Windows%20%C2%B7%20Debian-blue?style=flat-square)
+![Prérequis](https://img.shields.io/badge/pr%C3%A9requis-Claude%20Code%20(%2B%20tmux%20hors%20Windows)-fa4e49?style=flat-square)
 [![Licence](https://img.shields.io/github/license/lamine-f/claudex?style=flat-square)](LICENSE)
 
 > [!NOTE]
@@ -36,31 +36,59 @@ même après un redémarrage de la machine.
 
 ## Installer
 
-### Prérequis
+Claudex ne remplace pas le CLI Claude Code, il l'orchestre. Il faut donc l'avoir installé et
+connecté, quelle que soit la plateforme. Suivre la
+[documentation officielle](https://docs.claude.com/en/docs/claude-code/setup), puis lancer
+`claude` une fois dans un terminal pour s'authentifier.
+
+### macOS
 
 Les terminaux de Claudex sont des sessions tmux. C'est ce qui leur permet de survivre à la
 fermeture de l'application.
 
 ```sh
-brew install tmux        # macOS
-sudo apt install tmux    # Debian et dérivées
+brew install tmux
 ```
 
 Sans [Homebrew](https://brew.sh), voir le [dépôt de tmux](https://github.com/tmux/tmux/wiki/Installing).
 
-Claudex ne remplace pas le CLI Claude Code, il l'orchestre. Il faut donc l'avoir installé et
-connecté. Suivre la [documentation officielle](https://docs.claude.com/en/docs/claude-code/setup),
-puis lancer `claude` une fois dans un terminal pour s'authentifier.
-
-### Télécharger, sur macOS
-
-Prendre le DMG dans la [dernière version publiée](https://github.com/lamine-f/claudex/releases/latest),
-l'ouvrir, glisser Claudex dans le dossier Applications.
+Prendre ensuite le DMG dans la
+[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest), l'ouvrir,
+glisser Claudex dans le dossier Applications.
 
 L'application n'est pas notarisée par Apple. Au premier lancement, macOS refusera de l'ouvrir
 d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
 
-### Télécharger, sur Debian
+### Windows
+
+Rien à installer en plus : les terminaux s'appuient sur ConPTY, qui fait partie de Windows.
+
+Prendre l'installateur `.exe` dans la
+[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest). Il s'installe
+pour l'utilisateur courant et ne demande pas de droits d'administrateur. L'application n'étant
+pas signée, SmartScreen affichera un avertissement au premier lancement : **Informations
+complémentaires → Exécuter quand même**.
+
+> [!IMPORTANT]
+> Sur Windows, un terminal ne survit pas à la fermeture de Claudex. ConPTY n'a pas de serveur
+> derrière lui, là où tmux en a un : la session est le processus, et elle meurt avec
+> l'application. Les onglets, les conversations et l'écran de chaque terminal sont retrouvés au
+> lancement suivant, mais ce qui tournait a été interrompu. Fermer Claudex pendant qu'un agent
+> travaille l'arrête. L'écran d'état le rappelle.
+
+Si l'écran d'état annonce Claude Code introuvable alors qu'il est installé, c'est que
+`%USERPROFILE%\.local\bin` n'est pas encore dans le PATH : son installateur ne l'y ajoute qu'à
+la session Windows suivante. Claudex sait s'en passer pour ses propres terminaux, se
+déconnecter puis se reconnecter règle le reste.
+
+Les raccourcis prennent `Ctrl+Maj` au lieu de `⌘` : `Ctrl` seul appartient au shell, où
+`Ctrl+E` va en fin de ligne et `Ctrl+W` efface le mot précédent.
+
+### Debian et dérivées
+
+```sh
+sudo apt install tmux
+```
 
 Deux formats, au choix. Le paquet Debian déclare tmux dans ses dépendances et l'installe avec
 l'application ; l'AppImage ne dépend de rien et ne s'installe pas.
@@ -115,9 +143,10 @@ Si la valeur est `0`, ou si AppArmor restreint ces espaces de noms
 
 ### Terminaux
 
-- [x] Sessions tmux persistantes, sur un socket dédié
+- [x] Sessions tmux persistantes, sur un socket dédié (macOS)
 - [x] Un onglet par conversation, plusieurs onglets par projet
 - [x] Reprise après un redémarrage de la machine
+- [ ] Terminaux persistants sur Windows
 - [ ] Découper un onglet en plusieurs volets
 
 ### Notifications
@@ -133,21 +162,22 @@ Si la valeur est `0`, ou si AppArmor restreint ces espaces de noms
 - [x] Arborescence avec les icônes du type de fichier
 - [x] Aperçu en lecture seule, coloré selon le langage
 - [x] Écran d'état de l'environnement, avec ses correctifs
+- [x] Windows
 - [x] Linux, sur Debian
-- [ ] Windows
 
 ## Raccourcis
 
-| macOS | Linux | |
+| macOS | Windows et Linux | |
 |---|---|---|
 | `⌘T` | `Ctrl+Maj+T` | nouveau terminal |
-| `⌘W` | `Ctrl+Maj+W` | fermer l'onglet, et sa session tmux avec lui |
+| `⌘W` | `Ctrl+Maj+W` | fermer l'onglet, et sa session avec lui |
 | `⌘E` | `Ctrl+Maj+E` | basculer entre les conversations et les fichiers |
-| `⌘1`…`⌘9` | `Ctrl+Maj+1`…`9` | passer d'un projet à l'autre |
+| `⌘1`…`⌘9` | `Ctrl+1`…`Ctrl+9` | passer d'un projet à l'autre |
 
 La Majuscule n'est là que hors de macOS, où Commande est libre. Ailleurs il faut laisser
 Contrôle au terminal : `Ctrl+E` va en fin de ligne, `Ctrl+W` efface le mot précédent, et une
-application faite de terminaux ne peut pas les prendre à l'agent.
+application faite de terminaux ne peut pas les prendre à l'agent. Les chiffres s'en passent,
+le shell ne les revendiquant pas.
 
 ## Galerie
 
@@ -209,9 +239,16 @@ clic l'est depuis là.
 
 ## Comment ça tient debout
 
-**tmux, sur un socket dédié.** Toutes les commandes passent par `tmux -L claudex`. Vos sessions
-personnelles ne sont ni touchées ni polluées. Un onglet vaut une session tmux. Fermer
-l'application détache les clients, ce qui tournait tourne encore.
+**Un pilote de terminal par plateforme.** Le reste de l'application ne connaît qu'une interface,
+`src/main/services/multiplexeur/`, et ignore ce qu'il y a derrière.
+
+Sur macOS, c'est **tmux, sur un socket dédié**. Toutes les commandes passent par
+`tmux -L claudex`. Vos sessions personnelles ne sont ni touchées ni polluées. Un onglet vaut une
+session tmux. Fermer l'application détache les clients, ce qui tournait tourne encore.
+
+Sur Windows, c'est **ConPTY**, sans serveur derrière. La session est le processus, et elle meurt
+avec l'application. C'est le seul endroit où la promesse de Claudex n'est pas tenue de la même
+façon, et l'écran d'état le dit.
 
 **Le dossier des transcrits.** Claude Code range les conversations d'un dossier dans
 `~/.claude/projects/<chemin encodé>/`, où l'encodage remplace tout caractère non alphanumérique
@@ -243,9 +280,9 @@ son état d'origine.
 
 ## Questions
 
-**Pourquoi macOS uniquement ?**
-Le paquet est construit pour Apple Silicon. Le code ne dépend de rien qui soit propre à macOS,
-hors la signature et les notifications du système. Les autres plateformes viendront.
+**Et Linux ?**
+Rien ne s'y oppose : le pilote tmux y fonctionnerait tel quel, il manque une cible
+d'empaquetage et quelqu'un pour l'éprouver.
 
 **Est-ce que Claudex remplace Claude Code ?**
 Non. Il faut le CLI installé et connecté. Claudex lui donne des projets, des onglets qui
@@ -255,9 +292,10 @@ survivent, et la mémoire de quelle conversation appartient à quel onglet.
 Oui. Claudex lit ce que Claude Code a déjà écrit. Ajoutez un dossier où vous avez travaillé,
 ses conversations apparaissent aussitôt.
 
-**Que devient une session tmux quand je ferme l'application ?**
-Elle continue de tourner. Les clients se détachent, rien n'est tué. Fermer un onglet dans
-l'application, en revanche, ferme sa session pour de bon.
+**Que devient une session quand je ferme l'application ?**
+Sur macOS, elle continue de tourner : les clients tmux se détachent, rien n'est tué. Sur
+Windows, elle s'arrête — voir la section [Windows](#windows). Dans les deux cas, fermer un
+onglet dans l'application ferme sa session pour de bon.
 
 ## Développer
 

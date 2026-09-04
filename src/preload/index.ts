@@ -130,6 +130,17 @@ const api = {
     etat: (workspaceId: string): Promise<EtatGit | null> =>
       ipcRenderer.invoke('git:etat', workspaceId)
   },
+  systeme: {
+    /**
+     * Le système, pour l'interface seule.
+     *
+     * Elle en a besoin en deux points où le système décide de la forme : la place
+     * réservée aux boutons de la fenêtre, et la touche des raccourcis. Lu par le
+     * pont plutôt que déduit de `navigator` : c'est une information du processus
+     * main, et le contrôle de démarrage la surveille comme le reste.
+     */
+    plateforme: (): NodeJS.Platform => process.platform
+  },
   doctor: {
     check: (): Promise<DoctorCheck[]> => ipcRenderer.invoke('doctor:check'),
     appliquer: (

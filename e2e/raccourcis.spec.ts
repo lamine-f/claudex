@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { attendreInvite, boutonNouveauTerminal, fermer, lancer, type Contexte } from './fixtures'
+import { attendreInvite, fermer, lancer, NOUVEAU_TERMINAL, type Contexte } from './fixtures'
 
 /**
  * Les raccourcis, tels que les tape l'utilisateur du système où tourne le test.
@@ -29,10 +29,11 @@ test.describe('raccourcis clavier', () => {
 
   test("l'infobulle du bouton annonce la même combinaison", async () => {
     const attendu = process.platform === 'darwin' ? '⌘T' : 'Ctrl+Maj+T'
-    await expect(boutonNouveauTerminal(ctx.page)).toHaveAttribute(
-      'title',
-      `Nouveau terminal (${attendu})`
-    )
+    // Le libellé vient du même module partagé que la touche écoutée : les avoir
+    // écrits séparément faisait passer une suite verte sur une interface où
+    // plus rien ne portait le bon nom.
+    expect(NOUVEAU_TERMINAL).toBe(`Nouveau terminal (${attendu})`)
+    await expect(ctx.page.getByTitle(NOUVEAU_TERMINAL)).toBeVisible()
   })
 
   test('la combinaison bascule entre conversations et fichiers', async () => {
