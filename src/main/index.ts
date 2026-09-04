@@ -20,6 +20,29 @@ app.setName('Claudex')
 // que celle qui a posé son raccourci.
 if (process.platform === 'win32') app.setAppUserModelId('com.laminef.claudex')
 
+/**
+ * Une fermeture concurrente de veilleur ne doit pas emporter l'application.
+ *
+ * chokidar gèle l'objet qui porte une surveillance dès qu'il la referme, puis
+ * réécrit un de ses champs si le même chemin est refermé une seconde fois.
+ * Cela arrive quand on arrête un veilleur pendant son parcours initial. Le
+ * défaut est chez lui, et il est sans conséquence : la surveillance était de
+ * toute façon en train de disparaître. Le laisser remonter afficherait une
+ * boîte d'erreur et tuerait le processus principal, avec tous les terminaux.
+ *
+ * Rien d'autre n'est avalé : une exception que l'on ne reconnaît pas ressort.
+ */
+process.on('uncaughtException', (erreur) => {
+  const fermetureConcurrente =
+    erreur instanceof TypeError && /read only property 'watcher'/.test(erreur.message)
+  if (fermetureConcurrente) {
+    console.error('[veilleur] fermeture concurrente ignorée :', erreur.message)
+    return
+  }
+  console.error('[main] exception non rattrapée :', erreur)
+  throw erreur
+})
+
 // Une seule instance : deux fenêtres attachées aux mêmes sessions tmux se
 // marcheraient dessus.
 if (!app.requestSingleInstanceLock()) {
