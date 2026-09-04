@@ -87,6 +87,23 @@ describe('assertInsideWorkspace', () => {
     expect(() => assertInsideWorkspace(join(racine, 'projet-secret', 'a'), roots)).toThrow()
   })
 
+  it.runIf(SUR_WINDOWS)('accepte une casse différente, là où le système la confond', () => {
+    // `C:\Projet` et `c:\projet` sont le même dossier sur Windows. La
+    // comparaison exacte refusait le second, et l'arborescence se fermait sur
+    // « Chemin hors des workspaces autorisés » pour un fichier du projet ouvert.
+    // Et la casse d'origine est rendue telle quelle : c'est ce chemin qui servira
+    // ensuite à ouvrir le fichier.
+    expect(assertInsideWorkspace('c:\\users\\X\\PROJET\\src\\a.ts', roots)).toBe(
+      'c:\\users\\X\\PROJET\\src\\a.ts'
+    )
+  })
+
+  it.skipIf(SUR_WINDOWS)('refuse une casse différente, là où le système la distingue', () => {
+    // Ailleurs, deux chemins qui ne diffèrent que par la casse désignent deux
+    // fichiers : les confondre relâcherait le garde-fou.
+    expect(() => assertInsideWorkspace('/users/x/PROJET/src/a.ts', roots)).toThrow()
+  })
+
   it('refuse une remontée par ..', () => {
     // Assemblé à la main : `join` normaliserait les `..` avant même l'appel, et
     // le garde-fou ne serait plus celui qu'on teste.
