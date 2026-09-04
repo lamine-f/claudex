@@ -8,7 +8,7 @@ import { ecarter } from '../services/corbeille'
 import { apaiser } from '../services/notifications'
 import { surveiller } from '../services/session-watcher'
 import * as store from '../services/store'
-import { proteger } from '../services/tmux'
+import { multiplexeur } from '../services/multiplexeur'
 import { claudeProjectPath, tmuxSessionName } from '../util/paths'
 
 export type Intention = 'nouvelle' | 'reprise' | 'bifurcation'
@@ -70,7 +70,7 @@ function creerOngletAgent(
       // `--name` le donne aussi à Claude Code, qui l'affichera dans son invite
       // et dans son propre sélecteur de sessions : le nom vaut alors partout,
       // pas seulement dans Claudex.
-      commande = `claude -r ${uuid} --fork-session --name ${proteger(titre)}`
+      commande = `claude -r ${uuid} --fork-session --name ${multiplexeur.proteger(titre)}`
       break
     }
   }

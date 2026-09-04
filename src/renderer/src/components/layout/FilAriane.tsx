@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '@renderer/state/store'
+import { SUR_MAC } from '@renderer/systeme'
 import {
   IconeBranche,
   IconeEtincelle,
@@ -91,12 +92,20 @@ export function FilAriane(): React.JSX.Element {
   const version = (id: string): string | undefined =>
     diagnostics.find((d) => d.id === id && d.severity === 'ok')?.detail?.match(/\d[\w.-]*/)?.[0]
 
-  const tmux = version('tmux')
+  const terminal = diagnostics.find((d) => d.id === 'multiplexeur' && d.severity === 'ok')
+  const versionTerminal = terminal?.detail?.match(/\d[\w.-]*/)?.[0]
   const claude = version('claude')
   const soucis = diagnostics.filter((d) => d.severity !== 'ok').length
 
+  // Les feux du système sont posés en haut à gauche, dans la barre elle-même, et
+  // il faut leur laisser la place. Windows dessine son propre cadre au-dessus :
+  // réserver ces 88 px y creuserait un trou que rien ne vient remplir.
   return (
-    <header className="zone-glissable relative flex h-9 shrink-0 items-center gap-2 border-b border-separateur pr-4 pl-[88px]">
+    <header
+      className={`zone-glissable relative flex h-9 shrink-0 items-center gap-2 border-b border-separateur pr-4 ${
+        SUR_MAC ? 'pl-[88px]' : 'pl-2'
+      }`}
+    >
       <BoutonRepli
         actif={Boolean(layout.railReplie)}
         titre={layout.railReplie ? 'Afficher les projets' : 'Masquer les projets'}
@@ -157,7 +166,13 @@ export function FilAriane(): React.JSX.Element {
             }`}
           />
         )}
-        {tmux && <Mesure icone={<IconeTerminal />} valeur={tmux} titre={`tmux ${tmux}`} />}
+        {versionTerminal && (
+          <Mesure
+            icone={<IconeTerminal />}
+            valeur={versionTerminal}
+            titre={`${terminal?.label} ${versionTerminal}`}
+          />
+        )}
         {claude && (
           <Mesure icone={<IconeEtincelle />} valeur={claude} titre={`Claude Code ${claude}`} />
         )}

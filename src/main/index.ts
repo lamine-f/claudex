@@ -7,10 +7,18 @@ import { toutArreter } from './services/session-watcher'
 import * as pty from './services/pty'
 import * as scrollback from './services/scrollback'
 import * as store from './services/store'
-import * as tmux from './services/tmux'
+import { multiplexeur } from './services/multiplexeur'
 import { createWindow } from './window'
 
 app.setName('Claudex')
+
+// Windows attache les notifications à l'identifiant du modèle d'application, et
+// non au processus qui les émet. Sans lui, elles s'affichent sous le nom
+// « electron.app.Claudex », et en développement elles ne s'affichent pas du tout.
+// La valeur est celle de `appId` dans electron-builder.yml : les deux doivent
+// rester d'accord, sinon l'application installée notifie sous une autre identité
+// que celle qui a posé son raccourci.
+if (process.platform === 'win32') app.setAppUserModelId('com.laminef.claudex')
 
 // Une seule instance : deux fenêtres attachées aux mêmes sessions tmux se
 // marcheraient dessus.
@@ -26,7 +34,7 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   void app.whenReady().then(async () => {
-    await tmux.preparerConfiguration(app.getPath('userData'))
+    await multiplexeur.preparerConfiguration(app.getPath('userData'))
     await store.load()
     registerIpc()
     createWindow()

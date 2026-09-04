@@ -28,6 +28,7 @@ describe('contrôle du pont', () => {
         apaiser: () => {}
       },
       git: { etat: () => {} },
+      systeme: { plateforme: () => {} },
       doctor: { check: () => {}, appliquer: () => {} }
     }
     expect(manquesDuPont(pont)).toEqual(['claude.etiqueter'])

@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { ipcMain } from 'electron'
 import type { Tab } from '@shared/types'
 import { tmuxSessionName } from '../util/paths'
+import { multiplexeur } from '../services/multiplexeur'
 import * as pty from '../services/pty'
 import * as scrollback from '../services/scrollback'
 import * as store from '../services/store'
-import * as tmux from '../services/tmux'
 
 interface OuvertureResultat {
   tab: Tab
@@ -34,21 +34,6 @@ function trouverTab(tabId: string): Tab | undefined {
  */
 const creationsEnCours = new Map<string, Promise<{ preexistante: boolean }>>()
 
-/**
- * Commande jouée au lancement d'une session recréée.
- *
- * L'écran d'avant est restitué par la session elle-même, avec un `cat`. L'écrire
- * dans xterm depuis le renderer ne tient pas : tmux efface l'écran à l'arrivée
- * d'un client et emporterait tout. Passer par la session met le contenu dans
- * l'historique de tmux, où il reste consultable et défilable.
- */
-function amorce(tab: Tab, ecranPrecedent?: string): string | undefined {
-  const morceaux: string[] = []
-  if (ecranPrecedent) morceaux.push(`cat -- ${tmux.proteger(ecranPrecedent)}`)
-  if (tab.commandeInitiale) morceaux.push(tab.commandeInitiale)
-  return morceaux.length ? morceaux.join('; ') : undefined
-}
-
 function assurerSession(
   tabId: string,
   tab: Tab,
@@ -59,8 +44,13 @@ function assurerSession(
   const enCours = creationsEnCours.get(tabId)
   if (enCours) return enCours
 
-  const creation = tmux
-    .ensureSession(tab.tmuxSession, tab.cwd, cols, rows, amorce(tab, ecranPrecedent))
+  // Comment l'écran d'avant est restitué et comment la commande est jouée
+  // regarde le pilote : l'un passe par une ligne de shell, l'autre par un script.
+  const creation = multiplexeur
+    .assurer(tab.tmuxSession, tab.cwd, cols, rows, {
+      commande: tab.commandeInitiale,
+      ecranPrecedent
+    })
     .finally(() => creationsEnCours.delete(tabId))
 
   creationsEnCours.set(tabId, creation)
@@ -112,7 +102,7 @@ export function registerTerminalIpc(): void {
 
       // L'écran d'avant n'a de sens que si la session a disparu : tant qu'elle
       // vit, tmux la redessine lui-même.
-      const fichierEcran = (await tmux.hasSession(tab.tmuxSession))
+      const fichierEcran = (await multiplexeur.existe(tab.tmuxSession))
         ? undefined
         : await scrollback.chemin(tabId)
 
@@ -161,7 +151,7 @@ export function registerTerminalIpc(): void {
   ipcMain.handle('term:close', async (_evenement, tabId: string) => {
     const tab = trouverTab(tabId)
     pty.detach(tabId)
-    if (tab) await tmux.killSession(tab.tmuxSession)
+    if (tab) await multiplexeur.detruire(tab.tmuxSession)
     await scrollback.oublier(tabId)
     store.update((etat) => {
       etat.tabs = etat.tabs.filter((t) => t.id !== tabId)
