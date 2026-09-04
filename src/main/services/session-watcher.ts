@@ -5,8 +5,17 @@ import type { WebContents } from 'electron'
 import { claudeProjectPath } from '../util/paths'
 import * as store from './store'
 
-/** Un veilleur par dossier de transcrits surveillé. */
-const veilleurs = new Map<string, FSWatcher>()
+/**
+ * Un veilleur par dossier de transcrits surveillé, et le destinataire du moment.
+ *
+ * Comme pour les veilleurs de fichiers, le destinataire est gardé à part plutôt
+ * que capturé dans l'écouteur. `surveiller` est rappelé à chaque retour sur un
+ * projet et rend la main quand le veilleur est déjà là : celui-ci gardait donc à
+ * jamais la fenêtre du premier appel. Après un rechargement de l'interface, une
+ * conversation lancée à la main dans un terminal n'était plus signalée à
+ * personne, et il fallait relancer l'application pour la voir apparaître.
+ */
+const veilleurs = new Map<string, { veilleur: FSWatcher; destinataire: WebContents }>()
 
 /**
  * Surveille les conversations qui apparaissent dans les projets ouverts.
@@ -21,7 +30,11 @@ export async function surveiller(
   destinataire: WebContents
 ): Promise<void> {
   const dossier = claudeProjectPath(cheminWorkspace)
-  if (veilleurs.has(dossier)) return
+  const pose = veilleurs.get(dossier)
+  if (pose) {
+    pose.destinataire = destinataire
+    return
+  }
 
   // Le dossier n'existe pas tant qu'aucune conversation n'y a eu lieu, et on ne
   // peut pas surveiller ce qui n'est pas là. Le créer est sans conséquence :
@@ -40,10 +53,13 @@ export async function surveiller(
     if (!fichier.endsWith('.jsonl')) return
     const uuid = basename(fichier, '.jsonl')
     rattacher(cheminWorkspace, uuid)
-    if (!destinataire.isDestroyed()) destinataire.send('claude:sessionDetectee', cheminWorkspace, uuid)
+    // Relu à chaque événement, jamais capturé : c'est ce qui permet au veilleur
+    // de survivre au rechargement de la fenêtre.
+    const cible = veilleurs.get(dossier)?.destinataire
+    if (cible && !cible.isDestroyed()) cible.send('claude:sessionDetectee', cheminWorkspace, uuid)
   })
 
-  veilleurs.set(dossier, veilleur)
+  veilleurs.set(dossier, { veilleur, destinataire })
 }
 
 /**
@@ -80,11 +96,11 @@ function rattacher(cheminWorkspace: string, uuid: string): void {
 
 export function cesser(cheminWorkspace: string): void {
   const dossier = claudeProjectPath(cheminWorkspace)
-  void veilleurs.get(dossier)?.close()
+  void veilleurs.get(dossier)?.veilleur.close()
   veilleurs.delete(dossier)
 }
 
 export function toutArreter(): void {
-  for (const veilleur of veilleurs.values()) void veilleur.close()
+  for (const { veilleur } of veilleurs.values()) void veilleur.close()
   veilleurs.clear()
 }
