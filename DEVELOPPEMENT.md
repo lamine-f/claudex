@@ -15,7 +15,11 @@ npm run dev
 ```
 
 `npm install` compile `node-pty` pour l'ABI d'Electron et signe l'Electron de développement
-en ad hoc — sans quoi macOS lui refuse les notifications, en silence.
+en ad hoc — sans quoi macOS lui refuse les notifications, en silence. La signature ne
+s'applique qu'à macOS et se passe ailleurs sans rien faire.
+
+`npm run dev` commence par `npm run icones`, qui fabrique un fichier ignoré par git. Sans lui
+un dépôt fraîchement cloné ne démarre pas, sur aucun système.
 
 ## Ce qu'il y a où
 
@@ -61,7 +65,12 @@ Deux variables d'environnement servent à cet isolement, utiles aussi à la main
 
 ```sh
 npm run dist        # dist/Claudex-<version>-arm64.dmg
+npm run dist:linux  # dist/Claudex-<version>.AppImage et dist/claudex_<version>_amd64.deb
 ```
+
+On empaquette pour le système sur lequel on se trouve : les deux commandes ne sont pas
+interchangeables. Le paquet Debian déclare tmux dans ses dépendances, l'AppImage ne peut rien
+déclarer du tout.
 
 Un crochet `afterPack` signe l'application en ad hoc et retire le dossier de sortie de l'index de Spotlight. Sans certificat de développeur, le
 paquet garderait l'identité de code du binaire Electron et sa signature ne vérifierait pas —
@@ -112,6 +121,18 @@ démarrage (`src/shared/pont.ts`) nomme la méthode manquante et demande un red�
 
 **Le champ `cwd` des transcrits ne vaut rien** pour l'appariement : il rapporte `/home/...`
 sur une machine en `/Users/...`. Seul le nom de dossier calculé fait foi.
+
+**Le serveur tmux hérite des descripteurs d'Electron.** Lancé par l'application, il garde
+ouverts ses caches et ses tuyaux de sortie — et il lui survit, donc il les garde longtemps.
+Vu sur Debian : un serveur tmux tenait encore le port du débogueur deux heures après la
+fermeture de l'application, empêchant toute relance de `npm run dev:debug`. Les tests de bout
+en bout mettent pour cette raison le serveur debout eux-mêmes, avant de lancer l'application ;
+sans quoi `app.close()` de Playwright attend une fin de flux qui ne vient jamais.
+
+**Ce qui dépend du système passe par `@shared/plateforme` ou un test sur `process.platform`.**
+Le renderer est en bac à sable et n'a pas accès à `process` : le pont lui donne la plateforme
+de façon synchrone, parce que la barre du haut et les libellés des raccourcis en dépendent dès
+le premier rendu.
 
 ## Langue
 

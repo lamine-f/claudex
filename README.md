@@ -11,7 +11,7 @@ même après un redémarrage de la machine.
 ![Claudex](docs/claudex.png)
 
 [![Télécharger](https://img.shields.io/github/v/release/lamine-f/claudex?style=flat-square&label=t%C3%A9l%C3%A9charger&color=brightgreen)](https://github.com/lamine-f/claudex/releases/latest)
-![Plateforme](https://img.shields.io/badge/plateforme-macOS%20Apple%20Silicon-blue?style=flat-square)
+![Plateforme](https://img.shields.io/badge/plateformes-macOS%20Apple%20Silicon%20%C2%B7%20Debian%20x86--64-blue?style=flat-square)
 ![Prérequis](https://img.shields.io/badge/pr%C3%A9requis-tmux%20%2B%20Claude%20Code-fa4e49?style=flat-square)
 [![Licence](https://img.shields.io/github/license/lamine-f/claudex?style=flat-square)](LICENSE)
 
@@ -42,7 +42,8 @@ Les terminaux de Claudex sont des sessions tmux. C'est ce qui leur permet de sur
 fermeture de l'application.
 
 ```sh
-brew install tmux
+brew install tmux        # macOS
+sudo apt install tmux    # Debian et dérivées
 ```
 
 Sans [Homebrew](https://brew.sh), voir le [dépôt de tmux](https://github.com/tmux/tmux/wiki/Installing).
@@ -51,13 +52,48 @@ Claudex ne remplace pas le CLI Claude Code, il l'orchestre. Il faut donc l'avoir
 connecté. Suivre la [documentation officielle](https://docs.claude.com/en/docs/claude-code/setup),
 puis lancer `claude` une fois dans un terminal pour s'authentifier.
 
-### Télécharger
+### Télécharger, sur macOS
 
 Prendre le DMG dans la [dernière version publiée](https://github.com/lamine-f/claudex/releases/latest),
 l'ouvrir, glisser Claudex dans le dossier Applications.
 
 L'application n'est pas notarisée par Apple. Au premier lancement, macOS refusera de l'ouvrir
 d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
+
+### Télécharger, sur Debian
+
+Deux formats, au choix. Le paquet Debian déclare tmux dans ses dépendances et l'installe avec
+l'application ; l'AppImage ne dépend de rien et ne s'installe pas.
+
+```sh
+sudo apt install ./claudex_0.1.0_amd64.deb
+
+# ou, sans installation
+chmod +x Claudex-0.1.0.AppImage
+./Claudex-0.1.0.AppImage
+```
+
+Il n'y a pas encore de version publiée pour Linux : les deux paquets se construisent depuis les
+sources avec `npm run dist:linux`, et sortent dans `dist/`.
+
+Vérifié sur Debian 13 (trixie), GNOME sous Wayland, x86-64. Rien n'y est propre à Debian : une
+autre distribution récente devrait convenir, elle n'a simplement pas été essayée.
+
+<details>
+<summary>Si la fenêtre ne s'ouvre pas</summary>
+
+Electron a besoin d'un bac à sable. Il le prend dans les espaces de noms utilisateur du noyau,
+que les distributions récentes activent par défaut. Pour le vérifier :
+
+```sh
+cat /proc/sys/kernel/unprivileged_userns_clone   # doit répondre 1
+```
+
+Si la valeur est `0`, ou si AppArmor restreint ces espaces de noms
+(`/proc/sys/kernel/apparmor_restrict_unprivileged_userns` à `1`, cas d'Ubuntu 24.04), l'ouvrir
+à Claudex vaut mieux que de lancer l'application avec `--no-sandbox`, qui la désarme entièrement.
+
+</details>
 
 ## Fonctions et feuille de route
 
@@ -97,16 +133,21 @@ d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule foi
 - [x] Arborescence avec les icônes du type de fichier
 - [x] Aperçu en lecture seule, coloré selon le langage
 - [x] Écran d'état de l'environnement, avec ses correctifs
-- [ ] Windows et Linux
+- [x] Linux, sur Debian
+- [ ] Windows
 
 ## Raccourcis
 
-| | |
-|---|---|
-| `⌘T` | nouveau terminal |
-| `⌘W` | fermer l'onglet, et sa session tmux avec lui |
-| `⌘E` | basculer entre les conversations et les fichiers |
-| `⌘1`…`⌘9` | passer d'un projet à l'autre |
+| macOS | Linux | |
+|---|---|---|
+| `⌘T` | `Ctrl+Maj+T` | nouveau terminal |
+| `⌘W` | `Ctrl+Maj+W` | fermer l'onglet, et sa session tmux avec lui |
+| `⌘E` | `Ctrl+Maj+E` | basculer entre les conversations et les fichiers |
+| `⌘1`…`⌘9` | `Ctrl+Maj+1`…`9` | passer d'un projet à l'autre |
+
+La Majuscule n'est là que hors de macOS, où Commande est libre. Ailleurs il faut laisser
+Contrôle au terminal : `Ctrl+E` va en fin de ligne, `Ctrl+W` efface le mot précédent, et une
+application faite de terminaux ne peut pas les prendre à l'agent.
 
 ## Galerie
 
