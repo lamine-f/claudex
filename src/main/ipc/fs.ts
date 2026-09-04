@@ -5,8 +5,14 @@ import { lireApercu, lireDossier } from '../services/fichiers'
 import * as store from '../services/store'
 import { assertInsideWorkspace } from '../util/paths'
 
-/** Un seul veilleur par workspace observé. */
-const veilleurs = new Map<string, FSWatcher>()
+/**
+ * Un seul veilleur par workspace observé, et le destinataire du moment.
+ *
+ * Le destinataire est gardé à part parce que le veilleur, lui, ne se referme
+ * plus entre deux appels : il faut pouvoir le rebrancher sur une fenêtre neuve
+ * sans le recréer, ce qui arrive à chaque rechargement de l'interface.
+ */
+const veilleurs = new Map<string, { veilleur: FSWatcher; destinataire: WebContents }>()
 
 function racinesAutorisees(): string[] {
   return store.get().workspaces.map((w) => w.path)
@@ -35,7 +41,18 @@ export function registerFsIpc(): void {
    */
   ipcMain.handle('fs:observer', (evenement, chemin: string) => {
     const racine = verifier(chemin)
-    veilleurs.get(racine)?.close()
+
+    // Un veilleur déjà posé sur cette racine est gardé, et seulement rebranché.
+    // Le refermer pour en poser un identique ne changeait rien, et refermer
+    // pendant son parcours initial faisait planter chokidar : il gèle l'objet
+    // qui porte la surveillance dès qu'il la referme, puis en réécrit un champ.
+    // L'interface appelle cette méthode à chaque retour sur un projet, la
+    // fenêtre était donc grande ouverte.
+    const pose = veilleurs.get(racine)
+    if (pose) {
+      pose.destinataire = evenement.sender
+      return
+    }
 
     const veilleur = chokidar.watch(racine, {
       ignoreInitial: true,
@@ -52,24 +69,26 @@ export function registerFsIpc(): void {
       awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 50 }
     })
 
-    const signaler = (destinataire: WebContents) => (): void => {
-      if (!destinataire.isDestroyed()) destinataire.send('fs:change', racine)
+    // Le destinataire est relu à chaque événement plutôt que capturé une fois :
+    // c'est ce qui permet au veilleur de survivre au rechargement de la fenêtre.
+    const notifier = (): void => {
+      const destinataire = veilleurs.get(racine)?.destinataire
+      if (destinataire && !destinataire.isDestroyed()) destinataire.send('fs:change', racine)
     }
-    const notifier = signaler(evenement.sender)
     veilleur.on('add', notifier).on('unlink', notifier).on('addDir', notifier).on('unlinkDir', notifier)
 
-    veilleurs.set(racine, veilleur)
+    veilleurs.set(racine, { veilleur, destinataire: evenement.sender })
   })
 
   ipcMain.handle('fs:cesserObservation', (_evenement, chemin: string) => {
     const racine = verifier(chemin)
-    void veilleurs.get(racine)?.close()
+    void veilleurs.get(racine)?.veilleur.close()
     veilleurs.delete(racine)
   })
 }
 
 /** Referme tous les veilleurs — appelé à la fermeture de l'application. */
 export function arreterVeilleurs(): void {
-  for (const veilleur of veilleurs.values()) void veilleur.close()
+  for (const { veilleur } of veilleurs.values()) void veilleur.close()
   veilleurs.clear()
 }
