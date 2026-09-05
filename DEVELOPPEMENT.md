@@ -138,7 +138,7 @@ terminal, seule façon de vérifier que `node-pty` a survécu à l'archive asar.
 
 ```sh
 node scripts/essai-notification.mjs          # déclenche une notification comme le ferait un agent
-node scripts/vitrine.mjs docs                # regénère la galerie du README
+node scripts/vitrine.mjs docs                # captures de l'application, décor fabriqué
 node scripts/icone.mjs                       # recompose l'icône depuis le logo
 CLAUDEX_CAPTURE_PROJETS=~/code/a:~/code/b \
   npm run captures                           # captures sur de vrais projets
@@ -152,7 +152,8 @@ dans le Dock et en tête de la page du dépôt.
 
 `vitrine.mjs` fabrique tout ce qu'il montre — un dépôt jetable dans `/tmp/atelier`, des
 conversations inventées, un profil neuf — et remplace l'invite du shell : les captures du
-dépôt ne doivent rien devoir à la machine qui les produit.
+dépôt ne doivent rien devoir à la machine qui les produit. Le README ne porte plus de galerie,
+ces captures servent désormais aux notes de version et aux tickets.
 
 `demo.mjs` suit la même règle et va plus loin : trois projets montés dans `/tmp/claudex-demo`,
 des conversations écrites pour l'occasion, une invite neutre posée par un `ZDOTDIR` jetable.
