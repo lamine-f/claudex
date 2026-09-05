@@ -214,49 +214,29 @@ await page.waitForSelector('[aria-label="Conversations"]')
 const pause = (ms) => page.waitForTimeout(ms)
 
 /**
- * Le curseur et les encadrés.
+ * Les encadrés qui désignent ce que l'on va faire.
  *
  * Ils n'appartiennent pas à l'application : ils sont posés dans la page le temps
- * de la prise. Le curseur suit les coordonnées où le clic a lieu, l'encadré
- * épouse la boîte réelle de l'élément visé. Ce qu'ils montrent est donc ce qui
- * se passe, non une reconstitution.
+ * de la prise, et épousent la boîte réelle de l'élément visé. Ce qu'ils montrent
+ * est donc ce qui se passe, non une reconstitution.
+ *
+ * Il y avait aussi un curseur dessiné. Il est retiré : une flèche animée par une
+ * transition CSS n'arrive pas toujours avant le clic quand la page est occupée à
+ * redessiner un terminal, et l'on voyait alors l'action se produire avant que la
+ * flèche n'ait bougé. Un repère qui ment sur l'ordre des choses vaut moins que
+ * pas de repère du tout.
  */
 async function poserAnnotations() {
   await page.evaluate(() => {
     const style = document.createElement('style')
     style.textContent = `
-      #demo-curseur {
-        position: fixed; left: 0; top: 0; z-index: 2147483647; pointer-events: none;
-        width: 22px; height: 22px; margin: -2px 0 0 -2px;
-        transition: transform 520ms cubic-bezier(.4,.1,.2,1);
-        filter: drop-shadow(0 2px 3px rgba(0,0,0,.6));
-      }
-      #demo-curseur.clic { transform: scale(.82) !important; transition-duration: 90ms; }
       .demo-cadre {
         position: fixed; z-index: 2147483646; pointer-events: none;
         border: 2px solid #ff4d4d; border-radius: 8px;
         box-shadow: 0 0 0 3px rgba(255,77,77,.18);
-        transition: opacity 160ms;
       }
     `
     document.head.append(style)
-    const curseur = document.createElement('div')
-    curseur.id = 'demo-curseur'
-    curseur.innerHTML =
-      '<svg viewBox="0 0 24 24" width="22" height="22">' +
-      '<path d="M4 2 L4 19 L8.6 14.6 L11.6 21.4 L14.6 20 L11.6 13.4 L18 13.4 Z"' +
-      ' fill="#fff" stroke="#111" stroke-width="1.1" stroke-linejoin="round"/></svg>'
-    document.body.append(curseur)
-    // Le glissement met le curseur à jour vingt fois de suite : la transition
-    // le ferait alors traîner loin derrière la souris.
-    window.__demoCurseur = (x, y, instantane) => {
-      curseur.style.transitionDuration = instantane ? '0ms' : '520ms'
-      curseur.style.transform = `translate(${x}px, ${y}px)`
-    }
-    window.__demoClic = () => {
-      curseur.classList.add('clic')
-      setTimeout(() => curseur.classList.remove('clic'), 220)
-    }
     window.__demoCadre = (cadre) => {
       document.querySelectorAll('.demo-cadre').forEach((n) => n.remove())
       if (!cadre) return
@@ -273,7 +253,7 @@ async function poserAnnotations() {
   })
 }
 
-/** Amène le curseur sur une cible, l'encadre, puis clique dessus. */
+/** Encadre une cible, laisse le temps de la voir, puis clique dessus. */
 async function cliquer(cible, options = {}) {
   const cadre = await cible.boundingBox()
   if (!cadre) throw new Error("la cible n'est pas à l'écran")
@@ -281,11 +261,9 @@ async function cliquer(cible, options = {}) {
   const y = cadre.y + (options.dy ?? cadre.height / 2)
 
   await page.evaluate((c) => window.__demoCadre(c), options.sansCadre ? null : cadre)
-  await page.evaluate(([px, py]) => window.__demoCurseur(px, py), [x, y])
-  await pause(options.approche ?? 700)
-  await page.evaluate(() => window.__demoClic())
+  await pause(options.approche ?? 800)
   await page.mouse.click(x, y, { button: options.bouton ?? 'left' })
-  await pause(options.apres ?? 320)
+  await pause(options.apres ?? 420)
   await page.evaluate(() => window.__demoCadre(null))
 }
 
@@ -412,20 +390,24 @@ const glisser = async (source, cible) => {
   const a = await cible.boundingBox()
   const depart = [d.x + d.width / 2, d.y + d.height / 2]
   const arrivee = [a.x + a.width / 2, a.y + 4]
-  await page.evaluate(([x, y]) => window.__demoCurseur(x, y), depart)
-  await pause(600)
-  await page.evaluate(() => window.__demoClic())
+
+  // La ligne prise est encadrée : sans curseur, c'est elle qui dit qu'on la
+  // tient. Le trait d'insertion de l'application dit ensuite où elle va.
+  await page.evaluate((c) => window.__demoCadre(c), d)
+  await pause(800)
   await page.mouse.move(depart[0], depart[1])
   await page.mouse.down()
   for (let pas = 1; pas <= 22; pas++) {
-    const x = depart[0] + ((arrivee[0] - depart[0]) * pas) / 22
-    const y = depart[1] + ((arrivee[1] - depart[1]) * pas) / 22
-    await page.mouse.move(x, y)
-    await page.evaluate(([px, py]) => window.__demoCurseur(px, py, true), [x, y])
+    await page.mouse.move(
+      depart[0] + ((arrivee[0] - depart[0]) * pas) / 22,
+      depart[1] + ((arrivee[1] - depart[1]) * pas) / 22
+    )
+    await pause(18)
   }
   await page.mouse.move(arrivee[0], arrivee[1])
-  await pause(400)
+  await pause(500)
   await page.mouse.up()
+  await page.evaluate(() => window.__demoCadre(null))
 }
 await glisser(projet('infra'), projet('boutique'))
 await pause(1500)
@@ -450,13 +432,16 @@ const gif = join(sortie, 'demo.gif')
  * les gestes de souris deviennent illisibles. Rien n'est coupé, rien n'est
  * rejoué : seule l'horloge de ce segment est resserrée.
  *
- * Deux et non trois : à trois, une image sur quatre seulement du défilement
- * était retenue et le texte sautait. Le fichier y gagne même en poids, des
- * images voisines identiques se compressant mieux qu'un mouvement haché.
+ * Le facteur suit la durée réelle plutôt que d'être fixé une fois pour toutes :
+ * l'agent met entre trente et cinquante secondes selon les jours, et un facteur
+ * constant donnait une démonstration de quarante-cinq secondes un jour, de
+ * cinquante-six le lendemain. On vise dix-huit secondes pour ce plan, sans
+ * jamais descendre sous deux, où le mouvement se hache et où le fichier
+ * s'alourdit, ni monter au-delà de quatre, où plus rien ne se lit.
  */
-const ACCELERATION = 2
 const a = Math.max(0, debutAgent - 0.8)
 const b = finAgent + 0.8
+const ACCELERATION = Math.min(4, Math.max(2, (b - a) / 18)).toFixed(2)
 const montage =
   `[0:v]trim=0:${a.toFixed(2)},setpts=PTS-STARTPTS[avant];` +
   `[0:v]trim=${a.toFixed(2)}:${b.toFixed(2)},setpts=(PTS-STARTPTS)/${ACCELERATION}[agent];` +
@@ -471,7 +456,8 @@ await run('ffmpeg', [
   '-y', '-i', webm, '-filter_complex', montage, '-map', '[sortie]', '-loop', '0', gif
 ])
 console.log(
-  `plan de l'agent : ${a.toFixed(1)} s à ${b.toFixed(1)} s, joué à ${ACCELERATION}×`
+  `plan de l'agent : ${(b - a).toFixed(1)} s de ${a.toFixed(1)} à ${b.toFixed(1)}, ` +
+    `joué à ${ACCELERATION}×`
 )
 
 await rename(webm, join(sortie, 'demo.webm')).catch(() => undefined)

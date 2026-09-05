@@ -165,11 +165,19 @@ Claudex orchestre, le montrer en peinture n'aurait pas de sens. Elle consomme do
 quota. La conversation créée est ensuite fermée puis reprise depuis la colonne, ce qui est la
 promesse de l'application et ne se joue pas.
 
-**Le curseur et les encadrés rouges** sont injectés dans la page le temps de la prise. Le
-curseur suit les coordonnées où le clic a lieu, l'encadré épouse la boîte réelle de l'élément
-visé : ils montrent ce qui se passe, ils ne le reconstituent pas.
+**Les encadrés rouges** sont injectés dans la page le temps de la prise et épousent la boîte
+réelle de l'élément visé : ils montrent ce qui se passe, ils ne le reconstituent pas.
 
-**Le plan de l'agent est joué à deux fois sa vitesse**, et lui seul. Il dure une trentaine de
+Il y avait aussi un curseur dessiné, retiré depuis. Une flèche animée par une transition CSS
+n'arrive pas toujours avant le clic quand la page redessine un terminal, et l'on voyait alors
+l'action se produire avant que la flèche n'ait bougé. Un repère qui ment sur l'ordre des choses
+vaut moins que pas de repère du tout.
+
+**Le plan de l'agent est accéléré**, et lui seul. Le facteur suit sa durée réelle plutôt que
+d'être fixé une fois pour toutes : l'agent met entre trente et cinquante secondes selon les
+jours, et un facteur constant donnait une démonstration de quarante-cinq secondes un jour, de
+cinquante-six le lendemain. On vise dix-huit secondes pour ce plan, sans descendre sous deux ni
+monter au-delà de quatre. Il dure une trentaine de
 secondes en vrai, pendant lesquelles les appels d'outils défilent ; au rythme réel la
 démonstration s'étirait au-delà de la minute. Le reste garde sa vitesse, sans quoi les gestes
 de souris deviennent illisibles. Rien n'est coupé ni rejoué, seule l'horloge de ce segment est
