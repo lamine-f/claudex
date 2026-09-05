@@ -1,7 +1,7 @@
 {
   "name": "claudex",
   "version": "0.2.3",
-  "description": "IDE desktop dont l'unité de base est la session d'agent : projets, conversations Claude Code reprenables et terminaux tmux persistants",
+  "description": "IDE desktop dont l'unité de base est la session d'agent : projets, conversations Claude Code reprenables, terminaux persistants là où tmux est présent",
   "main": "./out/main/index.js",
   "author": "lamine-f",
   "desktopName": "claudex.desktop",
