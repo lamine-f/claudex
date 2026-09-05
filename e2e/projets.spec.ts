@@ -79,6 +79,26 @@ test.describe('les projets du rail', () => {
     await expect(projet(page, 'Beta')).toContainText('1')
   })
 
+  test('revenir sur un projet rouvre l’onglet qu’on y regardait', async () => {
+    const { page } = ctx
+    await projet(page, 'Alpha').click()
+    await expect(onglets(page)).toHaveCount(2)
+
+    // On se pose sur le premier des deux, qui n'est pas celui que la barre
+    // rouvrirait d'elle-même.
+    await onglets(page).first().click()
+    await expect(onglets(page).first()).toHaveAttribute('aria-current', 'true')
+
+    await projet(page, 'Beta').click()
+    await expect(onglets(page)).toHaveCount(1)
+
+    await projet(page, 'Alpha').click()
+    await expect(onglets(page)).toHaveCount(2)
+    // L'ordre de la barre ne bouge pas, et c'est bien le premier onglet qui
+    // revient devant : le dernier de la barre était le piège.
+    await expect(onglets(page).first()).toHaveAttribute('aria-current', 'true')
+  })
+
   test('l’ordre des projets se change à la souris et se retient', async () => {
     const { page } = ctx
     expect(await ordre(page, 'Alpha', 'Beta')).toEqual(['Alpha', 'Beta'])

@@ -62,6 +62,10 @@ export function TerminalTabs({
                 ))}
               <button
                 type="button"
+                // L'onglet regardé se dit, plutôt que de se deviner à sa
+                // couleur. `aria-current` suffit là où `role="tab"` promettrait
+                // une navigation aux flèches que la barre n'offre pas.
+                aria-current={courant ? 'true' : undefined}
                 onClick={() => onChoisir(tab.id)}
                 className={`max-w-56 truncate text-[13.5px] ${
                   courant ? 'text-texte' : 'text-texte-faible'

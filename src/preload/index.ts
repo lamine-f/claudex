@@ -51,6 +51,8 @@ const api = {
       rows: number
     ): Promise<{ tab: Tab; reprise: boolean; aRestaurer?: boolean }> =>
       ipcRenderer.invoke('term:open', tabId, cols, rows),
+    /** Dit quel onglet est regardé, pour le retrouver en revenant au projet. */
+    focus: (tabId: string): Promise<void> => ipcRenderer.invoke('term:focus', tabId),
     input: (tabId: string, donnees: string): void =>
       ipcRenderer.send('term:input', tabId, donnees),
     resize: (tabId: string, cols: number, rows: number): void =>

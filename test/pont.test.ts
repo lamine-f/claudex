@@ -12,7 +12,8 @@ describe('contrôle du pont', () => {
       state: { get: () => {}, setLayout: () => {}, setActiveWorkspace: () => {} },
       workspace: { list: () => {}, add: () => {}, remove: () => {}, update: () => {}, ranger: () => {} },
       term: {
-        list: () => {}, comptes: () => {}, create: () => {}, open: () => {}, input: () => {},
+        list: () => {}, comptes: () => {}, create: () => {}, open: () => {}, focus: () => {},
+        input: () => {},
         resize: () => {}, detach: () => {}, close: () => {}, rename: () => {}
       },
       fs: { lireDossier: () => {}, lireApercu: () => {}, observer: () => {}, cesserObservation: () => {} },

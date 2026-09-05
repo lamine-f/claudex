@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { ipcMain } from 'electron'
+import { dernierRegarde } from '@shared/onglets'
 import type { Tab } from '@shared/types'
 import { tmuxSessionName } from '../util/paths'
 import { multiplexeur } from '../services/multiplexeur'
@@ -73,11 +74,15 @@ export function registerTerminalIpc(): void {
     return comptes
   })
 
+  /**
+   * Les onglets d'un projet, dans l'ordre où ils ont été ouverts.
+   *
+   * Ils étaient rendus triés par dernière visite, ce qui faisait sauter la barre
+   * d'onglets dès qu'on revenait sur un projet. Lequel était regardé se lit
+   * maintenant sur `lastActiveAt`, sans toucher à leur rang.
+   */
   ipcMain.handle('term:list', (_evenement, workspaceId: string) =>
-    store
-      .get()
-      .tabs.filter((t) => t.workspaceId === workspaceId)
-      .sort((a, b) => a.lastActiveAt - b.lastActiveAt)
+    store.get().tabs.filter((t) => t.workspaceId === workspaceId)
   )
 
   ipcMain.handle(
@@ -137,17 +142,31 @@ export function registerTerminalIpc(): void {
         })
       }
 
-      store.update((etat) => {
-        const cible = etat.tabs.find((t) => t.id === tabId)
-        if (cible) cible.lastActiveAt = Date.now()
-        etat.activeTabId = tabId
-      })
+      // L'attachement ne dit rien de ce que l'on regarde : voir `term:focus`.
 
       // La session recréée a déjà réaffiché l'écran d'avant ; le renderer n'a plus
       // qu'à proposer la reprise de ce qui y tournait.
       return { tab, reprise: preexistante, aRestaurer: !preexistante && Boolean(fichierEcran) }
     }
   )
+
+  /**
+   * Note l'onglet que l'on regarde.
+   *
+   * `term:open` en tenait lieu, et c'était faux : tous les onglets d'un projet
+   * sont attachés dès qu'on l'ouvre, pas seulement celui du dessus. L'ordre de
+   * dernière activité suivait donc l'ordre d'attachement, si bien que revenir
+   * sur un projet rouvrait toujours son dernier onglet au lieu de celui qu'on
+   * avait quitté.
+   */
+  ipcMain.handle('term:focus', (_evenement, tabId: string) => {
+    store.update((etat) => {
+      const cible = etat.tabs.find((t) => t.id === tabId)
+      if (!cible) return
+      cible.lastActiveAt = Date.now()
+      etat.activeTabId = tabId
+    })
+  })
 
   ipcMain.on('term:input', (_evenement, tabId: string, donnees: string) => {
     pty.write(tabId, donnees)
@@ -170,7 +189,12 @@ export function registerTerminalIpc(): void {
     await scrollback.oublier(tabId)
     store.update((etat) => {
       etat.tabs = etat.tabs.filter((t) => t.id !== tabId)
-      if (etat.activeTabId === tabId) etat.activeTabId = etat.tabs.at(-1)?.id
+      if (etat.activeTabId === tabId) {
+        // L'écran revient à l'onglet du même projet qu'on regardait avant celui
+        // qu'on ferme, et non au dernier ouvert d'un projet quelconque.
+        const voisins = etat.tabs.filter((t) => t.workspaceId === tab?.workspaceId)
+        etat.activeTabId = dernierRegarde(voisins)?.id
+      }
     })
     return store.get().tabs
   })

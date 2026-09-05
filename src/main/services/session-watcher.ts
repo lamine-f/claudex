@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { basename } from 'node:path'
 import chokidar, { type FSWatcher } from 'chokidar'
 import type { WebContents } from 'electron'
+import { dernierRegarde } from '@shared/onglets'
 import { claudeProjectPath } from '../util/paths'
 import * as store from './store'
 
@@ -76,9 +77,9 @@ function rattacher(cheminWorkspace: string, uuid: string): void {
     const dejaPris = etat.tabs.some((t) => t.claudeSessionId === uuid)
     if (dejaPris) return
 
-    const candidat = etat.tabs
-      .filter((t) => t.workspaceId === workspace.id && !t.claudeSessionId)
-      .sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]
+    const candidat = dernierRegarde(
+      etat.tabs.filter((t) => t.workspaceId === workspace.id && !t.claudeSessionId)
+    )
     if (!candidat) return
 
     candidat.claudeSessionId = uuid

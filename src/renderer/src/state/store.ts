@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { dernierRegarde } from '@shared/onglets'
 import { rangerSelon } from '@shared/ordre'
 import { manquesDuPont } from '@shared/pont'
 import {
@@ -349,11 +350,13 @@ export const useStore = create<EtatUi>((set, get) => ({
     // à rattraper ce que le processus principal a changé de son côté, et cela ne
     // doit pas déplacer l'écran sous les yeux de qui n'a rien demandé.
     //
+    // Sinon on reprend celui qu'on regardait en quittant ce projet, plutôt que
+    // le dernier de la barre : c'est ce qui fait qu'un projet retrouvé s'ouvre
+    // là où on l'avait laissé.
     const courant = get().activeTabId
-    set({
-      tabs,
-      activeTabId: tabs.some((t) => t.id === courant) ? courant : tabs.at(-1)?.id
-    })
+    const retenu = tabs.some((t) => t.id === courant) ? courant : dernierRegarde(tabs)?.id
+    set({ tabs, activeTabId: retenu })
+    if (retenu && retenu !== courant) void window.claudex.term.focus(retenu)
   },
 
   chargerSessions: async (workspaceId) => {
@@ -564,6 +567,9 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   choisirOnglet: (id) => {
     set({ activeTabId: id })
+    // Le processus principal tient l'ordre des onglets par dernière visite :
+    // sans ce mot, il ne saurait pas lequel on regarde.
+    void window.claudex.term.focus(id)
     apaiserOnglet(get, id)
   },
 
@@ -576,10 +582,10 @@ export const useStore = create<EtatUi>((set, get) => ({
     if (uuid && get().sollicitations[uuid]) void window.claudex.claude.apaiser(uuid)
     await window.claudex.term.close(id)
     const restants = get().tabs.filter((t) => t.id !== id)
-    set({
-      tabs: restants,
-      activeTabId: get().activeTabId === id ? restants.at(-1)?.id : get().activeTabId
-    })
+    const retenu =
+      get().activeTabId === id ? dernierRegarde(restants)?.id : get().activeTabId
+    set({ tabs: restants, activeTabId: retenu })
+    if (retenu) void window.claudex.term.focus(retenu)
     void get().rafraichirComptes()
   },
 

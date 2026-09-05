@@ -10,7 +10,18 @@
 const ATTENDU: Record<string, string[]> = {
   state: ['get', 'setLayout', 'setActiveWorkspace'],
   workspace: ['list', 'add', 'remove', 'update', 'ranger'],
-  term: ['list', 'comptes', 'create', 'open', 'input', 'resize', 'detach', 'close', 'rename'],
+  term: [
+    'list',
+    'comptes',
+    'create',
+    'open',
+    'focus',
+    'input',
+    'resize',
+    'detach',
+    'close',
+    'rename'
+  ],
   fs: ['lireDossier', 'lireApercu', 'observer', 'cesserObservation'],
   claude: [
     'listSessions',
