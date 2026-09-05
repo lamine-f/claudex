@@ -71,7 +71,10 @@ export function useTerminal(
       allowProposedApi: true,
       cursorBlink: true,
       fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace",
-      fontSize: 12.5,
+      // La taille se laisse forcer, comme le rendu WebGL plus bas. Une
+      // démonstration destinée à être regardée dans un README a besoin de
+      // caractères deux fois plus gros que ceux du travail quotidien.
+      fontSize: (window as unknown as { __claudexPolice?: number }).__claudexPolice ?? 12.5,
       lineHeight: 1.3,
       letterSpacing: 0,
       scrollback: 0, // l'historique est tenu par tmux, pas par xterm

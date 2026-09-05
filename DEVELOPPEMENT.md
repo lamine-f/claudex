@@ -158,14 +158,38 @@ ces captures servent désormais aux notes de version et aux tickets.
 `demo.mjs` suit la même règle et va plus loin : trois projets montés dans `/tmp/claudex-demo`,
 des conversations écrites pour l'occasion, une invite neutre posée par un `ZDOTDIR` jetable.
 La prise passe par l'enregistrement vidéo de Playwright, puis ffmpeg réduit le tout en GIF avec
-une palette calculée sur l'ensemble des images. Le serveur tmux du socket `claudex-demo` est
-abattu d'abord : un pane hérite de l'environnement du serveur, non de celui du client, et un
-serveur laissé par une prise précédente rendrait l'invite du système malgré `ZDOTDIR`.
+une palette calculée sur l'ensemble des images. Elle a besoin de ffmpeg.
 
-La démonstration lance un vrai agent et lui pose une vraie question : c'est l'outil que Claudex
-orchestre, le montrer en peinture n'aurait pas de sens. Elle consomme donc un peu de quota, et
-répond au dialogue de confiance de Claude Code, dont le choix mis en avant est « No, exit ».
-Elle a besoin de ffmpeg.
+La démonstration lance un vrai agent et lui fait écrire un vrai fichier : c'est l'outil que
+Claudex orchestre, le montrer en peinture n'aurait pas de sens. Elle consomme donc un peu de
+quota. La conversation créée est ensuite fermée puis reprise depuis la colonne, ce qui est la
+promesse de l'application et ne se joue pas.
+
+**Le curseur et les encadrés rouges** sont injectés dans la page le temps de la prise. Le
+curseur suit les coordonnées où le clic a lieu, l'encadré épouse la boîte réelle de l'élément
+visé : ils montrent ce qui se passe, ils ne le reconstituent pas.
+
+**Le plan de l'agent est joué à trois fois sa vitesse**, et lui seul. Il dure une trentaine de
+secondes en vrai, pendant lesquelles les appels d'outils défilent ; au rythme réel la
+démonstration s'étirait au-delà de la minute. Le reste garde sa vitesse, sans quoi les gestes
+de souris deviennent illisibles. Rien n'est coupé ni rejoué, seule l'horloge de ce segment est
+resserrée, et les bornes sont relevées pendant la prise.
+
+**La police du terminal est forcée à 20 px** par `window.__claudexPolice`, comme le rendu WebGL
+est écarté par `window.__claudexSansWebgl`. À 12,5 px, le texte n'est plus lisible dans un GIF
+affiché à mille pixels de large.
+
+Quatre pièges, tous rencontrés. Le serveur tmux du socket `claudex-demo` est abattu en premier :
+un pane hérite de l'environnement du serveur et non de celui du client, et les agents de la
+prise précédente y vivent encore. On attend ensuite deux secondes, car un agent abattu écrit son
+transcrit en s'arrêtant, après le nettoyage. Le décor est enfin vérifié fichier par fichier
+avant la prise, plutôt que supposé propre. Et le chemin des projets est résolu : sur macOS
+`/tmp` est un lien vers `/private/tmp`, Claude Code range ses transcrits sous le chemin réel
+quand Claudex encode le chemin déclaré, si bien que la conversation créée n'arrivait jamais
+dans la colonne.
+
+Le dialogue de confiance de Claude Code met « No, exit » en avant : valider sans descendre d'un
+cran arrête l'agent aussitôt lancé.
 
 ## Points de vigilance
 

@@ -18,7 +18,17 @@
  * aplats sombres de l'interface se mettent à grouiller.
  */
 import { execFile } from 'node:child_process'
-import { copyFile, mkdir, mkdtemp, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import {
+  access,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  writeFile
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -65,6 +75,21 @@ const DECOR = [
 const dossierTranscrits = (chemin) =>
   join(process.env.HOME, '.claude', 'projects', chemin.replace(/[^a-zA-Z0-9-]/g, '-'))
 
+/*
+ * Le serveur tmux du socket de démonstration est abattu avant toute chose.
+ *
+ * Deux raisons. Un pane hérite de l'environnement du serveur et non de celui du
+ * client : un serveur laissé par une prise précédente rendrait l'invite du
+ * système malgré ZDOTDIR. Et surtout, les agents de la prise précédente y vivent
+ * encore, l'application fermée ne les ayant que détachés. L'un d'eux réécrivait
+ * son transcrit après le nettoyage, et la démonstration s'ouvrait sur une
+ * conversation qui n'avait pas eu lieu.
+ */
+await run('tmux', ['-L', 'claudex-demo', 'kill-server']).catch(() => undefined)
+// Un agent abattu écrit son transcrit en s'arrêtant : le nettoyage qui suit
+// passerait avant, et le fichier reviendrait derrière lui.
+await new Promise((suite) => setTimeout(suite, 2000))
+
 const profil = await mkdtemp(join(tmpdir(), 'claudex-demo-'))
 const videos = await mkdtemp(join(tmpdir(), 'claudex-demo-video-'))
 // Les projets vivent sous un chemin fixe et court, et portent leur vrai nom :
@@ -72,7 +97,15 @@ const videos = await mkdtemp(join(tmpdir(), 'claudex-demo-video-'))
 // entier. Un dossier tiré au sort s'y étalerait sur une ligne illisible.
 // `/tmp` plutôt que le dossier temporaire de l'utilisateur : sur macOS celui-ci
 // est un chemin de quarante caractères qui s'étale dans l'en-tête de l'aperçu.
-const atelier = process.platform === 'win32' ? join(tmpdir(), 'claudex-demo') : '/tmp/claudex-demo'
+//
+// Le chemin est résolu : sur macOS `/tmp` est un lien vers `/private/tmp`, et
+// Claude Code range ses transcrits sous le chemin réel de son dossier de
+// travail. Claudex, lui, encode le chemin déclaré du projet. Déclarer `/tmp`
+// faisait donc chercher `-tmp-claudex-demo-boutique` là où Claude Code écrivait
+// `-private-tmp-claudex-demo-boutique`, et la conversation créée n'arrivait
+// jamais dans la colonne.
+const racine = process.platform === 'win32' ? tmpdir() : await realpath('/tmp')
+const atelier = join(racine, 'claudex-demo')
 await rm(atelier, { recursive: true, force: true })
 await mkdir(atelier, { recursive: true })
 const zdotdir = join(atelier, '.shell')
@@ -97,7 +130,11 @@ for (const [rang, p] of DECOR.entries()) {
   }
 
   // Les conversations, de la plus ancienne à la plus récente.
+  // Le dossier est vidé avant d'être garni : une prise interrompue laisse ses
+  // transcrits derrière elle, et la suivante s'ouvrait alors sur une
+  // conversation qui n'avait pas eu lieu.
   const dossier = dossierTranscrits(chemin)
+  await rm(dossier, { recursive: true, force: true })
   await mkdir(dossier, { recursive: true })
   for (const [i, titre] of p.conversations.entries()) {
     const uuid = `${String(rang)}${String(i)}${'abcdef01'.slice(0, 6)}-1111-1111-1111-111111111111`
@@ -118,6 +155,26 @@ for (const [rang, p] of DECOR.entries()) {
   })
 }
 
+/*
+ * Le décor est vérifié avant la prise, non supposé.
+ *
+ * Un agent de la prise précédente peut avoir écrit son transcrit entre le
+ * nettoyage et le semis : la démonstration s'ouvrait alors sur une conversation
+ * qui n'avait pas eu lieu, et le premier écran du dépôt montrait un décor faux.
+ */
+for (const [rang, p] of DECOR.entries()) {
+  const dossier = dossierTranscrits(projets[rang].path)
+  const attendus = new Set(
+    p.conversations.map((_, i) => `${rang}${i}${'abcdef01'.slice(0, 6)}-1111-1111-1111-111111111111.jsonl`)
+  )
+  for (const fichier of await readdir(dossier)) {
+    if (!attendus.has(fichier)) {
+      await rm(join(dossier, fichier), { recursive: true, force: true })
+      console.log('décor : transcrit étranger écarté ·', fichier)
+    }
+  }
+}
+
 await writeFile(
   join(profil, 'state.json'),
   JSON.stringify({
@@ -128,10 +185,10 @@ await writeFile(
   })
 )
 
-// Le serveur du socket de démonstration est abattu d'abord : un pane hérite de
-// l'environnement du serveur, non de celui du client, et un serveur laissé par
-// une prise précédente rendrait l'invite du système malgré ZDOTDIR.
-await run('tmux', ['-L', 'claudex-demo', 'kill-server']).catch(() => undefined)
+// L'enregistrement commence au lancement : tous les repères de temps se
+// comptent à partir d'ici, pour savoir plus tard quel segment accélérer.
+const tLancement = Date.now()
+const marque = () => (Date.now() - tLancement) / 1000
 
 const app = await electron.launch({
   args: [resolve('out/main/index.js'), `--user-data-dir=${profil}`],
@@ -144,6 +201,9 @@ const page = await app.firstWindow()
 // Un canvas WebGL ne s'enregistre pas : sans cela le terminal ressort vide.
 await page.addInitScript(() => {
   window.__claudexSansWebgl = true
+  // Deux fois la taille du travail quotidien : dans un README, le GIF est
+  // affiché à moins de mille pixels, et 12,5 px n'y sont plus lisibles.
+  window.__claudexPolice = 20
 })
 await app.evaluate(({ BrowserWindow }, taille) => {
   BrowserWindow.getAllWindows()[0]?.setSize(taille.l, taille.h)
@@ -152,6 +212,82 @@ await page.reload()
 await page.waitForSelector('[aria-label="Conversations"]')
 
 const pause = (ms) => page.waitForTimeout(ms)
+
+/**
+ * Le curseur et les encadrés.
+ *
+ * Ils n'appartiennent pas à l'application : ils sont posés dans la page le temps
+ * de la prise. Le curseur suit les coordonnées où le clic a lieu, l'encadré
+ * épouse la boîte réelle de l'élément visé. Ce qu'ils montrent est donc ce qui
+ * se passe, non une reconstitution.
+ */
+async function poserAnnotations() {
+  await page.evaluate(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      #demo-curseur {
+        position: fixed; left: 0; top: 0; z-index: 2147483647; pointer-events: none;
+        width: 22px; height: 22px; margin: -2px 0 0 -2px;
+        transition: transform 520ms cubic-bezier(.4,.1,.2,1);
+        filter: drop-shadow(0 2px 3px rgba(0,0,0,.6));
+      }
+      #demo-curseur.clic { transform: scale(.82) !important; transition-duration: 90ms; }
+      .demo-cadre {
+        position: fixed; z-index: 2147483646; pointer-events: none;
+        border: 2px solid #ff4d4d; border-radius: 8px;
+        box-shadow: 0 0 0 3px rgba(255,77,77,.18);
+        transition: opacity 160ms;
+      }
+    `
+    document.head.append(style)
+    const curseur = document.createElement('div')
+    curseur.id = 'demo-curseur'
+    curseur.innerHTML =
+      '<svg viewBox="0 0 24 24" width="22" height="22">' +
+      '<path d="M4 2 L4 19 L8.6 14.6 L11.6 21.4 L14.6 20 L11.6 13.4 L18 13.4 Z"' +
+      ' fill="#fff" stroke="#111" stroke-width="1.1" stroke-linejoin="round"/></svg>'
+    document.body.append(curseur)
+    // Le glissement met le curseur à jour vingt fois de suite : la transition
+    // le ferait alors traîner loin derrière la souris.
+    window.__demoCurseur = (x, y, instantane) => {
+      curseur.style.transitionDuration = instantane ? '0ms' : '520ms'
+      curseur.style.transform = `translate(${x}px, ${y}px)`
+    }
+    window.__demoClic = () => {
+      curseur.classList.add('clic')
+      setTimeout(() => curseur.classList.remove('clic'), 220)
+    }
+    window.__demoCadre = (cadre) => {
+      document.querySelectorAll('.demo-cadre').forEach((n) => n.remove())
+      if (!cadre) return
+      const boite = document.createElement('div')
+      boite.className = 'demo-cadre'
+      Object.assign(boite.style, {
+        left: `${cadre.x - 3}px`,
+        top: `${cadre.y - 3}px`,
+        width: `${cadre.width + 6}px`,
+        height: `${cadre.height + 6}px`
+      })
+      document.body.append(boite)
+    }
+  })
+}
+
+/** Amène le curseur sur une cible, l'encadre, puis clique dessus. */
+async function cliquer(cible, options = {}) {
+  const cadre = await cible.boundingBox()
+  if (!cadre) throw new Error("la cible n'est pas à l'écran")
+  const x = cadre.x + (options.dx ?? cadre.width / 2)
+  const y = cadre.y + (options.dy ?? cadre.height / 2)
+
+  await page.evaluate((c) => window.__demoCadre(c), options.sansCadre ? null : cadre)
+  await page.evaluate(([px, py]) => window.__demoCurseur(px, py), [x, y])
+  await pause(options.approche ?? 700)
+  await page.evaluate(() => window.__demoClic())
+  await page.mouse.click(x, y, { button: options.bouton ?? 'left' })
+  await pause(options.apres ?? 320)
+  await page.evaluate(() => window.__demoCadre(null))
+}
 
 /** Ce qu'affiche un terminal. Le rendu WebGL est écarté, le tampon fait foi. */
 const lireTerminal = (rang) =>
@@ -184,82 +320,120 @@ await pause(1200)
 if (await page.getByText("État de l'environnement").isVisible().catch(() => false)) {
   await page.getByRole('button', { name: '✕' }).first().click().catch(() => undefined)
 }
-await pause(1400)
-
-// 1. Les conversations du projet, lues sur le disque.
-await page.getByLabel('Sessions et fichiers').getByText('Migration des DTO').hover()
-await pause(1200)
-
-// 2. Changer de projet : la colonne se remplit sans qu'on demande rien.
-await projet('facturation').click()
-await pause(1400)
-await projet('boutique').click()
-await pause(1400)
+await poserAnnotations()
+await pause(1600)
 
 const taper = async (rang, texte, retour = '\n') => {
   const id = (await page.evaluate(() => Object.keys(window.__claudex ?? {})))[rang]
   if (id) await page.evaluate(([i, t]) => window.claudex.term.input(i, t), [id, texte + retour])
 }
 
-// 3. Une vraie conversation Claude Code, lancée depuis la colonne.
-await page.getByTitle('Nouvelle conversation').click()
+// 2. Une conversation Claude Code, lancée depuis la colonne.
+await cliquer(page.getByTitle('Nouvelle conversation'))
 await page.waitForSelector('.xterm')
+
+// Le rail et la colonne se replient : le terminal prend toute la largeur, et
+// c'est là que tout se passe pendant que l'agent travaille.
+await cliquer(page.getByTitle(/Masquer les projets/))
+await cliquer(page.getByTitle(/Masquer la colonne/))
 
 // Claude Code demande à qui ouvre un dossier neuf s'il lui fait confiance. Le
 // choix mis en avant est « No, exit » : il faut descendre d'un cran avant de
 // valider, sans quoi l'agent s'arrête aussitôt. La question n'est posée qu'une
 // fois par dossier, on n'y répond donc que si elle apparaît.
 if (await attendreTexte(0, /trust this folder/i, 10000)) {
-  await pause(1500)
+  await pause(1200)
   await taper(0, '\x1b[B', '')
-  await pause(700)
+  await pause(600)
   await taper(0, '', '\r')
 }
 await attendreTexte(0, /Try "|\/help|bypass permissions/i, 30000)
-await pause(1800)
-
-await taper(0, 'En une phrase, que calcule src/panier.ts ?', '\r')
-// La réponse arrive en flux : on la laisse s'écrire, puis se poser.
-await attendreTexte(0, /somme|total des|prix/i, 60000)
-await pause(3000)
-
-// 4. Un second terminal, et le compteur du rail qui les suit.
-await page.getByTitle(/^Nouveau terminal/).click()
-await pause(1800)
-await taper(1, 'ls src && cat src/panier.ts')
-await pause(2400)
-
-// 4. Contrôle+Tab circule entre les onglets.
-await page.keyboard.press('Control+Tab')
-await pause(1800)
-await page.keyboard.press('Control+Tab')
 await pause(1200)
 
-// 5. Le rail se range à la souris.
+// 3. Le plan de l'agent. C'est le cœur, et c'est aussi le plus long : ses
+// bornes sont notées pour l'accélérer au montage.
+const debutAgent = marque()
+await taper(0, 'Ajoute un test du total du panier dans src/panier.test.ts', '\r')
+
+// L'attente porte sur le fichier écrit, non sur ce que le terminal affiche : le
+// nom du fichier figure dans la question, et le chercher à l'écran rendait la
+// main avant même que l'agent n'ait commencé.
+const attendu = join(projets[0].path, 'src', 'panier.test.ts')
+const limite = Date.now() + 150000
+while (Date.now() < limite) {
+  if (await access(attendu).then(() => true, () => false)) break
+  await pause(500)
+}
+await pause(3000)
+const finAgent = marque()
+
+// 4. On rouvre les colonnes, et l'on ferme l'onglet.
+await cliquer(page.getByTitle(/Afficher la colonne/))
+await cliquer(page.getByTitle(/Afficher les projets/))
+await pause(600)
+
+const croix = page.getByTitle("Fermer l'onglet et sa session")
+await cliquer(croix)
+await pause(1400)
+
+// 5. La conversation est restée. On la reprend, avec son contexte.
+//
+// Elle se reconnaît à son titre, qui n'était pas là au départ : les
+// conversations du décor, elles, ne sont que des transcrits inventés, et
+// Claude Code refuserait de reprendre ce qui n'a jamais eu lieu.
+const titreNeuf = await page.waitForFunction(
+  (connus) => {
+    const colonne = document.querySelector('[aria-label="Sessions et fichiers"]')
+    const lignes = [...(colonne?.querySelectorAll('li button') ?? [])]
+    const neuve = lignes.find((b) => {
+      const titre = b.textContent?.split('\n')[0]?.trim()
+      return titre && !connus.some((c) => titre.startsWith(c))
+    })
+    return neuve ? neuve.textContent.split('\n')[0].trim() : null
+  },
+  DECOR[0].conversations,
+  { timeout: 30000 }
+).then((r) => r.jsonValue())
+
+const reprise = page
+  .getByLabel('Sessions et fichiers')
+  .locator('li button')
+  .filter({ hasText: titreNeuf })
+  .first()
+await cliquer(reprise)
+await page.waitForSelector('.xterm')
+// Le contexte rejoué : c'est la promesse de l'application, et elle se voit.
+await attendreTexte(0, /panier|test/i, 60000)
+await pause(3000)
+
+// 6. Le rail se range à la souris.
 const glisser = async (source, cible) => {
   const d = await source.boundingBox()
   const a = await cible.boundingBox()
-  await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2)
+  const depart = [d.x + d.width / 2, d.y + d.height / 2]
+  const arrivee = [a.x + a.width / 2, a.y + 4]
+  await page.evaluate(([x, y]) => window.__demoCurseur(x, y), depart)
+  await pause(600)
+  await page.evaluate(() => window.__demoClic())
+  await page.mouse.move(depart[0], depart[1])
   await page.mouse.down()
-  await page.mouse.move(a.x + a.width / 2, a.y + 4, { steps: 22 })
-  await page.mouse.move(a.x + a.width / 2, a.y + 4)
-  await pause(500)
+  for (let pas = 1; pas <= 22; pas++) {
+    const x = depart[0] + ((arrivee[0] - depart[0]) * pas) / 22
+    const y = depart[1] + ((arrivee[1] - depart[1]) * pas) / 22
+    await page.mouse.move(x, y)
+    await page.evaluate(([px, py]) => window.__demoCurseur(px, py, true), [x, y])
+  }
+  await page.mouse.move(arrivee[0], arrivee[1])
+  await pause(400)
   await page.mouse.up()
 }
 await glisser(projet('infra'), projet('boutique'))
 await pause(1500)
 
-// 6. L'arborescence, son menu, et un aperçu.
-await page.getByRole('button', { name: 'Fichiers', exact: true }).click()
-await pause(1000)
-await page.getByLabel('Arborescence').getByText('src', { exact: true }).click()
-await pause(1200)
-await page.getByLabel('Arborescence').getByText('logo.png').click()
-await pause(2800)
-await page.keyboard.press('Escape')
-await pause(1000)
-
 await app.close()
+// Les sessions survivent à la fermeture, c'est la promesse de l'application.
+// Une démonstration, elle, ne doit pas laisser d'agent derrière elle.
+await run('tmux', ['-L', 'claudex-demo', 'kill-server']).catch(() => undefined)
 
 const brut = (await readdir(videos)).find((f) => f.endsWith('.webm'))
 const webm = join(videos, brut)
@@ -267,9 +441,32 @@ const gif = join(sortie, 'demo.gif')
 
 // Palette commune à toutes les images : calculée par image, les aplats sombres
 // de l'interface se mettent à grouiller d'une image à l'autre.
-const filtre =
-  'fps=11,scale=900:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=160:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4'
-await run('ffmpeg', ['-y', '-i', webm, '-vf', filtre, '-loop', '0', gif])
+/*
+ * Le plan de l'agent est joué à deux fois sa vitesse.
+ *
+ * Il dure en vrai plus d'une demi-minute, pendant laquelle les appels d'outils
+ * défilent : au rythme réel, la démonstration s'étirait à cent secondes et
+ * personne ne la regardait jusqu'au bout. Le reste garde sa vitesse, sans quoi
+ * les gestes de souris deviennent illisibles. Rien n'est coupé, rien n'est
+ * rejoué : seule l'horloge de ce segment est resserrée.
+ */
+const ACCELERATION = 3
+const a = Math.max(0, debutAgent - 0.8)
+const b = finAgent + 0.8
+const montage =
+  `[0:v]trim=0:${a.toFixed(2)},setpts=PTS-STARTPTS[avant];` +
+  `[0:v]trim=${a.toFixed(2)}:${b.toFixed(2)},setpts=(PTS-STARTPTS)/${ACCELERATION}[agent];` +
+  `[0:v]trim=${b.toFixed(2)},setpts=PTS-STARTPTS[apres];` +
+  `[avant][agent][apres]concat=n=3:v=1:a=0[monte];` +
+  `[monte]fps=11,scale=1000:-1:flags=lanczos,split[s0][s1];` +
+  `[s0]palettegen=max_colors=160:stats_mode=diff[p];` +
+  `[s1][p]paletteuse=dither=bayer:bayer_scale=4[sortie]`
+await run('ffmpeg', [
+  '-y', '-i', webm, '-filter_complex', montage, '-map', '[sortie]', '-loop', '0', gif
+])
+console.log(
+  `plan de l'agent : ${a.toFixed(1)} s à ${b.toFixed(1)} s, joué à ${ACCELERATION}×`
+)
 
 await rename(webm, join(sortie, 'demo.webm')).catch(() => undefined)
 for (const dossier of aNettoyer) await rm(dossier, { recursive: true, force: true })
