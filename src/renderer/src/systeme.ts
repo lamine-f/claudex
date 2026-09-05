@@ -17,3 +17,16 @@ export const SUR_MAC = PLATEFORME === 'darwin'
 
 /** Libellé d'un raccourci d'application, pour la plateforme courante. */
 export const raccourci = (touche: string): string => libelle(PLATEFORME, touche)
+
+/**
+ * Le nom du gestionnaire de fichiers du système, tel qu'on le montre.
+ *
+ * « Ouvrir dans le Finder » ne veut rien dire sur Windows, et l'inverse est
+ * vrai aussi : c'est le seul endroit où l'application nomme un autre logiciel.
+ */
+export const GESTIONNAIRE_FICHIERS =
+  PLATEFORME === 'darwin'
+    ? 'le Finder'
+    : PLATEFORME === 'win32'
+      ? "l'Explorateur"
+      : 'le gestionnaire de fichiers'

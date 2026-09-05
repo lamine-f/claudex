@@ -16,7 +16,10 @@ describe('contrôle du pont', () => {
         input: () => {},
         resize: () => {}, detach: () => {}, close: () => {}, rename: () => {}
       },
-      fs: { lireDossier: () => {}, lireApercu: () => {}, observer: () => {}, cesserObservation: () => {} },
+      fs: {
+        lireDossier: () => {}, lireApercu: () => {}, montrer: () => {},
+        observer: () => {}, cesserObservation: () => {}
+      },
       // Le cas réellement rencontré : un preload d'avant l'ajout des étiquettes.
       claude: {
         listSessions: () => {},

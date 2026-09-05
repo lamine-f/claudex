@@ -3,7 +3,7 @@ import type { ClaudeSession, StatutSession } from '@shared/types'
 import { RANGEMENT_VIDE, assembler, type Cible, type Element, type Ligne } from '@shared/rangement'
 import { useStore } from '@renderer/state/store'
 import { EnteteGroupe } from './EnteteGroupe'
-import { MenuSession, type Action } from './MenuSession'
+import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import { SessionRow } from './SessionRow'
 
 /** Nombre de lignes montrées avant d'avoir à dérouler le reste. */
@@ -306,7 +306,13 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
         )}
       </ul>
       {menu && (
-        <MenuSession x={menu.x} y={menu.y} actions={menu.actions} onFermer={() => setMenu(null)} />
+        <MenuContextuel
+          x={menu.x}
+          y={menu.y}
+          actions={menu.actions}
+          intitule="Actions de la conversation"
+          onFermer={() => setMenu(null)}
+        />
       )}
     </>
   )

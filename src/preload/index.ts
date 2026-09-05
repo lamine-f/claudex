@@ -32,7 +32,8 @@ const api = {
   },
   workspace: {
     list: (): Promise<Workspace[]> => ipcRenderer.invoke('workspace:list'),
-    add: (): Promise<Workspace | null> => ipcRenderer.invoke('workspace:add'),
+    add: (chemin?: string): Promise<Workspace | null> =>
+      ipcRenderer.invoke('workspace:add', chemin),
     remove: (id: string): Promise<Workspace[]> => ipcRenderer.invoke('workspace:remove', id),
     update: (id: string, patch: Partial<Omit<Workspace, 'id'>>): Promise<Workspace[]> =>
       ipcRenderer.invoke('workspace:update', id, patch),
@@ -79,6 +80,8 @@ const api = {
     lireDossier: (chemin: string): Promise<Entree[]> =>
       ipcRenderer.invoke('fs:lireDossier', chemin),
     lireApercu: (chemin: string): Promise<Apercu> => ipcRenderer.invoke('fs:lireApercu', chemin),
+    /** Ouvre un dossier, ou révèle un fichier, dans le gestionnaire du système. */
+    montrer: (chemin: string): Promise<void> => ipcRenderer.invoke('fs:montrer', chemin),
     observer: (chemin: string): Promise<void> => ipcRenderer.invoke('fs:observer', chemin),
     cesserObservation: (chemin: string): Promise<void> =>
       ipcRenderer.invoke('fs:cesserObservation', chemin),

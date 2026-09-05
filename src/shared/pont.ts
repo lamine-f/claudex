@@ -22,7 +22,7 @@ const ATTENDU: Record<string, string[]> = {
     'close',
     'rename'
   ],
-  fs: ['lireDossier', 'lireApercu', 'observer', 'cesserObservation'],
+  fs: ['lireDossier', 'lireApercu', 'montrer', 'observer', 'cesserObservation'],
   claude: [
     'listSessions',
     'ouvrir',

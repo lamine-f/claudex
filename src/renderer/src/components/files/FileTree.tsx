@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Entree } from '@shared/types'
 import { ChevronRight } from 'lucide-react'
 import { useStore } from '@renderer/state/store'
+import { GESTIONNAIRE_FICHIERS } from '@renderer/systeme'
+import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import { IconeFichier } from './IconeFichier'
 
 /**
@@ -52,6 +54,9 @@ export function FileTree(): React.JSX.Element {
   const basculerDossier = useStore((e) => e.basculerDossier)
   const choisirFichier = useStore((e) => e.choisirFichier)
   const rafraichirArbre = useStore((e) => e.rafraichirArbre)
+  const ajouterWorkspace = useStore((e) => e.ajouterWorkspace)
+
+  const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
 
   const courant = workspaces.find((w) => w.id === actif)
   const litLaRacine = Boolean(courant && lectureEnCours.includes(courant.path))
@@ -68,9 +73,63 @@ export function FileTree(): React.JSX.Element {
     [courant, arbre, dossiersOuverts]
   )
 
+  /**
+   * Ce que le clic droit propose sur une entrée.
+   *
+   * Un dossier peut devenir un projet à part entière : c'est ce que fait déjà
+   * le bouton du rail, mais il faut alors retrouver à la main le dossier qu'on
+   * montrait du doigt.
+   */
+  const actionsDe = (entree: Entree): Action[] => {
+    const dejaProjet = workspaces.some((w) => w.path === entree.chemin)
+    return [
+      ...(entree.dossier
+        ? [
+            {
+              libelle: dejaProjet ? 'Aller à ce projet' : 'Ouvrir comme projet',
+              onChoisir: () => void ajouterWorkspace(entree.chemin)
+            },
+            {
+              libelle: 'Relire ce dossier',
+              onChoisir: () => void rafraichirArbre(entree.chemin)
+            }
+          ]
+        : []),
+      {
+        libelle: entree.dossier
+          ? `Ouvrir dans ${GESTIONNAIRE_FICHIERS}`
+          : `Afficher dans ${GESTIONNAIRE_FICHIERS}`,
+        onChoisir: () => void window.claudex.fs.montrer(entree.chemin)
+      }
+    ]
+  }
+
+  /** Et ce qu'il propose à côté des lignes, où il ne vise que le projet. */
+  const actionsDuProjet = (): Action[] =>
+    courant
+      ? [
+          { libelle: 'Relire l’arborescence', onChoisir: () => void rafraichirArbre(courant.path) },
+          {
+            libelle: `Ouvrir le projet dans ${GESTIONNAIRE_FICHIERS}`,
+            onChoisir: () => void window.claudex.fs.montrer(courant.path)
+          }
+        ]
+      : []
+
+  const ouvrirMenu = (evenement: React.MouseEvent, actions: Action[]): void => {
+    if (actions.length === 0) return
+    evenement.preventDefault()
+    evenement.stopPropagation()
+    setMenu({ x: evenement.clientX, y: evenement.clientY, actions })
+  }
+
   // L'en-tête est porté par l'onglet de la colonne : le répéter ici ferait doublon.
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div
+      aria-label="Arborescence"
+      className="min-h-0 flex-1 overflow-y-auto"
+      onContextMenu={(e) => ouvrirMenu(e, actionsDuProjet())}
+    >
       {!courant ? (
         <p className="px-3 py-2 text-[12px] text-texte-faible">Aucun projet sélectionné.</p>
       ) : lignes.length === 0 ? (
@@ -80,7 +139,7 @@ export function FileTree(): React.JSX.Element {
           {lignes.map(({ entree, profondeur, ouvert }) => {
             const choisi = entree.chemin === fichierChoisi
             return (
-              <li key={entree.chemin}>
+              <li key={entree.chemin} onContextMenu={(e) => ouvrirMenu(e, actionsDe(entree))}>
                 <button
                   type="button"
                   onClick={() =>
@@ -136,6 +195,16 @@ export function FileTree(): React.JSX.Element {
             )
           })}
         </ul>
+      )}
+
+      {menu && (
+        <MenuContextuel
+          x={menu.x}
+          y={menu.y}
+          actions={menu.actions}
+          intitule="Actions du fichier"
+          onFermer={() => setMenu(null)}
+        />
       )}
     </div>
   )

@@ -17,17 +17,19 @@ interface Props {
 }
 
 /**
- * Menu d'une conversation.
+ * Menu d'un clic droit, quel que soit ce qu'on vise.
  *
- * Les actions qui la concernent tiennent au même endroit plutôt que d'être
- * dispersées entre des gestes qu'il faut connaître d'avance.
+ * Les actions qui concernent une chose tiennent au même endroit plutôt que
+ * d'être dispersées entre des gestes qu'il faut connaître d'avance. Une
+ * conversation, un projet et une entrée de l'arbre s'en servent pareillement,
+ * chacun donnant ses actions et son intitulé.
  */
-export function MenuSession({
+export function MenuContextuel({
   x,
   y,
   actions,
   onFermer,
-  intitule = 'Actions de la conversation'
+  intitule = 'Actions'
 }: Props): React.JSX.Element {
   const menu = useRef<HTMLDivElement | null>(null)
 

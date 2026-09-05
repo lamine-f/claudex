@@ -95,7 +95,7 @@ interface EtatUi {
   apercu?: Apercu
 
   charger: () => Promise<void>
-  ajouterWorkspace: () => Promise<void>
+  ajouterWorkspace: (chemin?: string) => Promise<void>
   retirerWorkspace: (id: string) => Promise<void>
   basculerRepli: (id: string) => Promise<void>
   choisirWorkspace: (id: string) => Promise<void>
@@ -262,8 +262,8 @@ export const useStore = create<EtatUi>((set, get) => ({
     }
   },
 
-  ajouterWorkspace: async () => {
-    const ajoute = await window.claudex.workspace.add()
+  ajouterWorkspace: async (chemin) => {
+    const ajoute = await window.claudex.workspace.add(chemin)
     if (!ajoute) return
     set({
       workspaces: await window.claudex.workspace.list(),

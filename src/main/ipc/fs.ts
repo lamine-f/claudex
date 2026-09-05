@@ -1,4 +1,5 @@
-import { ipcMain, type WebContents } from 'electron'
+import { ipcMain, shell, type WebContents } from 'electron'
+import { stat } from 'node:fs/promises'
 import chokidar, { type FSWatcher } from 'chokidar'
 import type { Apercu, Entree } from '@shared/types'
 import { lireApercu, lireDossier } from '../services/fichiers'
@@ -31,6 +32,20 @@ export function registerFsIpc(): void {
   ipcMain.handle('fs:lireApercu', (_evenement, chemin: string): Promise<Apercu> =>
     lireApercu(verifier(chemin))
   )
+
+  /**
+   * Montre une entrée dans le gestionnaire de fichiers du système.
+   *
+   * Un dossier s'ouvre, un fichier se révèle dans son dossier : c'est ce que
+   * l'on veut d'un « ouvrir son dossier », et cela évite d'ouvrir le fichier
+   * lui-même dans une application qu'on n'a pas demandée.
+   */
+  ipcMain.handle('fs:montrer', async (_evenement, chemin: string) => {
+    const cible = verifier(chemin)
+    const infos = await stat(cible)
+    if (infos.isDirectory()) await shell.openPath(cible)
+    else shell.showItemInFolder(cible)
+  })
 
   /**
    * Surveille un projet et signale les changements au renderer.

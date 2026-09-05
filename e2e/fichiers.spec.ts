@@ -14,9 +14,13 @@ test.describe('arborescence et aperçu', () => {
     const provisoire = await lancer()
     const p = provisoire.projet
     await mkdir(join(p, 'src'), { recursive: true })
+    // Un dossier que ce seul cas déplie : les autres touchent à `src`, et son
+    // état de dépli dépendrait alors de l'ordre d'exécution.
+    await mkdir(join(p, 'profond', 'sous'), { recursive: true })
     await mkdir(join(p, 'node_modules', 'paquet'), { recursive: true })
     await writeFile(join(p, 'lisezmoi.md'), '# Titre\n\nUn paragraphe.\n')
     await writeFile(join(p, 'src', 'app.ts'), 'export const salut = "bonjour"\n')
+    await writeFile(join(p, 'profond', 'sous', 'deja.ts'), 'export const deja = 1\n')
     await writeFile(join(p, 'node_modules', 'paquet', 'index.js'), 'module.exports = 1\n')
     // Un binaire : l'aperçu doit le refuser explicitement plutôt que l'afficher.
     await writeFile(join(p, 'image.bin'), Buffer.from([0x89, 0x50, 0x00, 0x01, 0x02]))
@@ -64,6 +68,38 @@ test.describe('arborescence et aperçu', () => {
   test('un fichier créé hors de l’application apparaît sans rien cliquer', async () => {
     await writeFile(join(ctx.projet, 'apparu.txt'), 'créé par un agent\n')
     await expect(ctx.page.getByText('apparu.txt')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('le clic droit à côté des lignes relit l’arborescence', async () => {
+    await ctx.page.getByText('profond', { exact: true }).click()
+    await ctx.page.getByText('sous', { exact: true }).click()
+    await expect(ctx.page.getByText('deja.ts')).toBeVisible()
+
+    // Le veilleur ne descend que de deux niveaux : ce fichier-là lui échappe,
+    // et seule une relecture demandée peut le faire apparaître. C'est
+    // exactement ce à quoi sert l'entrée du menu.
+    await writeFile(join(ctx.projet, 'profond', 'sous', 'tard.ts'), 'export const tard = 1\n')
+    await expect(ctx.page.getByText('tard.ts')).toHaveCount(0)
+
+    // Sous la dernière ligne : là, le clic droit ne vise plus une entrée mais
+    // le projet lui-même.
+    const arbre = ctx.page.getByLabel('Arborescence')
+    const cadre = await arbre.boundingBox()
+    if (!cadre) throw new Error('l’arborescence n’est pas à l’écran')
+    await ctx.page.mouse.click(cadre.x + 30, cadre.y + cadre.height - 12, { button: 'right' })
+
+    await ctx.page.getByRole('menuitem', { name: 'Relire l’arborescence' }).click()
+    await expect(ctx.page.getByText('tard.ts')).toBeVisible()
+  })
+
+  test('le clic droit sur un dossier propose d’en faire un projet', async () => {
+    await ctx.page.getByText('src', { exact: true }).click({ button: 'right' })
+    const menu = ctx.page.getByRole('menu')
+    await expect(menu.getByRole('menuitem', { name: 'Relire ce dossier' })).toBeVisible()
+    await menu.getByRole('menuitem', { name: 'Ouvrir comme projet' }).click()
+
+    // Le dossier rejoint le rail et devient le projet courant.
+    await expect(ctx.page.getByLabel('Projets').locator('li', { hasText: 'src' })).toHaveCount(1)
   })
 })
 

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { reordonner, type Position } from '@shared/ordre'
 import type { Workspace } from '@shared/types'
 import { useStore } from '@renderer/state/store'
-import { MenuSession, type Action } from '../workspaces/MenuSession'
+import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import { IconeAttente, IconePlus, IconeRecherche } from '../ui/Icones'
 import { DialogueRetrait } from './DialogueRetrait'
 
@@ -212,7 +212,7 @@ export function Rail(): React.JSX.Element {
       </ul>
 
       {menu && (
-        <MenuSession
+        <MenuContextuel
           x={menu.x}
           y={menu.y}
           actions={menu.actions}
