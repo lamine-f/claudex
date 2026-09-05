@@ -116,7 +116,11 @@ export default function App(): React.JSX.Element {
       <FilAriane />
 
       {pret ? (
-        <div className="flex min-h-0">
+        // `min-w-0` sur la rangée et sur le groupe : un élément de flexbox refuse
+          // par défaut de descendre sous la largeur minimale de son contenu, et
+          // une colonne large poussait alors le rail hors de l'écran par la
+          // gauche, le terminal débordant d'autant par la droite.
+          <div className="flex min-h-0 min-w-0">
           {!layout.railReplie && <Rail />}
           {layout.colonneRepliee ? (
             // Sans cette enveloppe, le terminal garde sa largeur naturelle et
@@ -125,7 +129,7 @@ export default function App(): React.JSX.Element {
               <TerminalPane />
             </div>
           ) : (
-            <Group orientation="horizontal" className="min-h-0 flex-1">
+            <Group orientation="horizontal" className="min-h-0 min-w-0 flex-1">
               <Panel defaultSize="26%" minSize="16%" maxSize="42%">
                 <ColonneLaterale />
               </Panel>

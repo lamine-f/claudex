@@ -120,7 +120,10 @@ export function FilAriane(): React.JSX.Element {
       />
 
       {courant && (
-        <>
+        // Le fil vit dans sa propre boîte rétrécissable. Sans `min-w-0`, un
+        // titre d'onglet un peu long ne peut pas se couper : il pousse la
+        // barre du haut, et la fenêtre avec elle.
+        <div className="flex min-w-0 items-center gap-2">
           <span className="ml-1 shrink-0 font-mono text-[12.5px] text-texte-faible">
             {courant.name}
           </span>
@@ -130,7 +133,7 @@ export function FilAriane(): React.JSX.Element {
               <span className="truncate text-[13.5px] font-medium text-texte">{onglet.title}</span>
             </>
           )}
-        </>
+        </div>
       )}
 
       {/* Centré sur la fenêtre, non sur la place qui reste : le nom doit tomber
