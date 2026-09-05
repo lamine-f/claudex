@@ -15,3 +15,22 @@ export function dernierRegarde<T extends { lastActiveAt: number }>(onglets: T[])
     undefined
   )
 }
+
+/**
+ * L'onglet voisin, en tournant en boucle aux extrémités.
+ *
+ * C'est ce que fait Contrôle+Tab dans un navigateur : passé le dernier onglet
+ * on revient au premier, plutôt que de buter contre le bord.
+ */
+export function voisin<T extends { id: string }>(
+  onglets: T[],
+  courant: string | undefined,
+  pas: number
+): T | undefined {
+  if (onglets.length === 0) return undefined
+  const rang = onglets.findIndex((o) => o.id === courant)
+  // Onglet courant inconnu : on part du premier, ce qui rend « suivant » utile
+  // même quand rien n'est encore choisi.
+  const depart = rang === -1 ? 0 : rang
+  return onglets[(depart + pas + onglets.length) % onglets.length]
+}

@@ -39,6 +39,25 @@ test.describe('raccourcis clavier', () => {
     await expect(ctx.page.getByTitle(NOUVEAU_TERMINAL)).toBeVisible()
   })
 
+  test('Contrôle+Tab passe d’un onglet à l’autre, comme dans un navigateur', async () => {
+    const onglets = ctx.page.getByRole('button', { name: 'Terminal', exact: true })
+    // Un second terminal : à un seul onglet, le raccourci n'aurait rien à dire.
+    await ctx.page.keyboard.press(`${COMMANDE}+T`)
+    await expect(onglets).toHaveCount(2)
+    await expect(onglets.nth(1)).toHaveAttribute('aria-current', 'true')
+
+    // Depuis le dernier, le suivant est le premier : la boucle se referme.
+    await ctx.page.keyboard.press('Control+Tab')
+    await expect(onglets.nth(0)).toHaveAttribute('aria-current', 'true')
+
+    await ctx.page.keyboard.press('Control+Tab')
+    await expect(onglets.nth(1)).toHaveAttribute('aria-current', 'true')
+
+    // Majuscule remonte, comme partout ailleurs.
+    await ctx.page.keyboard.press('Control+Shift+Tab')
+    await expect(onglets.nth(0)).toHaveAttribute('aria-current', 'true')
+  })
+
   test('la combinaison bascule entre conversations et fichiers', async () => {
     const fichiers = ctx.page.getByRole('button', { name: 'Fichiers', exact: true })
 

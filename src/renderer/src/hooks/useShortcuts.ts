@@ -25,6 +25,16 @@ export function useShortcuts(): void {
     const surTouche = (evenement: KeyboardEvent): void => {
       const etat = useStore.getState()
 
+      // Ctrl+Tab, Ctrl+Maj+Tab : l'onglet suivant ou le précédent, comme dans un
+      // navigateur. La combinaison est la même sur tous les systèmes, y compris
+      // sur macOS où Commande+Tab appartient au changement d'application. Le
+      // shell ne revendique pas Contrôle+Tab, on ne lui prend donc rien.
+      if (evenement.key === 'Tab' && evenement.ctrlKey && !evenement.metaKey && !evenement.altKey) {
+        evenement.preventDefault()
+        etat.ongletVoisin(evenement.shiftKey ? -1 : 1)
+        return
+      }
+
       // Les chiffres se passent de Majuscule : le shell ne les revendique pas, et
       // `Ctrl+Maj+1` ne donne pas partout le même `key` selon la disposition.
       if (!SUR_MAC && evenement.ctrlKey && !evenement.shiftKey && !evenement.metaKey) {

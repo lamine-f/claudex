@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dernierRegarde } from '../src/shared/onglets'
+import { dernierRegarde, voisin } from '../src/shared/onglets'
 
 describe('dernier onglet regardé', () => {
   it('désigne le plus récemment visité, pas le dernier ouvert', () => {
@@ -23,5 +23,27 @@ describe('dernier onglet regardé', () => {
 
   it('ne désigne rien quand il n’y a pas d’onglet', () => {
     expect(dernierRegarde([])).toBeUndefined()
+  })
+})
+
+describe('onglet voisin', () => {
+  const onglets = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+
+  it('avance et recule d’un cran', () => {
+    expect(voisin(onglets, 'a', 1)?.id).toBe('b')
+    expect(voisin(onglets, 'c', -1)?.id).toBe('b')
+  })
+
+  it('tourne en boucle aux deux extrémités', () => {
+    expect(voisin(onglets, 'c', 1)?.id).toBe('a')
+    expect(voisin(onglets, 'a', -1)?.id).toBe('c')
+  })
+
+  it('part du premier quand aucun onglet n’est choisi', () => {
+    expect(voisin(onglets, undefined, 1)?.id).toBe('b')
+  })
+
+  it('ne désigne rien quand il n’y a pas d’onglet', () => {
+    expect(voisin([], 'a', 1)).toBeUndefined()
   })
 })

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { dernierRegarde } from '@shared/onglets'
+import { dernierRegarde, voisin } from '@shared/onglets'
 import { rangerSelon } from '@shared/ordre'
 import { manquesDuPont } from '@shared/pont'
 import {
@@ -141,6 +141,8 @@ interface EtatUi {
   rafraichirArbre: (racine: string) => Promise<void>
   nouvelOnglet: () => Promise<void>
   choisirOnglet: (id: string) => void
+  /** Passe à l'onglet voisin : +1 le suivant, -1 le précédent. */
+  ongletVoisin: (pas: number) => void
   /** Reçoit du main la liste des conversations qui attendent. */
   poserSollicitations: (sollicitations: Record<string, Sollicitation>) => void
   fermerOnglet: (id: string) => Promise<void>
@@ -576,6 +578,11 @@ export const useStore = create<EtatUi>((set, get) => ({
     // sans ce mot, il ne saurait pas lequel on regarde.
     void window.claudex.term.focus(id)
     apaiserOnglet(get, id)
+  },
+
+  ongletVoisin: (pas) => {
+    const cible = voisin(get().tabs, get().activeTabId, pas)
+    if (cible && cible.id !== get().activeTabId) get().choisirOnglet(cible.id)
   },
 
   poserSollicitations: (sollicitations) => set({ sollicitations }),
