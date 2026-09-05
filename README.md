@@ -8,7 +8,7 @@ d'agent. On ouvre un projet, on voit toutes les conversations Claude Code qui on
 ce dossier, on en choisit une. Un terminal la reprend exactement là où elle s'était arrêtée,
 même après un redémarrage de la machine.
 
-![Claudex](docs/claudex.png)
+![Claudex en fonctionnement](docs/demo.gif)
 
 [![Télécharger](https://img.shields.io/github/v/release/lamine-f/claudex?style=flat-square&label=t%C3%A9l%C3%A9charger&color=brightgreen)](https://github.com/lamine-f/claudex/releases/latest)
 ![Plateforme](https://img.shields.io/badge/plateformes-macOS%20%C2%B7%20Windows%20%C2%B7%20Debian-blue?style=flat-square)
@@ -183,6 +183,13 @@ le shell ne les revendiquant pas.
 ## Galerie
 
 Les captures sont prises sur macOS, sauf celles de la dernière section.
+
+#### La fenêtre entière
+
+![Claudex](docs/claudex.png)
+
+Trois bandes : les projets, ce qu'ils contiennent, et le terminal. La couleur du projet court
+de son rang dans le rail jusqu'à la pastille de l'onglet.
 
 #### Les conversations d'un projet, et leurs états
 

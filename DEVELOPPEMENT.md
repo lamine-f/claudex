@@ -143,6 +143,7 @@ node scripts/icone.mjs                       # recompose l'icône depuis le logo
 CLAUDEX_CAPTURE_PROJETS=~/code/a:~/code/b \
   npm run captures                           # captures sur de vrais projets
 npm run capture                              # capture par CDP, sans perturber la fenêtre
+npm run demo                                 # regénère docs/demo.gif, la démonstration animée
 ```
 
 `icone.mjs` compose `build/icon.png` et `docs/logo.png` à partir de
@@ -152,6 +153,18 @@ dans le Dock et en tête de la page du dépôt.
 `vitrine.mjs` fabrique tout ce qu'il montre — un dépôt jetable dans `/tmp/atelier`, des
 conversations inventées, un profil neuf — et remplace l'invite du shell : les captures du
 dépôt ne doivent rien devoir à la machine qui les produit.
+
+`demo.mjs` suit la même règle et va plus loin : trois projets montés dans `/tmp/claudex-demo`,
+des conversations écrites pour l'occasion, une invite neutre posée par un `ZDOTDIR` jetable.
+La prise passe par l'enregistrement vidéo de Playwright, puis ffmpeg réduit le tout en GIF avec
+une palette calculée sur l'ensemble des images. Le serveur tmux du socket `claudex-demo` est
+abattu d'abord : un pane hérite de l'environnement du serveur, non de celui du client, et un
+serveur laissé par une prise précédente rendrait l'invite du système malgré `ZDOTDIR`.
+
+La démonstration lance un vrai agent et lui pose une vraie question : c'est l'outil que Claudex
+orchestre, le montrer en peinture n'aurait pas de sens. Elle consomme donc un peu de quota, et
+répond au dialogue de confiance de Claude Code, dont le choix mis en avant est « No, exit ».
+Elle a besoin de ffmpeg.
 
 ## Points de vigilance
 

@@ -24,6 +24,7 @@
     "test:e2e": "npm run build && playwright test",
     "test:all": "npm run test && npm run test:e2e",
     "captures": "npm run build && node scripts/captures.mjs captures",
+    "demo": "npm run build && node scripts/demo.mjs",
     "icones": "node scripts/preparer-icones.mjs"
   },
   "dependencies": {
