@@ -3,7 +3,13 @@ import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promi
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
-import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  expect,
+  type ElectronApplication,
+  type Locator,
+  type Page
+} from '@playwright/test'
 import { raccourci } from '../src/shared/raccourcis'
 
 const run = promisify(execFile)
@@ -302,4 +308,35 @@ export async function taper(
   expect(await contenu(), `« ${attendu} » n'est jamais apparu dans le terminal ${index}`).toContain(
     attendu
   )
+}
+
+/**
+ * Glisse une ligne sur une autre, par petits pas.
+ *
+ * `dragTo` déplace le curseur d'un seul bond. La liste suit le survol pour savoir
+ * où elle déposera, et un bond unique peut ne jamais la faire passer au-dessus de
+ * sa cible : le geste s'achevait alors sans que rien ne bouge. Le défaut ne se
+ * voyait qu'une fois sur trois, et seulement dans la suite entière, là où le
+ * premier glissement suit de près le chargement de la colonne.
+ *
+ * Le dernier point est envoyé deux fois. Le survol ne s'inscrit qu'au mouvement
+ * suivant son arrivée, et le relâchement partait sinon sur une cible encore vide.
+ */
+export async function glisser(
+  page: Page,
+  source: Locator,
+  cible: Locator,
+  position?: { x: number; y: number }
+): Promise<void> {
+  const depart = await source.boundingBox()
+  const arrivee = await cible.boundingBox()
+  if (!depart || !arrivee) throw new Error("la source ou la cible n'est pas à l'écran")
+
+  await page.mouse.move(depart.x + depart.width / 2, depart.y + depart.height / 2)
+  await page.mouse.down()
+  const x = arrivee.x + (position?.x ?? arrivee.width / 2)
+  const y = arrivee.y + (position?.y ?? arrivee.height / 2)
+  await page.mouse.move(x, y, { steps: 12 })
+  await page.mouse.move(x, y)
+  await page.mouse.up()
 }

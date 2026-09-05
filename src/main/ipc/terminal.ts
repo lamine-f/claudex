@@ -58,6 +58,21 @@ function assurerSession(
 }
 
 export function registerTerminalIpc(): void {
+  /**
+   * Combien d'onglets chaque projet garde ouverts.
+   *
+   * Le rail les montre tous, alors que `term:list` ne rend que ceux d'un seul
+   * projet. Sans ce compte, un projet quitté n'avait l'air de rien porter, et
+   * l'on rouvrait un terminal là où trois attendaient déjà.
+   */
+  ipcMain.handle('term:comptes', (): Record<string, number> => {
+    const comptes: Record<string, number> = {}
+    for (const tab of store.get().tabs) {
+      comptes[tab.workspaceId] = (comptes[tab.workspaceId] ?? 0) + 1
+    }
+    return comptes
+  })
+
   ipcMain.handle('term:list', (_evenement, workspaceId: string) =>
     store
       .get()

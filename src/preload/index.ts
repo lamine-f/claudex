@@ -35,10 +35,14 @@ const api = {
     add: (): Promise<Workspace | null> => ipcRenderer.invoke('workspace:add'),
     remove: (id: string): Promise<Workspace[]> => ipcRenderer.invoke('workspace:remove', id),
     update: (id: string, patch: Partial<Omit<Workspace, 'id'>>): Promise<Workspace[]> =>
-      ipcRenderer.invoke('workspace:update', id, patch)
+      ipcRenderer.invoke('workspace:update', id, patch),
+    /** Range les projets dans l'ordre donné. */
+    ranger: (ids: string[]): Promise<Workspace[]> => ipcRenderer.invoke('workspace:ranger', ids)
   },
   term: {
     list: (workspaceId: string): Promise<Tab[]> => ipcRenderer.invoke('term:list', workspaceId),
+    /** Combien d'onglets chaque projet garde ouverts, par identifiant de projet. */
+    comptes: (): Promise<Record<string, number>> => ipcRenderer.invoke('term:comptes'),
     create: (workspaceId: string, options?: Partial<Tab>): Promise<Tab> =>
       ipcRenderer.invoke('term:create', workspaceId, options ?? {}),
     open: (

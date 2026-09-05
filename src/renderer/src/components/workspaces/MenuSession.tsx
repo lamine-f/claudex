@@ -12,6 +12,8 @@ interface Props {
   y: number
   actions: Action[]
   onFermer: () => void
+  /** Ce que le menu concerne, pour qui ne voit que l'arbre d'accessibilité. */
+  intitule?: string
 }
 
 /**
@@ -20,7 +22,13 @@ interface Props {
  * Les actions qui la concernent tiennent au même endroit plutôt que d'être
  * dispersées entre des gestes qu'il faut connaître d'avance.
  */
-export function MenuSession({ x, y, actions, onFermer }: Props): React.JSX.Element {
+export function MenuSession({
+  x,
+  y,
+  actions,
+  onFermer,
+  intitule = 'Actions de la conversation'
+}: Props): React.JSX.Element {
   const menu = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -36,7 +44,7 @@ export function MenuSession({ x, y, actions, onFermer }: Props): React.JSX.Eleme
       <div
         ref={menu}
         role="menu"
-        aria-label="Actions de la conversation"
+        aria-label={intitule}
         // Bornée à la fenêtre : un clic droit en bas de liste ouvrirait sinon un
         // menu à moitié hors de l'écran.
         style={{

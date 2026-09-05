@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { basename } from 'node:path'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { rangerSelon } from '@shared/ordre'
 import type { Workspace } from '@shared/types'
+import { multiplexeur } from '../services/multiplexeur'
+import * as pty from '../services/pty'
+import * as scrollback from '../services/scrollback'
 import * as store from '../services/store'
 
 // Palette d'accents attribuée en rotation, pour distinguer les projets d'un coup d'œil.
@@ -41,12 +45,44 @@ export function registerWorkspaceIpc(): void {
     return workspace
   })
 
-  ipcMain.handle('workspace:remove', (_evenement, id: string) => {
+  /**
+   * Retire un projet de Claudex, et ferme ce qu'il tenait ouvert.
+   *
+   * Les sessions de ses onglets sont détruites : les laisser vivre sans plus
+   * personne pour les rouvrir remplirait le multiplexeur de sessions orphelines
+   * qu'aucun écran ne montre plus. Le dossier lui-même n'est pas touché, pas
+   * plus que les conversations de Claude Code qui s'y rattachent : retirer un
+   * projet le fait sortir de la liste, rien de plus.
+   */
+  ipcMain.handle('workspace:remove', async (_evenement, id: string) => {
+    const aFermer = store.get().tabs.filter((t) => t.workspaceId === id)
+    for (const tab of aFermer) {
+      pty.detach(tab.id)
+      await multiplexeur.detruire(tab.tmuxSession).catch(() => undefined)
+      await scrollback.oublier(tab.id).catch(() => undefined)
+    }
+
     store.update((etat) => {
       etat.workspaces = etat.workspaces.filter((w) => w.id !== id)
       etat.tabs = etat.tabs.filter((t) => t.workspaceId !== id)
       delete etat.rangements?.[id]
       if (etat.activeWorkspaceId === id) etat.activeWorkspaceId = etat.workspaces[0]?.id
+    })
+    return store.get().workspaces
+  })
+
+  /**
+   * Range les projets dans l'ordre voulu.
+   *
+   * L'ordre du tableau est celui de l'affichage ; `order` le redouble pour que
+   * l'état écrit se relise seul, sans dépendre de la façon dont il a été rangé.
+   */
+  ipcMain.handle('workspace:ranger', (_evenement, ids: string[]) => {
+    store.update((etat) => {
+      etat.workspaces = rangerSelon(etat.workspaces, ids)
+      etat.workspaces.forEach((w, rang) => {
+        w.order = rang
+      })
     })
     return store.get().workspaces
   })

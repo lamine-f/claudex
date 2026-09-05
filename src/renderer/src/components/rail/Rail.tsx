@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
+import { reordonner, type Position } from '@shared/ordre'
+import type { Workspace } from '@shared/types'
 import { useStore } from '@renderer/state/store'
+import { MenuSession, type Action } from '../workspaces/MenuSession'
 import { IconeAttente, IconePlus, IconeRecherche } from '../ui/Icones'
+import { DialogueRetrait } from './DialogueRetrait'
 
 /**
  * Colonne des projets.
@@ -12,19 +16,18 @@ import { IconeAttente, IconePlus, IconeRecherche } from '../ui/Icones'
 export function Rail(): React.JSX.Element {
   const workspaces = useStore((e) => e.workspaces)
   const actif = useStore((e) => e.activeWorkspaceId)
-  const tabs = useStore((e) => e.tabs)
+  const comptes = useStore((e) => e.comptesOnglets)
+  const sollicitations = useStore((e) => e.sollicitations)
   const choisir = useStore((e) => e.choisirWorkspace)
   const ajouter = useStore((e) => e.ajouterWorkspace)
-  const sollicitations = useStore((e) => e.sollicitations)
-  const [filtre, setFiltre] = useState('')
+  const ranger = useStore((e) => e.rangerWorkspaces)
+  const retirer = useStore((e) => e.retirerWorkspace)
 
-  // Les onglets des autres projets ne sont pas chargés : sans cette marque,
-  // un agent qui appelle depuis un projet qu'on ne regarde pas resterait
-  // invisible tant qu'on n'y serait pas retourné.
-  const enAttente = useMemo(
-    () => new Set(Object.values(sollicitations).map((s) => s.workspaceId)),
-    [sollicitations]
-  )
+  const [filtre, setFiltre] = useState('')
+  const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
+  const [aRetirer, setARetirer] = useState<Workspace | null>(null)
+  const [glisse, setGlisse] = useState<string | null>(null)
+  const [survol, setSurvol] = useState<{ id: string; position: Position } | null>(null)
 
   const retenus = useMemo(() => {
     const terme = filtre.trim().toLowerCase()
@@ -32,10 +35,41 @@ export function Rail(): React.JSX.Element {
     // Le chemin compte autant que le nom : on cherche parfois un projet dont on
     // ne retient que l'endroit où il vit.
     return workspaces.filter(
-      (w) =>
-        w.name.toLowerCase().includes(terme) || w.path.toLowerCase().includes(terme)
+      (w) => w.name.toLowerCase().includes(terme) || w.path.toLowerCase().includes(terme)
     )
   }, [workspaces, filtre])
+
+  // Les onglets des autres projets ne sont pas chargés : sans cette marque, un
+  // agent qui appelle depuis un projet qu'on ne regarde pas resterait invisible
+  // tant qu'on n'y serait pas retourné.
+  const enAttente = useMemo(
+    () => new Set(Object.values(sollicitations).map((s) => s.workspaceId)),
+    [sollicitations]
+  )
+
+  // Réarranger sous un filtre n'aurait pas de sens : l'ordre affiché n'est plus
+  // celui de la liste, et « déposer ici » ne désignerait rien de sûr.
+  const glissable = !filtre
+
+  const deposer = (cible: Workspace, position: Position): void => {
+    const source = glisse
+    setGlisse(null)
+    setSurvol(null)
+    if (!source) return
+
+    const actuel = workspaces.map((w) => w.id)
+    const voulu = reordonner(actuel, source, cible.id, position)
+    // Une ligne lâchée là où elle était déjà ne vaut pas un aller-retour vers
+    // le disque.
+    if (voulu.every((id, rang) => id === actuel[rang])) return
+    void ranger(voulu)
+  }
+
+  /** Moitié haute ou moitié basse de la ligne : au-dessus, ou en dessous. */
+  const positionDe = (evenement: React.DragEvent): Position => {
+    const cadre = evenement.currentTarget.getBoundingClientRect()
+    return evenement.clientY - cadre.top < cadre.height / 2 ? 'avant' : 'apres'
+  }
 
   return (
     <nav
@@ -71,14 +105,59 @@ export function Rail(): React.JSX.Element {
       <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
         {retenus.map((w) => {
           const courant = w.id === actif
-          // Le compteur ne vaut que pour le projet courant : les onglets des
-          // autres ne sont pas chargés, et afficher zéro serait un mensonge.
-          const ouverts = courant ? tabs.length : 0
+          const ouverts = comptes[w.id] ?? 0
+          const indicateur = survol?.id === w.id ? survol.position : undefined
           return (
-            <li key={w.id}>
+            <li
+              key={w.id}
+              className={`relative ${glisse === w.id ? 'opacity-40' : ''}`}
+              draggable={glissable}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', w.id)
+                setGlisse(w.id)
+              }}
+              onDragEnd={() => {
+                setGlisse(null)
+                setSurvol(null)
+              }}
+              onDragOver={(e) => {
+                if (!glissable || !glisse) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                setSurvol({ id: w.id, position: positionDe(e) })
+              }}
+              onDrop={(e) => {
+                if (!glissable) return
+                e.preventDefault()
+                deposer(w, positionDe(e))
+              }}
+            >
+              {indicateur && (
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-x-1 z-10 h-[2px] rounded-full bg-projet ${
+                    indicateur === 'avant' ? 'top-0' : 'bottom-0'
+                  }`}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => void choisir(w.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    actions: [
+                      {
+                        libelle: 'Retirer le projet…',
+                        ecarte: true,
+                        onChoisir: () => setARetirer(w)
+                      }
+                    ]
+                  })
+                }}
                 title={w.path}
                 className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
                   courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
@@ -106,11 +185,12 @@ export function Rail(): React.JSX.Element {
                   </span>
                 )}
                 {ouverts > 0 && (
-                  // Le compteur porte la couleur de son projet, comme le
-                  // liseré : deux marques de la même main, pas deux couleurs
-                  // sur la même ligne.
+                  // Le compteur porte la couleur de son projet, comme le liseré :
+                  // deux marques de la même main, pas deux couleurs sur la même
+                  // ligne. Il vaut pour tous les projets, pas seulement l'ouvert.
                   <span
                     style={{ background: w.color }}
+                    title={ouverts > 1 ? `${ouverts} terminaux ouverts` : '1 terminal ouvert'}
                     className="flex h-[15px] min-w-[15px] shrink-0 items-center justify-center rounded-full px-[3px] font-mono text-[9px] text-fond"
                   >
                     {ouverts}
@@ -127,6 +207,28 @@ export function Rail(): React.JSX.Element {
           </li>
         )}
       </ul>
+
+      {menu && (
+        <MenuSession
+          x={menu.x}
+          y={menu.y}
+          actions={menu.actions}
+          intitule="Actions du projet"
+          onFermer={() => setMenu(null)}
+        />
+      )}
+      {aRetirer && (
+        <DialogueRetrait
+          workspace={aRetirer}
+          onglets={comptes[aRetirer.id] ?? 0}
+          onConfirmer={() => {
+            const cible = aRetirer
+            setARetirer(null)
+            void retirer(cible.id)
+          }}
+          onAnnuler={() => setARetirer(null)}
+        />
+      )}
     </nav>
   )
 }

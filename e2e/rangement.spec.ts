@@ -2,7 +2,7 @@ import { mkdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { fermer, lancer, type Contexte } from './fixtures'
+import { fermer, glisser, lancer, type Contexte } from './fixtures'
 
 const ligneJson = (o: unknown): string => `${JSON.stringify(o)}\n`
 
@@ -40,37 +40,6 @@ async function hauteur(page: Page, titre: string): Promise<number> {
 async function ordre(page: Page, ...titres: string[]): Promise<string[]> {
   const hauteurs = await Promise.all(titres.map(async (t) => [t, await hauteur(page, t)] as const))
   return hauteurs.sort((a, b) => a[1] - b[1]).map(([t]) => t)
-}
-
-/**
- * Glisse une ligne sur une autre, par petits pas.
- *
- * `dragTo` déplace le curseur d'un seul bond. La liste suit le survol pour savoir
- * où elle déposera, et un bond unique peut ne jamais la faire passer au-dessus de
- * sa cible : le geste s'achevait alors sans que rien ne bouge. Le défaut ne se
- * voyait qu'une fois sur trois, et seulement dans la suite entière, là où le
- * premier glissement suit de près le chargement de la colonne.
- *
- * Le dernier point est envoyé deux fois. Le survol ne s'inscrit qu'au mouvement
- * suivant son arrivée, et le relâchement partait sinon sur une cible encore vide.
- */
-async function glisser(
-  page: Page,
-  source: Locator,
-  cible: Locator,
-  position?: { x: number; y: number }
-): Promise<void> {
-  const depart = await source.boundingBox()
-  const arrivee = await cible.boundingBox()
-  if (!depart || !arrivee) throw new Error("la source ou la cible n'est pas à l'écran")
-
-  await page.mouse.move(depart.x + depart.width / 2, depart.y + depart.height / 2)
-  await page.mouse.down()
-  const x = arrivee.x + (position?.x ?? arrivee.width / 2)
-  const y = arrivee.y + (position?.y ?? arrivee.height / 2)
-  await page.mouse.move(x, y, { steps: 12 })
-  await page.mouse.move(x, y)
-  await page.mouse.up()
 }
 
 test.describe('ranger les conversations à la main', () => {

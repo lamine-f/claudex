@@ -10,9 +10,9 @@ describe('contrôle du pont', () => {
   it('nomme précisément la méthode qui manque', () => {
     const pont = {
       state: { get: () => {}, setLayout: () => {}, setActiveWorkspace: () => {} },
-      workspace: { list: () => {}, add: () => {}, remove: () => {}, update: () => {} },
+      workspace: { list: () => {}, add: () => {}, remove: () => {}, update: () => {}, ranger: () => {} },
       term: {
-        list: () => {}, create: () => {}, open: () => {}, input: () => {},
+        list: () => {}, comptes: () => {}, create: () => {}, open: () => {}, input: () => {},
         resize: () => {}, detach: () => {}, close: () => {}, rename: () => {}
       },
       fs: { lireDossier: () => {}, lireApercu: () => {}, observer: () => {}, cesserObservation: () => {} },

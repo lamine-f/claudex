@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { rangerSelon } from '@shared/ordre'
 import { manquesDuPont } from '@shared/pont'
 import {
   RANGEMENT_VIDE,
@@ -35,6 +36,14 @@ interface EtatUi {
   /** Onglets du workspace courant uniquement. */
   tabs: Tab[]
   activeTabId?: string
+  /**
+   * Combien d'onglets chaque projet garde ouverts, par identifiant de projet.
+   *
+   * Le rail montre tous les projets, alors que `tabs` ne porte que ceux du
+   * projet courant. Sans ce compte, un projet quitté avait l'air de ne rien
+   * tenir, et l'on rouvrait un terminal là où trois attendaient déjà.
+   */
+  comptesOnglets: Record<string, number>
 
   /** Sessions Claude Code par workspace, chargées au dépli. */
   sessions: Record<string, ClaudeSession[]>
@@ -90,6 +99,10 @@ interface EtatUi {
   basculerRepli: (id: string) => Promise<void>
   choisirWorkspace: (id: string) => Promise<void>
   chargerOnglets: (workspaceId: string) => Promise<void>
+  /** Relit le nombre d'onglets de chaque projet. */
+  rafraichirComptes: () => Promise<void>
+  /** Range les projets dans l'ordre donné, et le retient. */
+  rangerWorkspaces: (ids: string[]) => Promise<void>
   chargerSessions: (workspaceId: string) => Promise<void>
   ouvrirSession: (
     workspaceId: string,
@@ -180,6 +193,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   diagnosticOuvert: false,
   pret: false,
   tabs: [],
+  comptesOnglets: {},
   sessions: {},
   rangements: {},
   sessionsEnCours: {},
@@ -255,14 +269,45 @@ export const useStore = create<EtatUi>((set, get) => ({
       activeWorkspaceId: ajoute.id
     })
     await get().chargerOnglets(ajoute.id)
+    // Les conversations du dossier sont lues aussitôt : un projet qu'on vient
+    // d'ajouter s'ouvrait sur une colonne vide, et il fallait penser au bouton
+    // de synchronisation pour voir ce qu'il contenait déjà.
+    await get().chargerSessions(ajoute.id)
+    void get().rafraichirGit()
+  },
+
+  rafraichirComptes: async () => {
+    set({ comptesOnglets: await window.claudex.term.comptes() })
+  },
+
+  rangerWorkspaces: async (ids) => {
+    // L'ordre s'applique à l'écran avant d'être écrit : un rangement doit se
+    // voir à l'instant où on lâche la souris.
+    set({ workspaces: rangerSelon(get().workspaces, ids) })
+    set({ workspaces: await window.claudex.workspace.ranger(ids) })
   },
 
   retirerWorkspace: async (id) => {
+    const partait = get().activeWorkspaceId === id
+    const retire = get().workspaces.find((w) => w.id === id)
     const workspaces = await window.claudex.workspace.remove(id)
-    set({
-      workspaces,
-      activeWorkspaceId: get().activeWorkspaceId === id ? workspaces[0]?.id : get().activeWorkspaceId
-    })
+    // Le dossier n'est plus regardé par personne : continuer à en suivre les
+    // écritures ferait vivre un veilleur sur un projet qui n'existe plus.
+    if (retire) void window.claudex.fs.cesserObservation(retire.path)
+    set({ workspaces })
+    void get().rafraichirComptes()
+    if (!partait) return
+
+    // Le projet retiré emportait l'écran. On en montre un autre en entier, ses
+    // fichiers comme ses conversations, plutôt qu'une colonne vide sans un mot.
+    const suivant = workspaces[0]?.id
+    if (!suivant) {
+      set({ activeWorkspaceId: undefined, tabs: [], fichierChoisi: undefined, apercu: undefined })
+      return
+    }
+    await get().choisirWorkspace(suivant)
+    await get().chargerSessions(suivant)
+    void get().rafraichirGit()
   },
 
   basculerRepli: async (id) => {
@@ -299,9 +344,11 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   chargerOnglets: async (workspaceId) => {
     const tabs = await window.claudex.term.list(workspaceId)
+    void get().rafraichirComptes()
     // L'onglet regardé le reste s'il est toujours là. Relire la liste sert aussi
     // à rattraper ce que le processus principal a changé de son côté, et cela ne
     // doit pas déplacer l'écran sous les yeux de qui n'a rien demandé.
+    //
     const courant = get().activeTabId
     set({
       tabs,
@@ -340,6 +387,7 @@ export const useStore = create<EtatUi>((set, get) => ({
     if (get().activeWorkspaceId !== workspaceId) await get().choisirWorkspace(workspaceId)
     const tab = await window.claudex.claude.ouvrir(workspaceId, intention, uuid, titre)
     set({ tabs: [...get().tabs, tab], activeTabId: tab.id })
+    void get().rafraichirComptes()
     apaiserOnglet(get, tab.id)
   },
 
@@ -511,6 +559,7 @@ export const useStore = create<EtatUi>((set, get) => ({
     if (!workspaceId) return
     const tab = await window.claudex.term.create(workspaceId)
     set({ tabs: [...get().tabs, tab], activeTabId: tab.id })
+    void get().rafraichirComptes()
   },
 
   choisirOnglet: (id) => {
@@ -531,6 +580,7 @@ export const useStore = create<EtatUi>((set, get) => ({
       tabs: restants,
       activeTabId: get().activeTabId === id ? restants.at(-1)?.id : get().activeTabId
     })
+    void get().rafraichirComptes()
   },
 
   enregistrerLayout: (layout) => {
