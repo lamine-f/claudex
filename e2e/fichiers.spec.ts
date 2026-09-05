@@ -33,6 +33,11 @@ test.describe('arborescence et aperçu', () => {
     // Une vraie image d'un pixel : c'est elle qui éprouve la chaîne entière,
     // de l'extension reconnue au flux servi par le schéma dédié.
     await writeFile(join(p, 'pixel.png'), PIXEL)
+    // La même image, rangée sous des dossiers dont le nom porte un espace et
+    // des accents : c'est le chemin, non le fichier, que ce décor met à
+    // l'épreuve.
+    await mkdir(join(p, 'mes photos', 'été 2026'), { recursive: true })
+    await writeFile(join(p, 'mes photos', 'été 2026', 'château vue.png'), PIXEL)
     await fermer(provisoire, { nettoyer: false })
     ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
     // L'arborescence partage sa colonne avec les conversations : il faut la
@@ -85,6 +90,29 @@ test.describe('arborescence et aperçu', () => {
     await expect(image).toBeVisible()
     // Visible ne suffit pas : une image que le schéma n'aurait pas servie
     // occuperait la même place sans rien montrer.
+    await expect
+      .poll(async () => image.evaluate((e: HTMLImageElement) => e.naturalWidth))
+      .toBe(1)
+    await ctx.page.keyboard.press('Escape')
+  })
+
+  /**
+   * Le chemin voyage encodé dans l'URL, et c'est Chromium qui la relit.
+   *
+   * Sur Windows il porte une lettre de lecteur, des antislashs, et souvent des
+   * espaces et des accents. Le test unitaire ne prouve que l'aller-retour de nos
+   * deux fonctions ; ce qu'en fait l'analyseur d'URL une fois le schéma déclaré
+   * standard ne se vérifie qu'ici. Mesuré : il garde `%3A` et `%5C` encodés,
+   * `claudex-media` étant standard sans être « spécial », seuls ces derniers
+   * voyant leurs antislashs réécrits en barres obliques.
+   */
+  test('une image se sert depuis un chemin à espaces et à accents', async () => {
+    await ctx.page.getByText('mes photos', { exact: true }).click()
+    await ctx.page.getByText('été 2026', { exact: true }).click()
+    await ctx.page.getByText('château vue.png').click()
+
+    const image = ctx.page.locator('img[src^="claudex-media:"]')
+    await expect(image).toBeVisible()
     await expect
       .poll(async () => image.evaluate((e: HTMLImageElement) => e.naturalWidth))
       .toBe(1)
