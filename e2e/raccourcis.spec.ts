@@ -71,16 +71,24 @@ test.describe('raccourcis clavier', () => {
     test.skip(process.platform === 'darwin', 'Contrôle seul y est déjà libre')
 
     const fichiers = ctx.page.getByRole('button', { name: 'Fichiers', exact: true })
+    // Le compte du moment, et non un chiffre écrit d'avance. Les cas d'au-dessus
+    // laissent derrière eux les onglets qu'ils ont ouverts : celui-ci passait ou
+    // tombait selon ce que son voisin avait fait avant lui.
+    const onglets = await ctx.page.locator('.xterm').count()
 
-    // Contrôle+E va en fin de ligne dans un shell : l'application ne doit pas
-    // s'en saisir, sans quoi l'agent ne le recevrait jamais.
+    // Contrôle+E va en fin de ligne dans un shell, Contrôle+W efface le mot
+    // précédent : l'application ne doit se saisir ni de l'un ni de l'autre, sans
+    // quoi l'agent ne les recevrait jamais et l'onglet se fermerait sous lui,
+    // emportant sa session et le travail avec elle.
     await ctx.page.keyboard.press('Control+E')
-    await expect(fichiers).toHaveAttribute('aria-pressed', 'false')
-
-    // Contrôle+W efface le mot précédent. S'il fermait l'onglet, il emporterait
-    // la session tmux et le travail avec elle.
     await ctx.page.keyboard.press('Control+W')
-    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+
+    // Prouver qu'il ne s'est rien passé demande de laisser le temps qu'il se
+    // passe quelque chose : sans cette pause, l'assertion ne constaterait que sa
+    // propre hâte.
+    await ctx.page.waitForTimeout(500)
+    await expect(fichiers).toHaveAttribute('aria-pressed', 'false')
+    await expect(ctx.page.locator('.xterm')).toHaveCount(onglets)
   })
 })
 
