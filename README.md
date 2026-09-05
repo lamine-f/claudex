@@ -173,6 +173,7 @@ Si la valeur est `0`, ou si AppArmor restreint ces espaces de noms
 | `⌘W` | `Ctrl+Maj+W` | fermer l'onglet, et sa session avec lui |
 | `⌘E` | `Ctrl+Maj+E` | basculer entre les conversations et les fichiers |
 | `⌘1`…`⌘9` | `Ctrl+1`…`Ctrl+9` | passer d'un projet à l'autre |
+| `Ctrl+Tab` | `Ctrl+Tab` | passer à l'onglet suivant, `Maj` pour le précédent |
 
 La Majuscule n'est là que hors de macOS, où Commande est libre. Ailleurs il faut laisser
 Contrôle au terminal : `Ctrl+E` va en fin de ligne, `Ctrl+W` efface le mot précédent, et une
