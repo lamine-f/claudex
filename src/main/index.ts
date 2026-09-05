@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { registerIpc } from './ipc'
+import { completerChemin } from './util/chemin'
 import { arreterVeilleurs } from './ipc/fs'
 import { annoncerPresence, retirerPresence } from './services/hooks'
 import * as notifications from './services/notifications'
@@ -11,6 +12,9 @@ import { multiplexeur } from './services/multiplexeur'
 import { createWindow } from './window'
 
 app.setName('Claudex')
+
+// Avant tout le reste : sans PATH complet, aucun terminal ne s'ouvre.
+completerChemin()
 
 // Windows attache les notifications à l'identifiant du modèle d'application, et
 // non au processus qui les émet. Sans lui, elles s'affichent sous le nom
