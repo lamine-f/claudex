@@ -1,19 +1,28 @@
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { attendreInvite, fermer, lancer, nouveauTerminal, SUR_WINDOWS } from './fixtures'
 
 /**
- * Le PATH que macOS donne à une application lancée depuis le Dock.
+ * Un PATH où rien de ce dont Claudex a besoin ne se trouve.
  *
- * Quatre dossiers du système, et rien d'autre. tmux, installé par Homebrew dans
- * `/opt/homebrew/bin`, y est introuvable, comme le CLI de Claude Code dans
- * `~/.local/bin`. Lancée ainsi, l'application restait sur « démarrage du
- * terminal… » pour toujours : le pty mourait à l'instant, faute de tmux.
+ * Le cas réel est celui du Dock de macOS, qui donne `/usr/bin:/bin:/usr/sbin:/sbin`
+ * et rien d'autre : tmux, installé par Homebrew dans `/opt/homebrew/bin`, y est
+ * introuvable, comme le CLI de Claude Code dans `~/.local/bin`. Lancée ainsi,
+ * l'application restait sur « démarrage du terminal… » pour toujours, le pty
+ * mourant à l'instant faute de tmux.
+ *
+ * Ce PATH-là ne prouve pourtant rien hors de macOS. tmux vient d'apt sur Debian,
+ * donc de `/usr/bin`, qui en fait partie : le terminal s'y ouvrait de toute façon,
+ * et le cas passait au vert sans avoir rien éprouvé. Un dossier vide ne laisse
+ * cette échappatoire à aucun système.
  *
  * Le défaut ne se voyait qu'installée. En développement, l'application est
  * lancée depuis un terminal et hérite d'un PATH complet, et la suite de tests
  * faisait de même.
  */
-const PATH_DU_DOCK = '/usr/bin:/bin:/usr/sbin:/sbin'
+const PATH_SANS_RIEN = await mkdtemp(join(tmpdir(), 'claudex-path-vide-'))
 
 /**
  * Le plus maigre qu'un processus Windows puisse recevoir sans être cassé.
@@ -27,10 +36,10 @@ const PATH_DU_DOCK = '/usr/bin:/bin:/usr/sbin:/sbin'
  */
 const PATH_MAIGRE_WINDOWS = 'C:\\Windows\\system32;C:\\Windows'
 
-test('un terminal s’ouvre même lancée depuis le Dock', async () => {
-  test.skip(SUR_WINDOWS, 'le PATH maigre est propre au lancement graphique de macOS')
+test('un terminal s’ouvre même sans rien dans le PATH', async () => {
+  test.skip(SUR_WINDOWS, 'Windows a son cas à lui, plus bas')
 
-  const ctx = await lancer({ env: { PATH: PATH_DU_DOCK } })
+  const ctx = await lancer({ env: { PATH: PATH_SANS_RIEN } })
   try {
     await nouveauTerminal(ctx.page)
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
@@ -68,7 +77,8 @@ test('un terminal s’ouvre même sur un PATH réduit', async () => {
     await nouveauTerminal(ctx.page)
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
-    // Même preuve que pour le Dock : l'invite ne s'affiche que si le pty vit.
+    // Même preuve que pour le cas d'à côté : l'invite ne s'affiche que si le
+    // pty vit.
     const contenu = await attendreInvite(ctx.page, 0)
     expect(contenu).toBeTruthy()
   } finally {
