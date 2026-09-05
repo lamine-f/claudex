@@ -169,11 +169,18 @@ promesse de l'application et ne se joue pas.
 curseur suit les coordonnées où le clic a lieu, l'encadré épouse la boîte réelle de l'élément
 visé : ils montrent ce qui se passe, ils ne le reconstituent pas.
 
-**Le plan de l'agent est joué à trois fois sa vitesse**, et lui seul. Il dure une trentaine de
+**Le plan de l'agent est joué à deux fois sa vitesse**, et lui seul. Il dure une trentaine de
 secondes en vrai, pendant lesquelles les appels d'outils défilent ; au rythme réel la
 démonstration s'étirait au-delà de la minute. Le reste garde sa vitesse, sans quoi les gestes
 de souris deviennent illisibles. Rien n'est coupé ni rejoué, seule l'horloge de ce segment est
 resserrée, et les bornes sont relevées pendant la prise.
+
+**Le GIF est rendu à 25 images par seconde**, la cadence à laquelle Playwright enregistre. En
+rendre 11 jetait plus de la moitié du mouvement et le curseur avançait par bonds. La finesse
+ne coûte presque rien : une image identique à la précédente se compresse pour rien, si bien
+que le fichier passe seulement de 5,6 à 7,6 Mo. C'est aussi pourquoi le plan de l'agent est à
+deux et non à trois : à trois il pesait plus lourd, un mouvement haché se compressant moins
+bien qu'un mouvement continu.
 
 **La police du terminal est forcée à 20 px** par `window.__claudexPolice`, comme le rendu WebGL
 est écarté par `window.__claudexSansWebgl`. À 12,5 px, le texte n'est plus lisible dans un GIF

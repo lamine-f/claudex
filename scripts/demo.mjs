@@ -449,8 +449,12 @@ const gif = join(sortie, 'demo.gif')
  * personne ne la regardait jusqu'au bout. Le reste garde sa vitesse, sans quoi
  * les gestes de souris deviennent illisibles. Rien n'est coupé, rien n'est
  * rejoué : seule l'horloge de ce segment est resserrée.
+ *
+ * Deux et non trois : à trois, une image sur quatre seulement du défilement
+ * était retenue et le texte sautait. Le fichier y gagne même en poids, des
+ * images voisines identiques se compressant mieux qu'un mouvement haché.
  */
-const ACCELERATION = 3
+const ACCELERATION = 2
 const a = Math.max(0, debutAgent - 0.8)
 const b = finAgent + 0.8
 const montage =
@@ -458,8 +462,10 @@ const montage =
   `[0:v]trim=${a.toFixed(2)}:${b.toFixed(2)},setpts=(PTS-STARTPTS)/${ACCELERATION}[agent];` +
   `[0:v]trim=${b.toFixed(2)},setpts=PTS-STARTPTS[apres];` +
   `[avant][agent][apres]concat=n=3:v=1:a=0[monte];` +
-  `[monte]fps=11,scale=1000:-1:flags=lanczos,split[s0][s1];` +
-  `[s0]palettegen=max_colors=160:stats_mode=diff[p];` +
+  // La source est enregistrée à 25 images par seconde : n'en rendre que 11
+  // jetait plus de la moitié du mouvement, et le curseur avançait par bonds.
+  `[monte]fps=25,scale=1000:-1:flags=lanczos,split[s0][s1];` +
+  `[s0]palettegen=max_colors=128:stats_mode=diff[p];` +
   `[s1][p]paletteuse=dither=bayer:bayer_scale=4[sortie]`
 await run('ffmpeg', [
   '-y', '-i', webm, '-filter_complex', montage, '-map', '[sortie]', '-loop', '0', gif
