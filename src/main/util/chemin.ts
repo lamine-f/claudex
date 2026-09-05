@@ -11,8 +11,14 @@ import { join } from 'node:path'
  */
 const HABITUELS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
 
-/** Le PATH que le système donne à une application lancée depuis le Dock. */
-const MAIGRE = '/usr/bin:/bin:/usr/sbin:/sbin'
+/**
+ * Ce que Claudex ne peut pas trouver tout seul, et sans quoi il ne fait rien.
+ *
+ * `tmux` porte les terminaux, `claude` les conversations. Leur absence du PATH
+ * est le signe qu'il est trop maigre, et c'est un signe plus sûr que la forme du
+ * PATH lui-même.
+ */
+const REQUIS = ['tmux', 'claude']
 
 function dossiers(chemin: string | undefined): string[] {
   return (chemin ?? '').split(':').filter(Boolean)
@@ -65,14 +71,26 @@ function chemainDuShell(): string[] {
  * Le défaut ne se voit pas en développement, où l'application est lancée depuis
  * un terminal et hérite d'un PATH complet. C'est ce qui l'a laissé passer.
  *
- * Rien n'est fait si le PATH reçu porte déjà autre chose que le strict
- * nécessaire : interroger le shell coûte quelques centaines de millisecondes au
- * démarrage, et n'a d'intérêt que dans le cas maigre.
+ * Rien n'est fait tant que tmux et claude sont atteignables : interroger le
+ * shell coûte quelques centaines de millisecondes au démarrage, et n'a d'intérêt
+ * que lorsqu'il manque quelque chose.
+ *
+ * Le manque se lit sur les outils, et non sur la forme du PATH. La première
+ * version comparait celui-ci à la chaîne exacte que macOS donne au Dock, ce qui
+ * ne pouvait rien attraper ailleurs : le menu de GNOME donne un PATH bien plus
+ * riche, mesuré sur Debian 13, et l'égalité échouait donc toujours. Un PATH
+ * pauvre autrement — la même liste privée de `~/.local/bin`, ce qu'on obtient
+ * quand la session ne lit pas `~/.profile` — laissait `claude` introuvable sans
+ * que rien ne s'en émeuve.
+ *
+ * Le prix de ce choix est qu'un outil réellement absent de la machine fait
+ * interroger le shell à chaque démarrage. C'est le seul cas où chercher a un
+ * sens, et l'écran d'état dit alors quoi installer.
  */
 export function completerChemin(): void {
   if (process.platform === 'win32') return
   const actuel = process.env.PATH ?? ''
-  if (actuel !== MAIGRE && actuel !== `${MAIGRE}:`) return
+  if (REQUIS.every(trouvable)) return
 
   process.env.PATH = fusionner(actuel, [
     ...chemainDuShell(),
