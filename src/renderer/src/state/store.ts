@@ -558,9 +558,14 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   /** Relit les dossiers déjà ouverts sous une racine, après un changement disque. */
   rafraichirArbre: async (racine) => {
-    const aRelire = Object.keys(get().arbre).filter(
-      (d) => d === racine || d.startsWith(`${racine}/`)
-    )
+    // Les deux séparateurs, parce que la clé vient du système de fichiers : sur
+    // Windows les chemins sont en antislash, et ne comparer qu’à la barre
+    // oblique ne relisait que la racine. Les dossiers dépliés en dessous
+    // gardaient leur contenu d’avant, et « Relire l’arborescence » ne montrait
+    // pas le fichier qu’on venait d’y déposer.
+    const sousLaRacine = (d: string): boolean =>
+      d.startsWith(`${racine}/`) || d.startsWith(`${racine}\\`)
+    const aRelire = Object.keys(get().arbre).filter((d) => d === racine || sousLaRacine(d))
     await Promise.all(aRelire.map((d) => get().chargerDossier(d)))
   },
 
