@@ -1,6 +1,7 @@
 import { ipcMain, shell, type WebContents } from 'electron'
 import { stat } from 'node:fs/promises'
 import chokidar, { type FSWatcher } from 'chokidar'
+import { borner } from '@shared/attente'
 import type { Apercu, Entree } from '@shared/types'
 import { lireApercu, lireDossier } from '../services/fichiers'
 import * as store from '../services/store'
@@ -14,6 +15,14 @@ import { assertInsideWorkspace } from '../util/paths'
  * sans le recréer, ce qui arrive à chaque rechargement de l'interface.
  */
 const veilleurs = new Map<string, { veilleur: FSWatcher; destinataire: WebContents }>()
+
+/**
+ * Au-delà, on tient pour acquis qu'aucun gestionnaire de fichiers ne viendra.
+ *
+ * Large à dessein : un gestionnaire qui démarre à froid met parfois plusieurs
+ * secondes, et l'attente ne coûte rien puisque personne ne s'y suspend.
+ */
+const ATTENTE_GESTIONNAIRE = 10_000
 
 function racinesAutorisees(): string[] {
   return store.get().workspaces.map((w) => w.path)
@@ -39,12 +48,32 @@ export function registerFsIpc(): void {
    * Un dossier s'ouvre, un fichier se révèle dans son dossier : c'est ce que
    * l'on veut d'un « ouvrir son dossier », et cela évite d'ouvrir le fichier
    * lui-même dans une application qu'on n'a pas demandée.
+   *
+   * L'attente est bornée parce que `shell.openPath()` ne rend pas toujours la
+   * main. Sur une Debian sans `xdg-open` — le cas d'une AppImage, qui ne peut
+   * déclarer aucune dépendance là où le paquet Debian réclame `xdg-utils` —
+   * l'appel reste en suspens sans erreur ni valeur, et ce gestionnaire restait
+   * pendant avec lui, une promesse abandonnée par clic.
+   *
+   * L'échec est tracé dans la sortie du processus main plutôt que remonté à
+   * l'interface, qui appelle sans attendre la réponse. C'est peu, mais c'est
+   * tout ce qu'il y avait auparavant : rien.
    */
   ipcMain.handle('fs:montrer', async (_evenement, chemin: string) => {
     const cible = verifier(chemin)
     const infos = await stat(cible)
-    if (infos.isDirectory()) await shell.openPath(cible)
-    else shell.showItemInFolder(cible)
+    if (!infos.isDirectory()) {
+      // Celui-ci ne rend rien du tout, pas même un échec : il n'y a rien à lire.
+      shell.showItemInFolder(cible)
+      return
+    }
+
+    const echec = await borner(
+      shell.openPath(cible),
+      ATTENTE_GESTIONNAIRE,
+      'aucun gestionnaire de fichiers n’a répondu'
+    )
+    if (echec) console.error('[fs] ouverture de', cible, ':', echec)
   })
 
   /**
