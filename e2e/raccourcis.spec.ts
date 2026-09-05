@@ -71,16 +71,23 @@ test.describe('raccourcis clavier', () => {
     test.skip(process.platform === 'darwin', 'Contrôle seul y est déjà libre')
 
     const fichiers = ctx.page.getByRole('button', { name: 'Fichiers', exact: true })
+    const terminaux = ctx.page.locator('.xterm')
+    // Le compte est relevé plutôt qu'écrit : les cas d'avant en ouvrent, et leur
+    // nombre a déjà changé une fois sous ce cas-ci, qui attendait un seul onglet.
+    const avant = await terminaux.count()
 
-    // Contrôle+E va en fin de ligne dans un shell : l'application ne doit pas
-    // s'en saisir, sans quoi l'agent ne le recevrait jamais.
+    // Contrôle+E va en fin de ligne dans un shell, Contrôle+W efface le mot
+    // précédent. L'application ne doit se saisir ni de l'un ni de l'autre, sans
+    // quoi l'agent ne les recevrait jamais. Contrôle+W est celui qui tranche :
+    // il fermerait l'onglet et emporterait la session tmux avec lui.
     await ctx.page.keyboard.press('Control+E')
-    await expect(fichiers).toHaveAttribute('aria-pressed', 'false')
-
-    // Contrôle+W efface le mot précédent. S'il fermait l'onglet, il emporterait
-    // la session tmux et le travail avec elle.
     await ctx.page.keyboard.press('Control+W')
-    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+
+    // Laisser à une bascule ou à une fermeture le temps de se produire. Vérifiés
+    // dans l'instant, les deux états seraient encore les bons quoi qu'il arrive.
+    await ctx.page.waitForTimeout(500)
+    await expect(fichiers).toHaveAttribute('aria-pressed', 'false')
+    expect(await terminaux.count()).toBe(avant)
   })
 })
 
