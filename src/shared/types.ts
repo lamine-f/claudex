@@ -1,5 +1,6 @@
 /** Types partagés entre le processus main, le preload et le renderer. */
 
+import type { GenreMedia } from './media'
 import type { Rangement } from './rangement'
 
 export interface Workspace {
@@ -154,6 +155,8 @@ export type Apercu =
   | { type: 'texte'; contenu: string; langage: string; octets: number }
   | { type: 'trop-gros'; octets: number }
   | { type: 'binaire'; octets: number }
+  /** Image, vidéo ou son : servis en flux par leur adresse, jamais lus ici. */
+  | { type: GenreMedia; url: string; octets: number }
 
 /** État git d'un projet, réduit à ce que la barre de statut affiche. */
 export interface EtatGit {

@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { extname, join } from 'node:path'
+import { media, urlMedia } from '@shared/media'
 import type { Apercu, Entree } from '@shared/types'
 import { ignores } from './git'
 
@@ -109,6 +110,13 @@ function estBinaire(tampon: Buffer): boolean {
 
 export async function lireApercu(chemin: string): Promise<Apercu> {
   const infos = await stat(chemin)
+
+  // Les médias passent avant la limite de taille : ils ne sont pas lus ici mais
+  // servis en flux, et une vidéo d'un gigaoctet se regarde aussi bien qu'une
+  // vignette. Ils passent avant la détection de binaire pour la même raison,
+  // qui les rangeait tous parmi les fichiers dont il n'y a rien à montrer.
+  const genre = media(chemin)
+  if (genre) return { type: genre.genre, url: urlMedia(chemin), octets: infos.size }
 
   // Ouvrir un fichier de plusieurs dizaines de mégaoctets dans un éditeur bloquerait
   // l'interface pour rien : mieux vaut le dire que le tenter.

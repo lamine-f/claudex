@@ -7,6 +7,12 @@ import { fermer, lancer, type Contexte } from './fixtures'
 
 const run = promisify(execFile)
 
+/** Un PNG valide d'un pixel, écrit tel quel plutôt que fabriqué à la volée. */
+const PIXEL = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64'
+)
+
 test.describe('arborescence et aperçu', () => {
   let ctx: Contexte
 
@@ -24,6 +30,9 @@ test.describe('arborescence et aperçu', () => {
     await writeFile(join(p, 'node_modules', 'paquet', 'index.js'), 'module.exports = 1\n')
     // Un binaire : l'aperçu doit le refuser explicitement plutôt que l'afficher.
     await writeFile(join(p, 'image.bin'), Buffer.from([0x89, 0x50, 0x00, 0x01, 0x02]))
+    // Une vraie image d'un pixel : c'est elle qui éprouve la chaîne entière,
+    // de l'extension reconnue au flux servi par le schéma dédié.
+    await writeFile(join(p, 'pixel.png'), PIXEL)
     await fermer(provisoire, { nettoyer: false })
     ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
     // L'arborescence partage sa colonne avec les conversations : il faut la
@@ -68,6 +77,18 @@ test.describe('arborescence et aperçu', () => {
   test('un fichier créé hors de l’application apparaît sans rien cliquer', async () => {
     await writeFile(join(ctx.projet, 'apparu.txt'), 'créé par un agent\n')
     await expect(ctx.page.getByText('apparu.txt')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('une image s’affiche vraiment, au lieu d’être dite binaire', async () => {
+    await ctx.page.getByText('pixel.png').click()
+    const image = ctx.page.locator('img[src^="claudex-media:"]')
+    await expect(image).toBeVisible()
+    // Visible ne suffit pas : une image que le schéma n'aurait pas servie
+    // occuperait la même place sans rien montrer.
+    await expect
+      .poll(async () => image.evaluate((e: HTMLImageElement) => e.naturalWidth))
+      .toBe(1)
+    await ctx.page.keyboard.press('Escape')
   })
 
   test('le clic droit à côté des lignes relit l’arborescence', async () => {

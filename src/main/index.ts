@@ -9,9 +9,14 @@ import * as pty from './services/pty'
 import * as scrollback from './services/scrollback'
 import * as store from './services/store'
 import { multiplexeur } from './services/multiplexeur'
+import { declarerSchema, servirMedias } from './services/media'
 import { createWindow } from './window'
 
 app.setName('Claudex')
+
+// Avant que l'application ne soit prête, comme Electron l'exige : c'est par ce
+// schéma que l'aperçu atteint une image ou une vidéo sans la charger en mémoire.
+declarerSchema()
 
 // Avant tout le reste : sans PATH complet, aucun terminal ne s'ouvre.
 completerChemin()
@@ -63,6 +68,7 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(async () => {
     await multiplexeur.preparerConfiguration(app.getPath('userData'))
     await store.load()
+    servirMedias()
     registerIpc()
     createWindow()
 
