@@ -185,13 +185,16 @@ export function Rail(): React.JSX.Element {
                   </span>
                 )}
                 {ouverts > 0 && (
-                  // Le compteur porte la couleur de son projet, comme le liseré :
-                  // deux marques de la même main, pas deux couleurs sur la même
-                  // ligne. Il vaut pour tous les projets, pas seulement l'ouvert.
+                  // Le compteur porte la couleur de son projet, comme le liseré,
+                  // et la perd avec lui dès qu'on regarde ailleurs. Il vaut pour
+                  // tous les projets, or dix pastilles pleines réclameraient
+                  // toutes l'œil en même temps et aucune ne dirait plus rien.
                   <span
-                    style={{ background: w.color }}
+                    style={courant ? { background: w.color } : undefined}
                     title={ouverts > 1 ? `${ouverts} terminaux ouverts` : '1 terminal ouvert'}
-                    className="flex h-[15px] min-w-[15px] shrink-0 items-center justify-center rounded-full px-[3px] font-mono text-[9px] text-fond"
+                    className={`flex h-[15px] min-w-[15px] shrink-0 items-center justify-center rounded-full px-[3px] font-mono text-[9px] ${
+                      courant ? 'text-fond' : 'bg-fond-eleve text-texte-tenu'
+                    }`}
                   >
                     {ouverts}
                   </span>

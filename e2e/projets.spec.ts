@@ -110,6 +110,13 @@ test.describe('les projets du rail', () => {
     // se compter : c'est ce qui évite d'en rouvrir un là où trois attendent.
     await expect(projet(page, 'Alpha')).toContainText('2')
     await expect(projet(page, 'Beta')).toContainText('1')
+
+    // La couleur pleine reste au projet qu'on regarde. Ailleurs le compteur se
+    // tait : dix pastilles vives réclameraient l'œil toutes ensemble.
+    const compteur = (nom: string, compte: string): Locator =>
+      projet(page, nom).locator('span.rounded-full').filter({ hasText: compte })
+    await expect(compteur('Beta', '1')).toHaveCSS('background-color', 'rgb(90, 169, 232)')
+    await expect(compteur('Alpha', '2')).not.toHaveCSS('background-color', 'rgb(232, 130, 90)')
   })
 
   test('revenir sur un projet rouvre l’onglet qu’on y regardait', async () => {
