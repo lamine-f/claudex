@@ -1,8 +1,28 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { fermer, glisser, lancer, nouveauTerminal, type Contexte } from './fixtures'
+
+/** Le dossier où Claude Code range les transcrits d'un projet. */
+function dossierTranscrits(projet: string): string {
+  return join(homedir(), '.claude', 'projects', projet.replace(/[^a-zA-Z0-9-]/g, '-'))
+}
+
+/**
+ * Pose une conversation dans un projet, comme l'aurait fait Claude Code.
+ *
+ * Elle est écrite avant le lancement : le veilleur ignore ce qui est déjà là,
+ * si bien que seule une lecture du dossier peut la faire apparaître.
+ */
+async function semer(projet: string, titre: string): Promise<void> {
+  const dossier = dossierTranscrits(projet)
+  await mkdir(dossier, { recursive: true })
+  await writeFile(
+    join(dossier, 'aaaaaaaa-1111-1111-1111-111111111111.jsonl'),
+    `${JSON.stringify({ type: 'ai-title', aiTitle: titre })}\n`
+  )
+}
 
 /** Les onglets de terminal, qui portent tous le même nom faute d'être nommés. */
 const onglets = (page: Page): Locator => page.getByRole('button', { name: 'Terminal', exact: true })
@@ -33,6 +53,9 @@ async function profil(): Promise<{ donnees: string; alpha: string; beta: string 
   const donnees = await mkdtemp(join(tmpdir(), 'claudex-e2e-'))
   const alpha = await mkdtemp(join(tmpdir(), 'claudex-alpha-'))
   const beta = await mkdtemp(join(tmpdir(), 'claudex-beta-'))
+  // Beta n'est pas le projet ouvert au démarrage : sa conversation ne peut
+  // apparaître que si l'on va la chercher en arrivant dessus.
+  await semer(beta, 'Facture Beta')
   await writeFile(
     join(donnees, 'state.json'),
     JSON.stringify({
@@ -61,6 +84,16 @@ test.describe('les projets du rail', () => {
   test.afterAll(async () => {
     await fermer(ctx)
     await rm(beta, { recursive: true, force: true })
+    await rm(dossierTranscrits(beta), { recursive: true, force: true })
+  })
+
+  test('arriver sur un projet en lit les conversations', async () => {
+    const { page } = ctx
+    await projet(page, 'Beta').click()
+    // Sans un clic sur la synchronisation : la colonne doit être utile en
+    // arrivant, pas après qu'on a pensé à la remplir.
+    await expect(page.getByRole('button', { name: 'Facture Beta' })).toBeVisible()
+    await projet(page, 'Alpha').click()
   })
 
   test('le compteur d’onglets vaut pour tous les projets, pas seulement l’ouvert', async () => {

@@ -341,6 +341,11 @@ export const useStore = create<EtatUi>((set, get) => ({
       void window.claudex.fs.observer(courant.path)
     }
     await get().chargerOnglets(id)
+    // Les conversations suivent le même principe que l'arbre : déjà lues, on les
+    // montre et l'on relit derrière. Sans cela, arriver sur un projet ouvrait
+    // une colonne vide qu'il fallait penser à synchroniser à la main.
+    if (get().sessions[id]) void get().chargerSessions(id)
+    else await get().chargerSessions(id)
   },
 
   chargerOnglets: async (workspaceId) => {
