@@ -325,6 +325,10 @@ if (await attendreTexte(0, /trust this folder/i, 10000)) {
   await pause(600)
   await taper(0, '', '\r')
 }
+// Le démarrage de Claude Code est une attente, pas un spectacle : ses bornes
+// sont notées pour le resserrer au montage. La question de confiance, elle,
+// garde son rythme, étant posée juste au-dessus.
+const debutAttente = marque()
 await attendreTexte(0, /Try "|\/help|bypass permissions/i, 30000)
 await pause(1200)
 
@@ -439,14 +443,32 @@ const gif = join(sortie, 'demo.gif')
  * jamais descendre sous deux, où le mouvement se hache et où le fichier
  * s'alourdit, ni monter au-delà de quatre, où plus rien ne se lit.
  */
-const a = Math.max(0, debutAgent - 0.8)
+// Sans marge au début : le segment du démarrage s'arrête exactement ici.
+const a = debutAgent
 const b = finAgent + 0.8
 const ACCELERATION = Math.min(4, Math.max(2, (b - a) / 18)).toFixed(2)
+
+/*
+ * Le démarrage de Claude Code est resserré plus fort, et pour une autre raison.
+ *
+ * Rien n'y bouge : la bannière est dessinée, l'invite attend. Mesuré sur une
+ * prise, onze secondes sans un pixel de changement, au milieu d'une
+ * démonstration qui en fait quarante. Un huitième suffit à dire que l'agent
+ * démarre.
+ *
+ * En deçà de deux secondes on n'y touche pas : resserrer un battement le
+ * transformerait en saut.
+ */
+const RESSERRAGE = 8
+const resserree = a - debutAttente >= 2 ? RESSERRAGE : 1
+
 const montage =
-  `[0:v]trim=0:${a.toFixed(2)},setpts=PTS-STARTPTS[avant];` +
+  `[0:v]trim=0:${debutAttente.toFixed(2)},setpts=PTS-STARTPTS[avant];` +
+  `[0:v]trim=${debutAttente.toFixed(2)}:${a.toFixed(2)},` +
+  `setpts=(PTS-STARTPTS)/${resserree}[demarrage];` +
   `[0:v]trim=${a.toFixed(2)}:${b.toFixed(2)},setpts=(PTS-STARTPTS)/${ACCELERATION}[agent];` +
   `[0:v]trim=${b.toFixed(2)},setpts=PTS-STARTPTS[apres];` +
-  `[avant][agent][apres]concat=n=3:v=1:a=0[monte];` +
+  `[avant][demarrage][agent][apres]concat=n=4:v=1:a=0[monte];` +
   // La source est enregistrée à 25 images par seconde : n'en rendre que 11
   // jetait plus de la moitié du mouvement, et le curseur avançait par bonds.
   `[monte]fps=25,scale=1000:-1:flags=lanczos,split[s0][s1];` +
@@ -456,8 +478,8 @@ await run('ffmpeg', [
   '-y', '-i', webm, '-filter_complex', montage, '-map', '[sortie]', '-loop', '0', gif
 ])
 console.log(
-  `plan de l'agent : ${(b - a).toFixed(1)} s de ${a.toFixed(1)} à ${b.toFixed(1)}, ` +
-    `joué à ${ACCELERATION}×`
+  `démarrage : ${(a - debutAttente).toFixed(1)} s à ${resserree}× · ` +
+    `agent : ${(b - a).toFixed(1)} s à ${ACCELERATION}×`
 )
 
 await rename(webm, join(sortie, 'demo.webm')).catch(() => undefined)

@@ -212,6 +212,12 @@ démonstration s'étirait au-delà de la minute. Le reste garde sa vitesse, sans
 de souris deviennent illisibles. Rien n'est coupé ni rejoué, seule l'horloge de ce segment est
 resserrée, et les bornes sont relevées pendant la prise.
 
+**Le démarrage de Claude Code est resserré au huitième**, et pour une autre raison que
+l'accélération de l'agent : rien n'y bouge. La bannière est dessinée, l'invite attend, et cela
+a duré onze secondes sur une prise, sans un pixel de changement, au milieu d'une démonstration
+qui en fait quarante. En deçà de deux secondes le segment est laissé tel quel, resserrer un
+battement le transformerait en saut.
+
 **Le GIF est rendu à 25 images par seconde**, la cadence à laquelle Playwright enregistre. En
 rendre 11 jetait plus de la moitié du mouvement et le curseur avançait par bonds. La finesse
 ne coûte presque rien : une image identique à la précédente se compresse pour rien, si bien
