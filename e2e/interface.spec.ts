@@ -148,13 +148,17 @@ test.describe('barre de menus', () => {
     // pour dépendre des accélérateurs du menu. Ils n'en dépendent pas, Chromium
     // les traitant lui-même sur une zone éditable — mais cela se vérifie plutôt
     // que se suppose, et ce cas tombera si la conclusion cesse d'être vraie.
+    // La touche du presse-papiers appartient au système : Commande sur macOS,
+    // Contrôle ailleurs. Taper Contrôle sur un Mac ne collait rien, et le cas
+    // tombait sur une plateforme où le menu n'a même pas été retiré.
+    const modificateur = process.platform === 'darwin' ? 'Meta' : 'Control'
     const champ = ctx.page.getByPlaceholder('Rechercher')
     await champ.click()
     await champ.fill('bonjour presse-papiers')
-    await ctx.page.keyboard.press('Control+A')
-    await ctx.page.keyboard.press('Control+C')
+    await ctx.page.keyboard.press(`${modificateur}+A`)
+    await ctx.page.keyboard.press(`${modificateur}+C`)
     await champ.fill('')
-    await ctx.page.keyboard.press('Control+V')
+    await ctx.page.keyboard.press(`${modificateur}+V`)
     await expect(champ).toHaveValue('bonjour presse-papiers')
   })
 })

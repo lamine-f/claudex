@@ -13,6 +13,7 @@ import {
   GitFork,
   Plus,
   RefreshCw,
+  Server,
   Sparkles,
   SquareTerminal,
   Star,
@@ -86,6 +87,9 @@ export const IconeConversations = (p: Props): React.JSX.Element => (
 )
 
 /** L'arborescence des fichiers. */
+/** Les services d'un projet : ce qui tourne, par opposition à qui l'on parle. */
+export const IconeServices = (p: Props): React.JSX.Element => <Server {...reglages(p)} />
+
 export const IconeArborescence = (p: Props): React.JSX.Element => <FolderTree {...reglages(p)} />
 
 /** Replier ou déployer la colonne des projets. */

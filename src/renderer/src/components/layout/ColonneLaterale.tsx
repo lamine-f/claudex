@@ -1,10 +1,13 @@
 import { useMemo } from 'react'
+import type { ServiceVu } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { raccourci } from '@renderer/systeme'
 import { FileTree } from '../files/FileTree'
+import { ListeServices } from '../services/ListeServices'
 import {
   IconeArborescence,
   IconeConversations,
+  IconeServices,
   IconeNouveauGroupe,
   IconePlus,
   IconeSynchro
@@ -32,6 +35,17 @@ export function ColonneLaterale(): React.JSX.Element {
 
   const courant = workspaces.find((w) => w.id === actif)
 
+  // Le nombre porté par l'onglet Services est celui de ce qui tourne, non de ce
+  // qui est déclaré : c'est la question qu'on se pose en le regardant.
+  const services = useStore((e) => (actif ? e.services[actif] : undefined))
+  const debout = services?.filter((s) => s.etat !== 'arrete').length
+
+  // Le journal s'ouvre dans une fenêtre à part, qu'on peut poser sur un second
+  // écran. Elle lit le fichier plutôt que de s'attacher à la session.
+  const ouvrirJournal = (service: ServiceVu): void => {
+    void window.claudex.services.fenetreJournal(service.journal, service.nom)
+  }
+
   // Le compte annoncé est celui des conversations, groupées ou non : c'est ce
   // que l'on cherche, pas le nombre de lignes de la colonne.
   const compte = useMemo(() => {
@@ -43,7 +57,7 @@ export function ColonneLaterale(): React.JSX.Element {
   // Les deux vues se disent par leur icône : deux mots en capitales pesaient
   // plus lourd que ce qu'ils désignaient, en tête d'une colonne étroite.
   const onglet = (
-    cle: 'sessions' | 'fichiers',
+    cle: 'sessions' | 'fichiers' | 'services',
     libelle: string,
     icone: React.ReactNode,
     nombre?: number
@@ -90,6 +104,7 @@ export function ColonneLaterale(): React.JSX.Element {
       <div className="flex h-12 shrink-0 items-center gap-1.5 px-2.5">
         {onglet('sessions', 'Conversations', <IconeConversations taille={17} />, compte)}
         {onglet('fichiers', 'Fichiers', <IconeArborescence taille={17} />)}
+        {onglet('services', 'Services', <IconeServices taille={16} />, debout)}
         <div className="flex-1" />
 
         {panneau === 'sessions' && courant && (
@@ -119,6 +134,10 @@ export function ColonneLaterale(): React.JSX.Element {
         <p className="px-3 py-2 text-[12.5px] text-texte-faible">Aucun projet sélectionné.</p>
       ) : panneau === 'fichiers' ? (
         <FileTree />
+      ) : panneau === 'services' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ListeServices workspaceId={courant.id} onVoirJournal={ouvrirJournal} />
+        </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="px-2.5 pb-2">

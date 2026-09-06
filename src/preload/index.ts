@@ -7,6 +7,7 @@ import type {
   DoctorCheck,
   Entree,
   EtatGit,
+  ServiceVu,
   Sollicitation,
   Tab,
   Workspace
@@ -135,6 +136,23 @@ const api = {
       return () => ipcRenderer.removeListener('claude:allerVers', ecouteur)
     }
   },
+  services: {
+    etats: (workspaceId: string): Promise<ServiceVu[]> =>
+      ipcRenderer.invoke('services:etats', workspaceId),
+    demarrer: (workspaceId: string, noms: string[]): Promise<{ bloques: string[] }> =>
+      ipcRenderer.invoke('services:demarrer', workspaceId, noms),
+    arreter: (workspaceId: string, noms: string[]): Promise<void> =>
+      ipcRenderer.invoke('services:arreter', workspaceId, noms),
+    skill: (workspaceId: string): Promise<string | null> =>
+      ipcRenderer.invoke('services:skill', workspaceId),
+    /** Ouvre une fenêtre qui suit le journal d'un service. */
+    fenetreJournal: (chemin: string, titre: string): Promise<void> =>
+      ipcRenderer.invoke('services:fenetreJournal', chemin, titre),
+    /** Ce qu'un journal porte depuis un décalage, séquences ANSI comprises. */
+    journal: (chemin: string, depuis?: number): Promise<{ texte: string; taille: number }> =>
+      ipcRenderer.invoke('services:journal', chemin, depuis)
+  },
+
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>
       ipcRenderer.invoke('git:etat', workspaceId)

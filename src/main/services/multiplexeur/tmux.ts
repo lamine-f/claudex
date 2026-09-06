@@ -357,12 +357,17 @@ export const pilote: Multiplexeur = {
     processus.resize(Math.max(cols, 20), Math.max(rows, 5))
   },
 
-  // `pipe-pane` sans commande arrête la duplication en cours. La redemander
-  // sans l'arrêter d'abord empilerait deux `cat` sur le même pane.
+  /**
+   * `pipe-pane` sans commande arrête la duplication en cours. La redemander sans
+   * l'arrêter d'abord empilerait deux `cat` sur le même pane.
+   *
+   * La cible porte un deux-points : `pipe-pane` vise un pane, et `=nom` désigne
+   * une session. L'oublier rend « can't find pane », qui ne dit pas pourquoi.
+   */
   async journaliser(nom, fichier) {
-    await tmux('pipe-pane', '-t', `=${nom}`)
+    await tmux('pipe-pane', '-t', `=${nom}:`)
     if (fichier === null) return
-    await tmux('pipe-pane', '-t', `=${nom}`, `cat >> ${proteger(fichier)}`)
+    await tmux('pipe-pane', '-t', `=${nom}:`, `cat >> ${proteger(fichier)}`)
   },
 
   capturer: capturePane,

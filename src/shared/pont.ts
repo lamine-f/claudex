@@ -34,6 +34,7 @@ const ATTENDU: Record<string, string[]> = {
     'arranger',
     'apaiser'
   ],
+  services: ['etats', 'demarrer', 'arreter', 'skill', 'fenetreJournal', 'journal'],
   git: ['etat'],
   systeme: ['plateforme'],
   doctor: ['check', 'appliquer']

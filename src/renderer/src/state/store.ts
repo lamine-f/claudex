@@ -21,6 +21,7 @@ import type {
   DoctorCheck,
   Entree,
   EtatGit,
+  ServiceVu,
   Sollicitation,
   Tab,
   Workspace
@@ -46,6 +47,18 @@ interface EtatUi {
    */
   comptesOnglets: Record<string, number>
 
+  /**
+   * Services déclarés par projet, avec leur état.
+   *
+   * Un service n'est pas une conversation : il ne vit pas dans `tabs` et
+   * n'apparaît jamais dans la barre d'onglets. Son état se relit à intervalle
+   * régulier tant qu'on le regarde, un démarrage passant par plusieurs états.
+   */
+  services: Record<string, ServiceVu[]>
+  chargerServices: (workspaceId: string) => Promise<void>
+  demarrerServices: (workspaceId: string, noms: string[]) => Promise<void>
+  arreterServices: (workspaceId: string, noms: string[]) => Promise<void>
+
   /** Sessions Claude Code par workspace, chargées au dépli. */
   sessions: Record<string, ClaudeSession[]>
   /** Ordre voulu et groupes, par workspace. */
@@ -70,7 +83,7 @@ interface EtatUi {
   sollicitations: Record<string, Sollicitation>
 
   /** Onglet de la colonne latérale : les conversations ou les fichiers. */
-  panneau: 'sessions' | 'fichiers'
+  panneau: 'sessions' | 'fichiers' | 'services'
   /** Filtre de la liste des sessions. */
   filtre: string
   /** État git du projet courant, pour la barre de statut. */
@@ -120,7 +133,7 @@ interface EtatUi {
   finirNommage: () => void
   replierGroupeSessions: (workspaceId: string, id: string, replie: boolean) => Promise<void>
   defaireGroupe: (workspaceId: string, id: string) => Promise<void>
-  choisirPanneau: (panneau: 'sessions' | 'fichiers') => void
+  choisirPanneau: (panneau: 'sessions' | 'fichiers' | 'services') => void
   demanderBifurcation: (workspaceId: string, uuid: string, titre: string) => void
   etiqueter: (workspaceId: string, uuid: string, texte: string) => Promise<void>
   renommer: (workspaceId: string, uuid: string, titre: string) => Promise<void>
@@ -197,6 +210,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   pret: false,
   tabs: [],
   comptesOnglets: {},
+  services: {},
   sessions: {},
   rangements: {},
   sessionsEnCours: {},
@@ -348,6 +362,7 @@ export const useStore = create<EtatUi>((set, get) => ({
     // une colonne vide qu'il fallait penser à synchroniser à la main.
     if (get().sessions[id]) void get().chargerSessions(id)
     else await get().chargerSessions(id)
+    void get().chargerServices(id)
   },
 
   chargerOnglets: async (workspaceId) => {
@@ -364,6 +379,21 @@ export const useStore = create<EtatUi>((set, get) => ({
     const retenu = tabs.some((t) => t.id === courant) ? courant : dernierRegarde(tabs)?.id
     set({ tabs, activeTabId: retenu })
     if (retenu && retenu !== courant) void window.claudex.term.focus(retenu)
+  },
+
+  chargerServices: async (workspaceId) => {
+    const vus = await window.claudex.services.etats(workspaceId)
+    set({ services: { ...get().services, [workspaceId]: vus } })
+  },
+
+  demarrerServices: async (workspaceId, noms) => {
+    await window.claudex.services.demarrer(workspaceId, noms)
+    await get().chargerServices(workspaceId)
+  },
+
+  arreterServices: async (workspaceId, noms) => {
+    await window.claudex.services.arreter(workspaceId, noms)
+    await get().chargerServices(workspaceId)
   },
 
   chargerSessions: async (workspaceId) => {
