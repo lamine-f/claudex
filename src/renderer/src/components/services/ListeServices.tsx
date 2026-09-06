@@ -43,6 +43,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const [enCours, setEnCours] = useState<string[]>([])
   const [skillEcrit, setSkillEcrit] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
+  const [echec, setEchec] = useState<string | null>(null)
 
   // Un démarrage passe par plusieurs états sans que personne ne le dise : on
   // relit tant que la colonne est à l'écran, et seulement tant qu'elle l'est.
@@ -66,10 +67,17 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
     noms: string[]
   ): Promise<void> => {
     setEnCours((v) => [...v, ...noms])
+    setEchec(null)
     try {
       const seul = { liberer, relancer, reprendre }[action as 'liberer' | 'relancer' | 'reprendre']
       if (seul) await Promise.all(noms.map((n) => seul(workspaceId, n)))
       else await (action === 'demarrer' ? demarrer : arreter)(workspaceId, noms)
+    } catch (erreur) {
+      // Une action qui échoue doit le dire. Sans cela, un geste sans effet est
+      // indiscernable d'un geste qui n'a pas été reçu, et l'on clique en vain.
+      // C'est arrivé pour de bon : le processus principal d'une session de
+      // développement ignorait les commandes neuves, et rien ne le disait.
+      setEchec(String((erreur as Error)?.message ?? erreur))
     } finally {
       setEnCours((v) => v.filter((n) => !noms.includes(n)))
     }
@@ -160,8 +168,17 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   return (
     <>
       <div className="flex items-center gap-2 border-b border-separateur px-3 py-1.5">
-        <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-texte-tenu">
-          {skillEcrit ? `skill écrit : ${skillEcrit.split(/[\\/]/).slice(-3).join('/')}` : ''}
+        <span
+          title={echec ?? undefined}
+          className={`min-w-0 flex-1 truncate font-mono text-[10.5px] ${
+            echec ? 'text-erreur' : 'text-texte-tenu'
+          }`}
+        >
+          {echec
+            ? echec
+            : skillEcrit
+              ? `skill écrit : ${skillEcrit.split(/[\\/]/).slice(-3).join('/')}`
+              : ''}
         </span>
         {bouton('écrire le skill', () => void ecrireSkill())}
       </div>

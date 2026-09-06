@@ -1,14 +1,11 @@
 import type { Tab } from '@shared/types'
 import { raccourci } from '@renderer/systeme'
-import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus, IconeServices } from '../ui/Icones'
+import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
   tabs: Tab[]
-  /** Journaux de services ouverts, qui sont des vues et non des sessions. */
-  journaux: { nom: string; chemin: string }[]
-  journalActif?: string
-  onChoisirJournal: (nom: string) => void
-  onFermerJournal: (nom: string) => void
+  /** Vrai quand un journal de service occupe l'écran à la place du terminal. */
+  journalOuvert?: boolean
   /** Conversations qui réclament leur utilisateur, par identifiant de session. */
   sollicitees: Set<string>
   actifId?: string
@@ -25,10 +22,7 @@ interface Props {
  */
 export function TerminalTabs({
   tabs,
-  journaux,
-  journalActif,
-  onChoisirJournal,
-  onFermerJournal,
+  journalOuvert,
   sollicitees,
   actifId,
   onChoisir,
@@ -37,7 +31,7 @@ export function TerminalTabs({
   onBifurquer
 }: Props): React.JSX.Element {
   // Rien à bifurquer quand on regarde un journal : ce n'est pas une conversation.
-  const actif = journalActif ? undefined : tabs.find((t) => t.id === actifId)
+  const actif = journalOuvert ? undefined : tabs.find((t) => t.id === actifId)
 
   return (
     <div className="flex h-14 shrink-0 items-center gap-1.5 border-b border-separateur px-3.5">
@@ -96,43 +90,6 @@ export function TerminalTabs({
           )
         })}
 
-        {/* Les journaux suivent les conversations, et se distinguent d'elles :
-            fermer une conversation tue sa session, fermer un journal ne fait que
-            retirer la vue, le service continuant de tourner. */}
-        {journaux.map((journal) => {
-          const courant = journal.nom === journalActif
-          return (
-            <div
-              key={journal.nom}
-              className={`group flex h-9 shrink-0 items-center gap-2 rounded-lg pr-2 pl-3 transition-colors ${
-                courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
-              }`}
-            >
-              <span aria-hidden className="shrink-0 text-texte-tenu">
-                <IconeServices taille={12} />
-              </span>
-              <button
-                type="button"
-                aria-current={courant ? 'true' : undefined}
-                onClick={() => onChoisirJournal(journal.nom)}
-                className={`max-w-56 truncate text-[13.5px] ${
-                  courant ? 'text-texte' : 'text-texte-faible'
-                }`}
-                title={journal.chemin}
-              >
-                {journal.nom}
-              </button>
-              <button
-                type="button"
-                onClick={() => onFermerJournal(journal.nom)}
-                title="Fermer la vue. Le service continue de tourner."
-                className="flex h-4 w-4 items-center justify-center rounded text-texte-tenu opacity-0 transition-opacity group-hover:opacity-100 hover:text-texte focus-visible:opacity-100"
-              >
-                <IconeFermer taille={11} />
-              </button>
-            </div>
-          )
-        })}
       </div>
 
       {actif?.claudeSessionId && (

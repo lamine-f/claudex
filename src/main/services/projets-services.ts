@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { createConnection } from 'node:net'
 import { promisify } from 'node:util'
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { resoudre, vagues, type Declaration, type Reproche, type Service } from '@shared/services'
@@ -61,6 +61,32 @@ export async function charger(
   }
 
   const resolu = resoudre(declaration)
+
+  /*
+   * Un dossier qui n'existe pas se dit ici, et non au lancement.
+   *
+   * tmux ne refuse pas une session dont le dossier est absent : il repart du
+   * dossier personnel. La commande s'exécute alors ailleurs, et le message qui
+   * en sort parle d'autre chose — mesuré sur un `npm start` qui cherchait un
+   * `package.json` dans le dossier de l'utilisateur, quatre fois de suite, sans
+   * que rien à l'écran ne dise pourquoi.
+   */
+  await Promise.all(
+    resolu.services.map(async (service) => {
+      const cible = join(projet, service.dossier)
+      const existe = await access(cible).then(
+        () => true,
+        () => false
+      )
+      if (!existe) {
+        resolu.reproches.push({
+          service: service.nom,
+          message: `Son dossier est introuvable : ${cible}`
+        })
+      }
+    })
+  )
+
   return resolu
 }
 
@@ -142,6 +168,15 @@ export async function demarrer(
   projet: string,
   service: Service
 ): Promise<void> {
+  // Lancer depuis un dossier absent revient à lancer depuis le dossier
+  // personnel : tmux ne refuse pas, il se rabat. Mieux vaut ne rien faire.
+  const cwdVoulu = join(projet, service.dossier)
+  const existe = await access(cwdVoulu).then(
+    () => true,
+    () => false
+  )
+  if (!existe) return
+
   const journal = cheminJournal(projet, service.nom)
   await mkdir(join(projet, JOURNAUX), { recursive: true })
   await fairePlace(journal)
@@ -164,7 +199,7 @@ export async function demarrer(
     if (await ecoute(service.port)) return
   }
 
-  const cwd = join(projet, service.dossier)
+  const cwd = cwdVoulu
   // Le journal part avec l'amorce, non après : c'est le pilote qui sait
   // brancher le tuyau avant que la commande ne parte, et l'ordre inverse
   // perdrait la trace de démarrage.

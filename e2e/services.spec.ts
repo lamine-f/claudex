@@ -107,11 +107,11 @@ services:
     await expect(ligne.getByLabel('arrêté')).toBeVisible({ timeout: 20_000 })
   })
 
-  test('cliquer un service ouvre son journal en onglet, à la place du terminal', async () => {
+  test('cliquer un service montre son journal à la place du terminal', async () => {
     test.skip(SUR_WINDOWS, 'le pilote ConPTY journalise autrement, éprouvé de son côté')
 
     // Un terminal d'abord, pour vérifier que le journal prend sa place sans le
-    // fermer, et que l'onglet du terminal le ramène.
+    // fermer, et que la fermeture de la vue le ramène.
     await nouveauTerminal(ctx.page)
     await expect(ctx.page.locator('.xterm')).toHaveCount(1)
 
@@ -120,27 +120,19 @@ services:
     await ligne.getByRole('button', { name: 'démarrer' }).click()
     await ctx.page.getByRole('button', { name: 'seconde' }).first().click()
 
-    // L'onglet du journal porte le chemin du fichier en infobulle, là où la
-    // ligne de la liste porte le même nom : c'est ce qui les distingue.
-    const onglet = ctx.page.getByTitle(/seconde\.log$/)
-    await expect(onglet).toHaveAttribute('aria-current', 'true')
+    // Le journal occupe l'écran, et rien n'est venu s'ajouter à la barre des
+    // conversations : un service n'y a pas sa place.
     await expect(ctx.page.getByRole('button', { name: /suit|gelé/ })).toBeVisible()
-
-    // Revenir au terminal, puis fermer la vue sans arrêter le service.
-    await ctx.page.getByRole('button', { name: 'Terminal', exact: true }).first().click()
-    await expect(ctx.page.getByRole('button', { name: /suit|gelé/ })).toHaveCount(0)
+    await expect(ctx.page.getByRole('button', { name: 'seconde', exact: true })).toHaveCount(1)
 
     await ctx.page
       .getByTitle('Fermer la vue. Le service continue de tourner.')
       .first()
       .click()
-    await expect(onglet).toHaveCount(0)
+    await expect(ctx.page.getByRole('button', { name: /suit|gelé/ })).toHaveCount(0)
 
     // Le service, lui, tourne toujours.
-    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
-    await expect(
-      ctx.page.locator('li', { hasText: 'seconde' }).last().getByLabel('en marche')
-    ).toBeVisible()
+    await expect(ligne.getByLabel('en marche')).toBeVisible()
   })
 
   test('les variables déclarées arrivent au service', async () => {
@@ -272,5 +264,25 @@ services:
     } finally {
       intrus.kill('SIGKILL')
     }
+  })
+
+  test('un dossier introuvable se dit, et rien ne se lance', async () => {
+    await writeFile(
+      join(ctx.projet, '.claudex', 'services.yml'),
+      `
+services:
+  - { nom: egare, dossier: nulle/part, commande: echo bonjour }
+`
+    )
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+
+    const ligne = ctx.page.locator('li', { hasText: 'egare' }).last()
+    // Le reproche porte le chemin cherché : sans lui, la commande partirait
+    // depuis le dossier personnel et son message parlerait d'autre chose.
+    await expect(ligne.getByTitle(/dossier est introuvable/)).toBeVisible({ timeout: 20_000 })
+
+    await ligne.getByRole('button', { name: 'démarrer' }).click()
+    await ctx.page.waitForTimeout(2500)
+    await expect(ligne.getByLabel('arrêté')).toBeVisible()
   })
 })
