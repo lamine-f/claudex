@@ -12,6 +12,8 @@ export interface Destinataire {
 
 interface Attache {
   processus: IPty
+  /** Le nom de la session, que le pilote demande pour tout ce qui la concerne. */
+  session: string
   destinataire: Destinataire
   /**
    * Les écouteurs sont retenus pour être défaits au détachement.
@@ -61,7 +63,7 @@ export function attach(
     })
   ]
 
-  attaches.set(tabId, { processus, destinataire, ecouteurs })
+  attaches.set(tabId, { processus, session, destinataire, ecouteurs })
 }
 
 export function write(tabId: string, donnees: string): void {
@@ -72,7 +74,9 @@ export function resize(tabId: string, cols: number, rows: number): void {
   const attache = attaches.get(tabId)
   if (!attache) return
   try {
-    attache.processus.resize(Math.max(cols, 20), Math.max(rows, 5))
+    // Par le pilote, et non par le pty : ce qu'il faut redimensionner en plus
+    // du processus lui appartient.
+    multiplexeur.redimensionner(attache.session, attache.processus, cols, rows)
   } catch {
     // Le pty peut disparaître entre le redimensionnement et son traitement.
   }

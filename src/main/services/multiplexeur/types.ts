@@ -79,6 +79,17 @@ export interface Multiplexeur {
   /** Défait ce qu'`attacher` a fait, sans toucher à la session. */
   detacher(processus: IPty): void
 
+  /**
+   * Donne à la session ses nouvelles dimensions.
+   *
+   * Redimensionner le pty suffisait tant que personne ne tenait d'écran : tmux
+   * tient le sien de son côté, et le pilote ConPTY n'avait qu'un tampon
+   * d'octets, que la largeur ne concerne pas. Depuis qu'il compose un écran,
+   * celui-ci doit suivre la fenêtre, faute de quoi il garderait pour toujours
+   * les dimensions qu'avait l'onglet à sa création.
+   */
+  redimensionner(nom: string, processus: IPty, cols: number, rows: number): void
+
   /** Écran et historique visibles, séquences ANSI comprises. */
   capturer(nom: string, lignes?: number): Promise<string>
 
