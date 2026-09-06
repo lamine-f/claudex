@@ -248,9 +248,10 @@ Oui. Claudex lit ce que Claude Code a déjà écrit. Ajoutez un dossier où vous
 ses conversations apparaissent aussitôt.
 
 **Que devient une session quand je ferme l'application ?**
-Sur macOS, elle continue de tourner : les clients tmux se détachent, rien n'est tué. Sur
-Windows, elle s'arrête — voir [Installer sur Windows](#installer-sur-windows). Dans les deux cas, fermer un
-onglet dans l'application ferme sa session pour de bon.
+Sur macOS et sur Linux, elle continue de tourner : les clients tmux se détachent, rien n'est
+tué. Sur Windows, elle s'arrête, comme le dit
+[Installer sur Windows](#installer-sur-windows). Dans les deux cas, fermer un onglet dans
+l'application ferme sa session pour de bon.
 
 ## Développer
 
