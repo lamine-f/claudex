@@ -352,6 +352,11 @@ export const pilote: Multiplexeur = {
     }
   },
 
+  // tmux tient l'écran de son pane : le pty suffit, il transmet la taille.
+  redimensionner: (_nom, processus, cols, rows) => {
+    processus.resize(Math.max(cols, 20), Math.max(rows, 5))
+  },
+
   capturer: capturePane,
   info: paneInfo,
   commandeComplete: (info) => commandeComplete(info.tty),

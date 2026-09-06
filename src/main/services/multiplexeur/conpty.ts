@@ -3,6 +3,8 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { homedir, release } from 'node:os'
 import { join } from 'node:path'
+import { SerializeAddon } from '@xterm/addon-serialize'
+import { Terminal } from '@xterm/headless'
 import type { IPty } from 'node-pty'
 import type { Amorce, InfoSession, Multiplexeur } from './types'
 
@@ -35,17 +37,31 @@ const nodePty = require_('node-pty') as typeof import('node-pty')
 interface Session {
   processus: IPty
   /**
-   * Fin de la sortie, gardée pour `capturer`.
+   * L'écran de la session, tenu hors de tout affichage.
    *
-   * tmux tient l'historique du pane et sait le rendre ; ici personne ne le tient,
-   * et sans cette copie une session recréée repartirait d'un écran vide.
+   * tmux tient l'écran de son pane et sait le rendre ; ici personne ne le
+   * tenait. Un tampon d'octets en tenait lieu, et c'était insuffisant : un flux
+   * porte les ordres qui l'ont dessiné, pas le dessin. Une barre de progression
+   * qui se réécrit sur place s'y étalait sur autant de lignes qu'elle avait
+   * d'états, et il fallait retirer les ordres de dessin pour que le rejouer
+   * n'efface pas tout.
+   *
+   * Un émulateur sans affichage compose ces ordres comme le ferait un terminal,
+   * et `SerializeAddon` rend l'état obtenu sous une forme qui se réaffiche.
+   * C'est ce que fait tmux, et ce dont un futur courtier aurait besoin de toute
+   * façon.
    */
-  tampon: string[]
-  taille: number
+  ecran: Terminal
+  serialiseur: SerializeAddon
 }
 
-/** Au-delà, on jette le début. Une capture sert à reconnaître, pas à archiver. */
-const TAMPON_MAX = 256 * 1024
+/**
+ * Lignes d'historique gardées par écran.
+ *
+ * Autant que ce que `capturer` sait rendre au plus : garder davantage
+ * coûterait de la mémoire pour des lignes que personne ne demanderait.
+ */
+const HISTORIQUE = 5000
 
 const sessions = new Map<string, Session>()
 
@@ -122,37 +138,6 @@ const ENTETE_UTF8 = `try {
 /** Protège une chaîne destinée à une ligne de commande PowerShell. */
 export function proteger(valeur: string): string {
   return `'${valeur.replaceAll("'", "''")}'`
-}
-
-/**
- * Ne garde du flux capturé que ce qui se relit.
- *
- * `capture-pane` de tmux rend un écran déjà composé ; ici le tampon est le flux
- * brut sorti du pty, et un flux contient les ordres qui l'ont dessiné. Réafficher
- * tel quel donnait un terminal vide : le shell commence par `ESC[2J`, et rejouer
- * cet effacement emportait tout ce qui venait d'être écrit au-dessus.
- *
- * Les séquences de couleur sont conservées, tout le reste est jeté :
- * déplacements de curseur, effacements, écran alterné, titres de fenêtre. Une
- * barre de progression réaffichée s'étale alors sur plusieurs lignes au lieu de
- * se réécrire sur place — c'est le prix à payer, et il est moindre qu'un écran
- * blanc.
- */
-export function lisible(brut: string): string {
-  // Les échappements sont écrits en `\u001b` : un caractère d'échappement posé
-  // tel quel dans une expression régulière ne se voit pas à la relecture, et une
-  // recherche dans le fichier ne le trouve pas.
-  const OSC = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g
-  // Toutes les séquences CSI sauf celles finissant par `m` : les couleurs restent.
-  const CSI_SAUF_COULEURS = /\u001b\[[0-9;?]*[A-Za-ln-z]/g
-  // Échappements à deux caractères : jeux de caractères, mode clavier, curseur.
-  const ECHAPPEMENTS_COURTS = /\u001b(?:[()][0-9A-Za-z]|[=>78])/g
-
-  return brut
-    .replace(OSC, '')
-    .replace(CSI_SAUF_COULEURS, '')
-    .replace(ECHAPPEMENTS_COURTS, '')
-    .replace(/^\s*\n/, '')
 }
 
 /**
@@ -238,14 +223,21 @@ export const pilote: Multiplexeur = {
       useConpty: true
     })
 
-    const session: Session = { processus, tampon: [], taille: 0 }
-    processus.onData((donnees) => {
-      session.tampon.push(donnees)
-      session.taille += donnees.length
-      while (session.taille > TAMPON_MAX && session.tampon.length > 1) {
-        session.taille -= session.tampon.shift()!.length
-      }
+    // `allowProposedApi` est exigé par le sérialiseur, qui lit le tampon de
+    // l’écran par une interface encore marquée comme telle en amont.
+    const ecran = new Terminal({
+      cols: Math.max(cols, 20),
+      rows: Math.max(rows, 5),
+      scrollback: HISTORIQUE,
+      allowProposedApi: true
     })
+    const serialiseur = new SerializeAddon()
+    ecran.loadAddon(serialiseur)
+
+    const session: Session = { processus, ecran, serialiseur }
+    // L’écran voit tout ce que le pty écrit, que quelqu’un le regarde ou non :
+    // c’est ce qui permet de le restituer à une session recréée.
+    processus.onData((donnees) => ecran.write(donnees))
     processus.onExit(() => {
       // Ne retirer l'entrée que si elle désigne encore CE processus : une
       // fermeture d'onglet suivie d'une réouverture immédiate rejouerait sinon
@@ -266,6 +258,7 @@ export const pilote: Multiplexeur = {
     } catch {
       /* déjà mort */
     }
+    session?.ecran.dispose()
     await oublierAmorce(nom)
   },
 
@@ -284,14 +277,25 @@ export const pilote: Multiplexeur = {
   // voulait seulement mettre de côté. Il n'y a donc rien à défaire.
   detacher: () => undefined,
 
-  capturer(nom, lignes = 5000) {
+  // L'écran suit la fenêtre en même temps que le pty. Sans cela il garderait les
+  // dimensions qu'avait l'onglet à sa création, et l'écran restitué au lancement
+  // suivant serait replié sur une largeur que plus personne n'a.
+  redimensionner: (nom, processus, cols, rows) => {
+    const largeur = Math.max(cols, 20)
+    const hauteur = Math.max(rows, 5)
+    processus.resize(largeur, hauteur)
+    sessions.get(nom)?.ecran.resize(largeur, hauteur)
+  },
+
+  async capturer(nom, lignes = HISTORIQUE) {
     const session = sessions.get(nom)
-    if (!session) return Promise.resolve('')
-    const contenu = lisible(session.tampon.join(''))
-    // Le tampon est une suite d'octets, pas de lignes : on le recoupe à la
-    // demande pour tenir la même promesse que `capture-pane -S -<lignes>`.
-    const coupees = contenu.split('\n')
-    return Promise.resolve(coupees.slice(Math.max(0, coupees.length - lignes)).join('\n'))
+    if (!session) return ''
+
+    // `write` met en file et rend la main aussitôt : sérialiser sans attendre
+    // rendrait un écran auquel il manque ce que le pty vient d’écrire. Une
+    // écriture vide sert de jalon, son rappel disant que la file est vidée.
+    await new Promise<void>((resoudre) => session.ecran.write('', resoudre))
+    return session.serialiseur.serialize({ scrollback: lignes })
   },
 
   info(nom) {
