@@ -37,6 +37,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const demarrer = useStore((e) => e.demarrerServices)
   const arreter = useStore((e) => e.arreterServices)
   const [enCours, setEnCours] = useState<string[]>([])
+  const [skillEcrit, setSkillEcrit] = useState<string | null>(null)
 
   // Un démarrage passe par plusieurs états sans que personne ne le dise : on
   // relit tant que la colonne est à l'écran, et seulement tant qu'elle l'est.
@@ -94,7 +95,27 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
     )
   }
 
+  /**
+   * Écrit le skill qui dit aux agents où sont les journaux.
+   *
+   * Sur demande et non d'office : c'est un fichier qui entre dans le dépôt, et
+   * Claudex n'ajoute rien au projet de quelqu'un sans qu'on le lui demande.
+   */
+  const ecrireSkill = async (): Promise<void> => {
+    const chemin = await window.claudex.services.skill(workspaceId)
+    setSkillEcrit(chemin)
+    setTimeout(() => setSkillEcrit(null), 6000)
+  }
+
   return (
+    <>
+      <div className="flex items-center gap-2 border-b border-separateur px-3 py-1.5">
+        <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-texte-tenu">
+          {skillEcrit ? `skill écrit : ${skillEcrit.split(/[\\/]/).slice(-3).join('/')}` : ''}
+        </span>
+        {bouton('écrire le skill', () => void ecrireSkill())}
+      </div>
+
     <ul className="pb-2">
       {groupes.map(([groupe, membres]) => {
         const noms = membres.map((s) => s.nom)
@@ -170,5 +191,6 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
         )
       })}
     </ul>
+    </>
   )
 }

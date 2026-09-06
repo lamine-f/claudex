@@ -152,4 +152,21 @@ services:
       })
       .toBe(true)
   })
+
+  test('la bande du haut compte les services d’un seul chiffre', async () => {
+    // Une seule mesure pour tous : neuf pastilles seraient illisibles.
+    await expect(ctx.page.getByTitle(/Services en marche/)).toBeVisible()
+  })
+
+  test('le skill s’écrit sur demande, et dit où sont les journaux', async () => {
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    await ctx.page.getByRole('button', { name: 'écrire le skill' }).click()
+
+    const skill = join(ctx.projet, '.claude', 'skills', 'services-du-projet', 'SKILL.md')
+    await expect.poll(async () => readFile(skill, 'utf8').catch(() => '')).toContain(
+      '.claudex/logs/veilleuse.log'
+    )
+    // Il dit aussi ce qu'il ne faut pas faire : relancer un service à la main.
+    expect(await readFile(skill, 'utf8')).toContain('deux instances')
+  })
 })
