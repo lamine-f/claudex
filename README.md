@@ -22,7 +22,9 @@ même après un redémarrage de la machine.
 <details>
 <summary>Sommaire</summary>
 
-- [Installer](#installer)
+- [Installer sur macOS](#installer-sur-macos)
+- [Installer sur Windows](#installer-sur-windows)
+- [Installer sur Linux](#installer-sur-linux)
 - [Fonctions et feuille de route](#fonctions-et-feuille-de-route)
 - [Raccourcis](#raccourcis)
 - [Comment ça tient debout](#comment-ça-tient-debout)
@@ -33,17 +35,14 @@ même après un redémarrage de la machine.
 
 </details>
 
-## Installer
+## Installer sur macOS
 
-Claudex ne remplace pas le CLI Claude Code, il l'orchestre. Il faut donc l'avoir installé et
-connecté, quelle que soit la plateforme. Suivre la
-[documentation officielle](https://docs.claude.com/en/docs/claude-code/setup), puis lancer
-`claude` une fois dans un terminal pour s'authentifier.
+**1. Claude Code.** Claudex ne le remplace pas, il l'orchestre. Il faut donc l'avoir installé
+et connecté. Suivre la [documentation officielle](https://docs.claude.com/en/docs/claude-code/setup),
+puis lancer `claude` une fois dans un terminal pour s'authentifier.
 
-### macOS
-
-Les terminaux de Claudex sont des sessions tmux. C'est ce qui leur permet de survivre à la
-fermeture de l'application.
+**2. tmux.** Les terminaux de Claudex sont des sessions tmux. C'est ce qui leur permet de
+survivre à la fermeture de l'application.
 
 ```sh
 brew install tmux
@@ -51,22 +50,26 @@ brew install tmux
 
 Sans [Homebrew](https://brew.sh), voir le [dépôt de tmux](https://github.com/tmux/tmux/wiki/Installing).
 
-Prendre ensuite le DMG dans la
-[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest), l'ouvrir,
+**3. Claudex.** Prendre le fichier `.dmg` dans la
+[dernière version publiée](https://github.com/lamine-f/claudex/releases/latest), l'ouvrir, et
 glisser Claudex dans le dossier Applications.
 
-L'application n'est pas notarisée par Apple. Au premier lancement, macOS refusera de l'ouvrir
-d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
+**4. Le premier lancement.** L'application n'est pas notarisée par Apple, qui refusera de
+l'ouvrir d'un double-clic. Faire **clic droit → Ouvrir**, puis confirmer. Une seule fois.
 
-### Windows
+## Installer sur Windows
 
-Rien à installer en plus : les terminaux s'appuient sur ConPTY, qui fait partie de Windows.
+**1. Claude Code.** Claudex ne le remplace pas, il l'orchestre. Il faut donc l'avoir installé
+et connecté. Suivre la [documentation officielle](https://docs.claude.com/en/docs/claude-code/setup),
+puis lancer `claude` une fois dans un terminal pour s'authentifier.
 
-Prendre l'installateur `.exe` dans la
+**2. Claudex.** Rien d'autre à installer : les terminaux s'appuient sur ConPTY, qui fait partie
+de Windows. Prendre l'installateur `.exe` dans la
 [dernière version publiée](https://github.com/lamine-f/claudex/releases/latest). Il s'installe
-pour l'utilisateur courant et ne demande pas de droits d'administrateur. L'application n'étant
-pas signée, SmartScreen affichera un avertissement au premier lancement : **Informations
-complémentaires → Exécuter quand même**.
+pour l'utilisateur courant et ne demande pas de droits d'administrateur.
+
+**3. Le premier lancement.** L'application n'est pas signée. SmartScreen affichera un
+avertissement : **Informations complémentaires → Exécuter quand même**.
 
 > [!IMPORTANT]
 > Sur Windows, un terminal ne survit pas à la fermeture de Claudex. ConPTY n'a pas de serveur
@@ -75,43 +78,45 @@ complémentaires → Exécuter quand même**.
 > lancement suivant, mais ce qui tournait a été interrompu. Fermer Claudex pendant qu'un agent
 > travaille l'arrête. L'écran d'état le rappelle.
 
-Si l'écran d'état annonce Claude Code introuvable alors qu'il est installé, c'est que
-`%USERPROFILE%\.local\bin` n'est pas encore dans le PATH : son installateur ne l'y ajoute qu'à
-la session Windows suivante. Claudex sait s'en passer pour ses propres terminaux, se
-déconnecter puis se reconnecter règle le reste.
+Deux choses propres à cette plateforme. Les raccourcis prennent `Ctrl+Maj` au lieu de `⌘`, le
+[tableau des raccourcis](#raccourcis) les donne tous. Et si l'écran d'état annonce Claude Code
+introuvable alors qu'il est installé, c'est que `%USERPROFILE%\.local\bin` n'est pas encore
+dans le PATH : son installateur ne l'y ajoute qu'à la session Windows suivante. Claudex sait
+s'en passer pour ses propres terminaux, se déconnecter puis se reconnecter règle le reste.
 
-Les raccourcis prennent `Ctrl+Maj` au lieu de `⌘` : `Ctrl` seul appartient au shell, où
-`Ctrl+E` va en fin de ligne et `Ctrl+W` efface le mot précédent.
+## Installer sur Linux
 
-### Debian et dérivées
+Vérifié sur Debian 13 (trixie), GNOME sous Wayland, x86-64. Rien n'y est propre à Debian : une
+autre distribution récente devrait convenir, elle n'a simplement pas été essayée.
+
+**1. Claude Code.** Claudex ne le remplace pas, il l'orchestre. Il faut donc l'avoir installé
+et connecté. Suivre la [documentation officielle](https://docs.claude.com/en/docs/claude-code/setup),
+puis lancer `claude` une fois dans un terminal pour s'authentifier.
+
+**2. tmux.** Les terminaux de Claudex sont des sessions tmux. C'est ce qui leur permet de
+survivre à la fermeture de l'application.
 
 ```sh
 sudo apt install tmux
 ```
 
-Deux formats, au choix, dans la
+**3. Claudex.** Deux formats au choix dans la
 [dernière version publiée](https://github.com/lamine-f/claudex/releases/latest). Le paquet
 Debian déclare tmux dans ses dépendances et l'installe avec l'application ; l'AppImage ne dépend
 de rien et ne s'installe pas.
 
 ```sh
-sudo apt install ./claudex_0.2.2_amd64.deb
+sudo apt install ./claudex_*_amd64.deb
 
 # ou, sans installation
-chmod +x Claudex-0.2.2.AppImage
-./Claudex-0.2.2.AppImage
+chmod +x Claudex-*.AppImage
+./Claudex-*.AppImage
 ```
 
 Les deux se refabriquent depuis les sources avec `npm run dist:linux`, et sortent dans `dist/`.
 
-Vérifié sur Debian 13 (trixie), GNOME sous Wayland, x86-64. Rien n'y est propre à Debian : une
-autre distribution récente devrait convenir, elle n'a simplement pas été essayée.
-
-<details>
-<summary>Si la fenêtre ne s'ouvre pas</summary>
-
-Electron a besoin d'un bac à sable. Il le prend dans les espaces de noms utilisateur du noyau,
-que les distributions récentes activent par défaut. Pour le vérifier :
+**4. Si la fenêtre ne s'ouvre pas.** Electron a besoin d'un bac à sable, qu'il prend dans les
+espaces de noms utilisateur du noyau. Les distributions récentes les activent par défaut.
 
 ```sh
 cat /proc/sys/kernel/unprivileged_userns_clone   # doit répondre 1
@@ -119,9 +124,16 @@ cat /proc/sys/kernel/unprivileged_userns_clone   # doit répondre 1
 
 Si la valeur est `0`, ou si AppArmor restreint ces espaces de noms
 (`/proc/sys/kernel/apparmor_restrict_unprivileged_userns` à `1`, cas d'Ubuntu 24.04), l'ouvrir
-à Claudex vaut mieux que de lancer l'application avec `--no-sandbox`, qui la désarme entièrement.
+à Claudex vaut mieux que de lancer l'application avec `--no-sandbox`, qui la désarme
+entièrement.
 
-</details>
+**5. Le gestionnaire de fichiers.** « Ouvrir dans le gestionnaire de fichiers » passe par
+`xdg-open`. Le paquet Debian le réclame ; l'AppImage ne peut rien exiger, et l'écran d'état
+signale son absence.
+
+```sh
+sudo apt install xdg-utils
+```
 
 ## Fonctions et feuille de route
 
@@ -237,7 +249,7 @@ ses conversations apparaissent aussitôt.
 
 **Que devient une session quand je ferme l'application ?**
 Sur macOS, elle continue de tourner : les clients tmux se détachent, rien n'est tué. Sur
-Windows, elle s'arrête — voir la section [Windows](#windows). Dans les deux cas, fermer un
+Windows, elle s'arrête — voir [Installer sur Windows](#installer-sur-windows). Dans les deux cas, fermer un
 onglet dans l'application ferme sa session pour de bon.
 
 ## Développer
