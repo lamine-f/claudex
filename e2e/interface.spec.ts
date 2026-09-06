@@ -109,3 +109,52 @@ test.describe('barre du haut', () => {
     expect(retrait).toBe(process.platform === 'darwin' ? '88px' : '8px')
   })
 })
+
+/**
+ * La barre de menus, là où le système la dessine dans la fenêtre.
+ *
+ * Elle porte les entrées par défaut d'Electron et rien de propre à Claudex, mais
+ * elle empile une seconde rangée de chrome au-dessus de la bande du haut :
+ * mesuré, vingt-six pixels pris au terminal, qui est ce qu'on regarde.
+ */
+test.describe('barre de menus', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('est retirée hors de macOS, où elle vit dans la barre du système', async () => {
+    const etat = await ctx.app.evaluate(({ BrowserWindow, Menu }) => {
+      const f = BrowserWindow.getAllWindows()[0]!
+      return {
+        menu: Menu.getApplicationMenu() !== null,
+        chrome: f.getBounds().height - f.getContentBounds().height
+      }
+    })
+    const surMac = process.platform === 'darwin'
+    expect(etat.menu).toBe(surMac)
+    // La hauteur perdue au chrome dit ce que la mesure vaut : une barre de titre
+    // seule sur Windows, une barre de titre et un menu sans le retrait.
+    if (!surMac) expect(etat.chrome).toBeLessThan(50)
+  })
+
+  test('le presse-papiers marche quand même dans un champ', async () => {
+    // C'est ce qui aurait pu se payer cher : les raccourcis d'édition passaient
+    // pour dépendre des accélérateurs du menu. Ils n'en dépendent pas, Chromium
+    // les traitant lui-même sur une zone éditable — mais cela se vérifie plutôt
+    // que se suppose, et ce cas tombera si la conclusion cesse d'être vraie.
+    const champ = ctx.page.getByPlaceholder('Rechercher')
+    await champ.click()
+    await champ.fill('bonjour presse-papiers')
+    await ctx.page.keyboard.press('Control+A')
+    await ctx.page.keyboard.press('Control+C')
+    await champ.fill('')
+    await ctx.page.keyboard.press('Control+V')
+    await expect(champ).toHaveValue('bonjour presse-papiers')
+  })
+})
