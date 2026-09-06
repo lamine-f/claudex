@@ -10,8 +10,8 @@ import { pilote } from '../src/main/services/multiplexeur/conpty'
  *
  * Ces cas ne sont pas la copie des autres. Le pilote tmux est vérifié sur ce qui
  * fait tmux — la survie de la session, l'isolement du socket. Celui-ci l'est sur
- * ce qui le remplace : l'amorce jouée par un script, le tampon qui tient lieu
- * d'historique, et l'aveu qu'une session ne survit pas.
+ * ce qui le remplace : l'amorce jouée par un script, l'écran tenu hors de tout
+ * affichage, et l'aveu qu'une session ne survit pas.
  */
 const decrire = process.platform === 'win32' ? describe : describe.skip
 
@@ -123,21 +123,25 @@ decrire('intégration ConPTY', () => {
     expect(terminal.lu()).toContain('RETOUR élégant — déjà vu')
   })
 
-  it('garde de quoi restituer un écran après la mort de la session', async () => {
+  it('rend un écran composé, et non le flux qui l’a dessiné', async () => {
     const nom = `cdx_capture_${process.pid}`
-    const terminal = await ouvrir(nom, { commande: 'echo CAPTURE_OK' })
-    await attendre(() => terminal.lu().includes('CAPTURE_OK'))
+    // Trois écritures sur la même ligne, séparées par des retours chariot :
+    // c'est ce que fait toute barre de progression, et c'est là que le tampon
+    // d’octets échouait. Il les rendait toutes les trois, empilées.
+    const terminal = await ouvrir(nom, {
+      commande: '$r=[char]13; Write-Host -NoNewline "etape 1$r"; Write-Host -NoNewline "etape 2$r"; Write-Host "etape 3"'
+    })
+    await attendre(() => terminal.lu().includes('etape 3'))
 
-    // Personne ne tient l'historique à notre place : sans ce tampon, une session
-    // recréée repartirait d'un écran vide.
     const capture = await pilote.capturer(nom, 200)
-    expect(capture).toContain('CAPTURE_OK')
+    // Ce que l'écran porte : le dernier état, et lui seul.
+    expect(capture).toContain('etape 3')
+    expect(capture).not.toContain('etape 1')
+    expect(capture).not.toContain('etape 2')
 
-    // Et il ne doit plus porter d'ordre de dessin. Le shell commence par un
-    // effacement d'écran ; le rejouer emportait tout ce qui venait d'être écrit
-    // au-dessus, et l'écran restitué revenait vide.
+    // Et pas d'effacement d'écran : le réafficher au lancement suivant ne doit
+    // pas emporter ce qui vient d'être écrit au-dessus.
     expect(capture).not.toContain('\u001b[2J')
-    expect(capture).not.toMatch(/\u001b\[[0-9;?]*[A-Za-ln-z]/)
   })
 
   it('détruit la session, et ce qu’elle avait retenu avec elle', async () => {

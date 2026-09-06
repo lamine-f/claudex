@@ -64,7 +64,7 @@ Les deux pilotes ne promettent pas la même chose, et l'interface l'expose : `pe
 laisser découvrir. Un pilote WSL, ou un processus courtier détaché qui rendrait la persistance
 à Windows, se brancherait là sans toucher au reste.
 
-Trois méthodes ne viennent pas de tmux et méritent leur raison d'être.
+Quatre méthodes ne viennent pas de tmux et méritent leur raison d'être.
 
 `attacher` a remplacé `attachArgs`, qui rendait une ligne de commande. Cela supposait qu'un
 client se lance pour rejoindre une session qui existe sans lui ; sur Windows le pty *est* la
@@ -77,6 +77,35 @@ tmux le tue et la session continue, tuer un pty ConPTY emporte le shell.
 `assurer` reçoit l'amorce en deux morceaux — la commande, et le fichier d'écran à réafficher —
 plutôt qu'une chaîne toute faite. La composer demandait de savoir écrire du shell, et
 `cat -- fichier; commande` ne veut rien dire pour PowerShell.
+
+`redimensionner` est passé du pty au pilote. Transmettre la taille au processus suffisait tant
+que personne ne tenait d'écran de son côté ; ce n'est plus le cas.
+
+### L'écran du pilote ConPTY
+
+tmux tient l'écran de son pane et sait le rendre. Le pilote ConPTY n'avait, lui, qu'un tampon des
+octets sortis du pty — et un flux porte les ordres qui ont dessiné un écran, pas le dessin. Une
+barre de progression qui se réécrit sur place s'y étalait sur autant de lignes qu'elle avait
+d'états, et il fallait retirer les ordres de placement avant de le rejouer, faute de quoi
+l'effacement d'écran du shell emportait tout ce qui précédait.
+
+Il tient maintenant un émulateur sans affichage, `@xterm/headless`, qui compose ces ordres comme
+le ferait un terminal. `@xterm/addon-serialize` rend l'état obtenu sous une forme qui se
+réaffiche telle quelle. C'est ce que fait VS Code pour ses terminaux persistants, et ce dont un
+courtier détaché aurait besoin de toute façon.
+
+Le coût est réel : chaque octet est analysé deux fois, une fois dans le processus principal et une
+fois dans le xterm de l'interface. Pour un terminal, cela ne se sent pas.
+
+Deux détails que l'implémentation ne peut pas ignorer. `Terminal.write` met en file et rend la
+main aussitôt : sérialiser sans attendre son rappel rend un écran auquel il manque ce que le pty
+vient d'écrire. Et l'écran doit suivre la fenêtre, sans quoi il garderait pour toujours les
+dimensions qu'avait l'onglet à sa création — c'est ce que `redimensionner` va chercher.
+
+`@xterm/headless` 6.0.0 annonce enfin un `module` absent du paquet publié, `lib/xterm.mjs`.
+Vite préfère ce champ et refuse alors de résoudre le paquet : un alias dans
+`electron.vite.config.ts` le mène droit au fichier livré, à retirer le jour où l'amont sera
+réparé.
 
 Le renderer n'a jamais accès à Node : `contextIsolation`, `sandbox`, aucune navigation, et
 toute opération de fichier vérifie côté main que le chemin reste sous un projet enregistré.
