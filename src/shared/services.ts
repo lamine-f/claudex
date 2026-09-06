@@ -42,7 +42,7 @@ export interface Service extends ServiceDeclare {
 export interface Declaration {
   /** Valeurs par défaut, par groupe. */
   defaut?: Record<string, Partial<ServiceDeclare>>
-  service?: ServiceDeclare[]
+  services?: ServiceDeclare[]
 }
 
 /** Ce qui empêche une déclaration d'être utilisable. */
@@ -66,7 +66,7 @@ export function resoudre(declaration: Declaration): { services: Service[]; repro
   const vus = new Set<string>()
   const services: Service[] = []
 
-  for (const brut of declaration.service ?? []) {
+  for (const brut of declaration.services ?? []) {
     if (!brut.nom) {
       reproches.push({ message: 'Un service sans nom ne peut pas être désigné.' })
       continue
