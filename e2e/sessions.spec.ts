@@ -1,10 +1,26 @@
 import { mkdir, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { commandesDeDepart, FERMER_ONGLET, fermer, lancer, type Contexte } from './fixtures'
 
 const ligne = (o: unknown): string => `${JSON.stringify(o)}\n`
+
+/**
+ * La ligne d'une conversation, désignée par son titre exact.
+ *
+ * `hasText` cherche une sous-chaîne : une fois « Refonte facturation »
+ * bifurquée, « Refonte facturation -- piste sans cache » répond au même
+ * critère, et le sélecteur désigne alors deux lignes. Le titre vit dans son
+ * propre span, où l'égalité stricte tranche.
+ */
+function ligneDe(page: Page, titre: string): Locator {
+  return page
+    .getByLabel('Sessions et fichiers')
+    .locator('li')
+    .filter({ has: page.getByText(titre, { exact: true }) })
+}
+
 
 /**
  * Dossier de transcrits que Claude Code utiliserait pour ce projet.
@@ -129,7 +145,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
     const avant = await ctx.page.locator('.xterm').count()
     // Le bouton est cherché DANS la ligne de la conversation : chaque ligne a
     // le sien, et le premier de la colonne appartient à la plus récente.
-    const ligneCible = colonne().locator('li', { hasText: 'Refonte facturation' })
+    const ligneCible = ligneDe(ctx.page, 'Refonte facturation')
     await ligneCible.hover()
     await ligneCible.getByTitle(/Bifurquer/).click()
 
@@ -159,7 +175,7 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
 
   test("annuler le nommage ne bifurque pas", async () => {
     const avant = await ctx.page.locator('.xterm').count()
-    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    const ligne = ligneDe(ctx.page, 'Refonte facturation')
     await ligne.hover()
     await ligne.getByTitle(/Bifurquer/).click()
     await ctx.page.getByRole('button', { name: 'Annuler' }).click()
@@ -221,7 +237,7 @@ test.describe('étiquette', () => {
 
   test('distingue deux conversations que leur titre confond', async () => {
     const colonne = ctx.page.getByLabel('Sessions et fichiers')
-    const ligne = colonne.locator('li', { hasText: 'Refonte facturation' })
+    const ligne = ligneDe(ctx.page, 'Refonte facturation')
 
     await ligne.getByRole('button').first().click({ button: 'right' })
     await ctx.page.getByRole('menuitem', { name: 'Étiqueter' }).click()
@@ -237,13 +253,14 @@ test.describe('étiquette', () => {
 
     const ligne = ctx.page
       .getByLabel('Sessions et fichiers')
-      .locator('li', { hasText: 'Refonte facturation' })
+      .locator('li')
+      .filter({ has: ctx.page.getByText('Refonte facturation', { exact: true }) })
     await expect(ligne.getByText('facture v2')).toBeVisible()
   })
 
   test('vider le champ retire l’étiquette', async () => {
     const colonne = ctx.page.getByLabel('Sessions et fichiers')
-    const ligne = colonne.locator('li', { hasText: 'Refonte facturation' })
+    const ligne = ligneDe(ctx.page, 'Refonte facturation')
 
     await ligne.getByRole('button').first().click({ button: 'right' })
     await ctx.page.getByRole('menuitem', { name: /étiquette|Étiqueter/ }).click()
@@ -273,7 +290,7 @@ test.describe('renommer une conversation', () => {
     ctx.page.getByLabel('Sessions et fichiers')
 
   test('le double-clic met le nom en édition', async () => {
-    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    const ligne = ligneDe(ctx.page, 'Refonte facturation')
     await ligne.getByRole('button').first().dblclick()
 
     const champ = ctx.page.getByLabel('Nom de la conversation')
@@ -302,7 +319,7 @@ test.describe('renommer une conversation', () => {
   })
 
   test('Échap laisse le nom intact', async () => {
-    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    const ligne = ligneDe(ctx.page, 'Refonte facturation')
     await ligne.getByRole('button').first().dblclick()
     await ctx.page.getByLabel('Nom de la conversation').fill('jamais validé')
     await ctx.page.keyboard.press('Escape')
@@ -350,7 +367,7 @@ test.describe('état des conversations', () => {
     await ctx.page.getByRole('button', { name: 'Refonte facturation' }).last().click()
 
     await expect(colonne().getByText('à l’écran')).toHaveCount(1)
-    const ligne = colonne().locator('li', { hasText: 'Refonte facturation' })
+    const ligne = ligneDe(ctx.page, 'Refonte facturation')
     await expect(ligne.getByText('à l’écran')).toBeVisible()
   })
 })
