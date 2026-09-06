@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell } from 'electron'
 
 /**
  * Le cadre de la fenêtre.
@@ -16,7 +16,28 @@ const cadre =
     ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 11 } }
     : {}
 
+/**
+ * Retire la barre de menus là où le système la dessine dans la fenêtre.
+ *
+ * macOS la met dans sa barre du haut, où elle ne coûte rien. Windows et Linux
+ * l'empilent au-dessus de la bande de Claudex : deux rangées de chrome pour un
+ * menu qui ne porte que les entrées par défaut d'Electron, alors que
+ * l'application tient à n'en avoir qu'une — c'est pour cette raison qu'une
+ * seconde barre en bas avait déjà été écartée.
+ *
+ * Le menu est retiré, non caché. Vérifié avant de le faire, parce que c'est ce
+ * qui aurait pu se payer cher : les raccourcis du presse-papiers continuent de
+ * fonctionner dans les champs de l'interface, Chromium les traitant lui-même sur
+ * une zone éditable, sans passer par un accélérateur de menu.
+ */
+function retirerLeMenu(): void {
+  if (process.platform === 'darwin') return
+  Menu.setApplicationMenu(null)
+}
+
 export function createWindow(): BrowserWindow {
+  retirerLeMenu()
+
   const fenetre = new BrowserWindow({
     width: 1440,
     height: 900,
