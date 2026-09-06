@@ -357,6 +357,14 @@ export const pilote: Multiplexeur = {
     processus.resize(Math.max(cols, 20), Math.max(rows, 5))
   },
 
+  // `pipe-pane` sans commande arrête la duplication en cours. La redemander
+  // sans l'arrêter d'abord empilerait deux `cat` sur le même pane.
+  async journaliser(nom, fichier) {
+    await tmux('pipe-pane', '-t', `=${nom}`)
+    if (fichier === null) return
+    await tmux('pipe-pane', '-t', `=${nom}`, `cat >> ${proteger(fichier)}`)
+  },
+
   capturer: capturePane,
   info: paneInfo,
   commandeComplete: (info) => commandeComplete(info.tty),

@@ -90,6 +90,17 @@ export interface Multiplexeur {
    */
   redimensionner(nom: string, processus: IPty, cols: number, rows: number): void
 
+  /**
+   * Duplique la sortie de la session dans un fichier, sans rien retirer de
+   * l'écran. `null` arrête la duplication.
+   *
+   * C'est par là qu'un agent lit les journaux d'un service : il ouvre un
+   * fichier, ce qu'il sait déjà faire, plutôt qu'un protocole qu'il faudrait
+   * lui apprendre. Le même flux nourrit donc l'écran, la fenêtre de suivi et
+   * l'agent, et personne ne voit un état différent d'un autre.
+   */
+  journaliser(nom: string, fichier: string | null): Promise<void>
+
   /** Écran et historique visibles, séquences ANSI comprises. */
   capturer(nom: string, lignes?: number): Promise<string>
 

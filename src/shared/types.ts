@@ -165,6 +165,31 @@ export type Apercu =
   /** Image, vidéo ou son : servis en flux par leur adresse, jamais lus ici. */
   | { type: GenreMedia; url: string; octets: number }
 
+/** Où en est un service : ce que l'écran en montre. */
+export type EtatService =
+  | 'arrete'
+  /** Sa session vit, son port ne répond pas encore. */
+  | 'demarrage'
+  | 'vivant'
+  /** Son port répond, mais ce n'est pas Claudex qui l'a lancé. */
+  | 'dehors'
+
+/** Un service tel que l'interface le voit. */
+export interface ServiceVu {
+  nom: string
+  groupe?: string
+  port?: number
+  detache: boolean
+  depend_de: string[]
+  etat: EtatService
+  /** Vrai quand la session appartient à Claudex. */
+  notre: boolean
+  /** Chemin du fichier de journal. */
+  journal: string
+  /** Ce qui cloche dans sa déclaration, s'il y a lieu. */
+  reproche?: string
+}
+
 /** État git d'un projet, réduit à ce que la barre de statut affiche. */
 export interface EtatGit {
   branche: string
