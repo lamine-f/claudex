@@ -120,7 +120,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                 return (
                   <li
                     key={service.nom}
-                    className="group flex items-center gap-2.5 px-3 py-1.5 hover:bg-fond-survol"
+                    className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-fond-survol"
                   >
                     <span
                       aria-label={etat.mot}
@@ -144,7 +144,10 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                       </span>
                     )}
 
-                    <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+                    {/* Toujours visible, jamais au survol : dans un panneau de
+                        pilotage, démarrer et arrêter sont ce qu'on vient y faire,
+                        et les cacher oblige à les chercher. */}
+                    <span className="flex shrink-0 items-center gap-0.5">
                       {service.etat === 'arrete'
                         ? bouton('démarrer', () => void agir('demarrer', [service.nom]), true)
                         : bouton('arrêter', () => void agir('arreter', [service.nom]))}

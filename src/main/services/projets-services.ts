@@ -57,16 +57,6 @@ export async function charger(
   }
 
   const resolu = resoudre(declaration)
-  // `env` est déclarable mais pas encore appliqué : le taire ferait croire à
-  // l'utilisateur que ses variables sont passées au service.
-  for (const service of resolu.services) {
-    if (service.env && Object.keys(service.env).length > 0) {
-      resolu.reproches.push({
-        service: service.nom,
-        message: 'Ses variables d’environnement ne sont pas encore transmises.'
-      })
-    }
-  }
   return resolu
 }
 
@@ -154,14 +144,14 @@ export async function demarrer(
 
   const session = nomSession(workspaceId, service.nom)
   const cwd = join(projet, service.dossier)
-  const { preexistante } = await multiplexeur.assurer(session, cwd, COLONNES, LIGNES, {
-    commande: service.commande
+  // Le journal part avec l'amorce, non après : c'est le pilote qui sait
+  // brancher le tuyau avant que la commande ne parte, et l'ordre inverse
+  // perdrait la trace de démarrage.
+  await multiplexeur.assurer(session, cwd, COLONNES, LIGNES, {
+    commande: service.commande,
+    env: service.env,
+    journal
   })
-  if (preexistante) return
-
-  // La journalisation vient après la création : il n'y a rien à brancher sur
-  // une session qui n'existe pas encore.
-  await multiplexeur.journaliser(session, journal).catch(() => undefined)
 }
 
 export async function arreter(workspaceId: string, service: Service): Promise<void> {

@@ -16,6 +16,25 @@ export interface Amorce {
   commande?: string
   /** Fichier portant l'écran de la vie précédente, à réafficher avant elle. */
   ecranPrecedent?: string
+  /**
+   * Variables d'environnement à poser avant la commande.
+   *
+   * Elles sont composées par le pilote et non par l'appelant : `A=1 commande`
+   * ne veut rien dire pour PowerShell, qui écrit `$env:A='1'`. C'est la même
+   * raison qui a fait passer l'amorce en morceaux plutôt qu'en chaîne toute
+   * faite.
+   */
+  env?: Record<string, string>
+
+  /**
+   * Fichier où dupliquer la sortie, branché avant que la commande ne parte.
+   *
+   * L'ordre compte : brancher après le lancement perd tout ce que le service a
+   * écrit dans l'intervalle, c'est-à-dire sa trace de démarrage, celle-là même
+   * qu'on veut garder. Mesuré sur un service qui n'écrit qu'une ligne : elle
+   * n'arrivait jamais dans le fichier.
+   */
+  journal?: string
 }
 
 /**

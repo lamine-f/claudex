@@ -162,6 +162,9 @@ async function ecrireAmorce(nom: string, amorce: Amorce): Promise<string> {
       `[Console]::Out.Write([IO.File]::ReadAllText(${proteger(amorce.ecranPrecedent)}, [Text.Encoding]::UTF8))`
     )
   }
+  for (const [cle, valeur] of Object.entries(amorce.env ?? {})) {
+    lignes.push(`$env:${cle} = ${proteger(valeur)}`)
+  }
   if (amorce.commande) lignes.push(amorce.commande)
 
   await mkdir(dossierAmorces, { recursive: true })
@@ -237,7 +240,14 @@ export const pilote: Multiplexeur = {
     const serialiseur = new SerializeAddon()
     ecran.loadAddon(serialiseur)
 
-    const session: Session = { processus, ecran, serialiseur }
+    // Le flux est ouvert avant l'abonnement à la sortie : c'est ce qui garantit
+    // que la trace de démarrage y arrive, et non ce que le service a écrit après.
+    const session: Session = {
+      processus,
+      ecran,
+      serialiseur,
+      journal: amorce?.journal ? createWriteStream(amorce.journal, { flags: 'a' }) : undefined
+    }
     // L’écran voit tout ce que le pty écrit, que quelqu’un le regarde ou non :
     // c’est ce qui permet de le restituer à une session recréée.
     processus.onData((donnees) => {

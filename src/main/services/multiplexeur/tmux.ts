@@ -146,7 +146,8 @@ export async function ensureSession(
   cwd: string,
   cols: number,
   rows: number,
-  commandeInitiale?: string
+  commandeInitiale?: string,
+  journal?: string
 ): Promise<{ preexistante: boolean }> {
   if (await hasSession(nom)) return { preexistante: true }
 
@@ -156,7 +157,13 @@ export async function ensureSession(
   // `exec $SHELL -l` rend la main à un shell interactif quand la commande se
   // termine, pour que la session survive à la sortie de l'agent.
   const shell = shellDeConnexion()
-  const amorce = commandeInitiale ? [`${commandeInitiale}; exec ${shell} -l`] : []
+  const ligne = commandeInitiale ? `${commandeInitiale}; exec ${shell} -l` : undefined
+
+  // Journalisée, la session naît sur une commande d'attente : on branche le
+  // tuyau, puis on remplace le processus du pane par la vraie commande. Brancher
+  // après le lancement perdrait ce que le service écrit entre les deux, et un
+  // service qui n'écrit qu'une ligne ne laisserait rien du tout.
+  const amorce = journal ? ['sleep 2147483647'] : ligne ? [ligne] : []
 
   try {
     await tmux(
@@ -185,6 +192,11 @@ export async function ensureSession(
   }
 
   await appliquerConfiguration()
+  if (journal) {
+    await tmux('pipe-pane', '-t', `=${nom}:`, `cat >> ${proteger(journal)}`)
+    if (ligne) await tmux('respawn-pane', '-k', '-t', `=${nom}:`, ligne)
+  }
+
   return { preexistante: false }
 }
 
@@ -296,7 +308,14 @@ export async function serveurVivant(): Promise<boolean> {
 function composer(amorce?: Amorce): string | undefined {
   const morceaux: string[] = []
   if (amorce?.ecranPrecedent) morceaux.push(`cat -- ${proteger(amorce.ecranPrecedent)}`)
-  if (amorce?.commande) morceaux.push(amorce.commande)
+  if (amorce?.commande) {
+    // `export` plutôt qu'un préfixe : la commande peut être une suite d'ordres,
+    // et `A=1 x; y` ne poserait la variable que pour le premier.
+    const variables = Object.entries(amorce.env ?? {}).map(
+      ([cle, valeur]) => `export ${cle}=${proteger(valeur)}`
+    )
+    morceaux.push([...variables, amorce.commande].join('; '))
+  }
   return morceaux.length ? morceaux.join('; ') : undefined
 }
 
@@ -326,7 +345,7 @@ export const pilote: Multiplexeur = {
   existe: hasSession,
 
   assurer: (nom, cwd, cols, rows, amorce) =>
-    ensureSession(nom, cwd, cols, rows, composer(amorce)),
+    ensureSession(nom, cwd, cols, rows, composer(amorce), amorce?.journal),
 
   detruire: killSession,
 
