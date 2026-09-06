@@ -212,14 +212,17 @@ démonstration s'étirait au-delà de la minute. Le reste garde sa vitesse, sans
 de souris deviennent illisibles. Rien n'est coupé ni rejoué, seule l'horloge de ce segment est
 resserrée, et les bornes sont relevées pendant la prise.
 
-**Ce qui ne bouge pas est resserré à une demi-seconde**, et le montage le trouve seul. Une
-démonstration passe l'essentiel de son temps devant un écran arrêté : sur une prise de
-quatre-vingt-deux secondes, vingt-cinq ne portaient aucun changement, l'application qui démarre,
-Claude Code qui charge, un agent qui réfléchit entre deux outils. Le montage compare les images
-dix fois par seconde, relève ces plages et les resserre, sans toucher à ce qui bouge.
+**Ce qui ne bouge pas est resserré à trois dixièmes de seconde**, et le montage le trouve seul.
+Une démonstration passe l'essentiel de son temps devant un écran arrêté : sur une prise de
+quatre-vingt-deux secondes, **cinquante-deux ne portaient aucun changement**, l'application qui
+démarre, Claude Code qui charge, un agent qui réfléchit entre deux outils. Le montage compare
+les images dix fois par seconde, relève ces plages et les resserre, sans toucher à ce qui bouge.
 
-Deux exceptions. L'ouverture garde son souffle : une boucle qui démarre sur un plan escamoté ne
-se lit pas. Et le plan de l'agent n'est pas découpé, ayant déjà son propre rythme.
+Le mouvement du plan de l'agent est le seul à être accéléré, et modérément, à deux fois sa
+vitesse : ses appels d'outils défilent et doivent rester lisibles. Accélérer le plan d'un bloc
+revenait à hâter aussi ses silences, qui n'en avaient pas besoin.
+
+L'ouverture garde son souffle : une boucle qui démarre sur un plan escamoté ne se lit pas.
 
 **Le GIF est rendu à 25 images par seconde**, la cadence à laquelle Playwright enregistre. En
 rendre 11 jetait plus de la moitié du mouvement et le curseur avançait par bonds. La finesse

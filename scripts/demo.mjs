@@ -42,8 +42,10 @@ const LARGEUR = 1200
 const HAUTEUR = 780
 
 /** Ce que devient une plage figée, et en deçà de quoi on n'y touche pas. */
-const CIBLE_FIGE = 0.5
-const PLANCHER_FIGE = 1.0
+const CIBLE_FIGE = 0.3
+const PLANCHER_FIGE = 0.8
+/** Le mouvement pendant le travail de l'agent, deux fois sa vitesse. */
+const VITESSE_AGENT = 2
 /** L'ouverture garde son souffle : c'est là que le lecteur arrive. */
 const OUVERTURE = 3.0
 
@@ -205,7 +207,7 @@ const marque = () => (Date.now() - tLancement) / 1000
  * un pixel de changement. Les repérer permet de les resserrer sans toucher à ce
  * qui bouge.
  */
-async function plagesFigees(video, agent) {
+async function plagesFigees(video) {
   const l = 240
   const h = Math.round((l * HAUTEUR) / LARGEUR / 2) * 2
   const brut = await new Promise((ok, ko) => {
@@ -233,9 +235,7 @@ async function plagesFigees(video, agent) {
   let debut = null
   for (let i = 0; i < bouge.length; i++) {
     const t = (i + 1) / 10
-    // Le plan de l'agent a son propre rythme, on ne le découpe pas.
-    const dedans = t > agent[0] && t < agent[1]
-    if (!bouge[i] && !dedans) {
+    if (!bouge[i]) {
       if (debut === null) debut = t
     } else {
       if (debut !== null && t - debut >= PLANCHER_FIGE && debut >= OUVERTURE) plages.push([debut, t])
@@ -499,23 +499,29 @@ const gif = join(sortie, 'demo.gif')
  */
 const a = debutAgent
 const b = finAgent + 0.8
-const ACCELERATION = Math.min(4, Math.max(2, (b - a) / 18))
 
 /*
- * Le reste du montage tient en une règle : ce qui bouge garde sa vitesse, ce qui
- * ne bouge pas est resserré à une demi-seconde.
+ * Le montage tient en une règle : ce qui bouge garde sa vitesse, ce qui ne
+ * bouge pas est ramené à trois dixièmes de seconde.
  *
  * Une démonstration passe l'essentiel de son temps devant un écran arrêté. Sur
- * une prise de quatre-vingt-deux secondes, vingt-cinq ne portaient aucun
+ * une prise de quatre-vingt-deux secondes, cinquante-deux ne portaient aucun
  * changement : l'application qui démarre, Claude Code qui charge, un agent qui
  * réfléchit entre deux outils. Les couper une par une donnait un montage taillé
- * au jugé ; les mesurer donne le même résultat sans rien décider soi-même.
+ * au jugé ; les mesurer donne le même travail sans rien décider soi-même, et le
+ * fera aussi sur les prises futures, dont les temps morts ne seront pas aux
+ * mêmes endroits.
  *
- * Deux exceptions. L'ouverture garde son souffle, une boucle qui démarre sur un
- * plan escamoté ne se lit pas. Et le plan de l'agent n'est pas découpé, ayant
- * déjà son propre rythme.
+ * Le mouvement du plan de l'agent est le seul à être accéléré, et modérément :
+ * ses appels d'outils défilent, et on doit pouvoir les lire. Accélérer tout le
+ * plan d'un bloc revenait à hâter aussi ses silences, qui n'avaient pas besoin
+ * de l'être — les resserrer séparément raccourcit davantage tout en laissant le
+ * texte lisible.
+ *
+ * L'ouverture, elle, garde son souffle : une boucle qui démarre sur un plan
+ * escamoté ne se lit pas.
  */
-const { plages, duree } = await plagesFigees(webm, [a, b])
+const { plages, duree } = await plagesFigees(webm)
 
 const segments = []
 let curseur = 0
@@ -523,17 +529,12 @@ const poser = (fin, facteur) => {
   if (fin - curseur > 0.04) segments.push([curseur, fin, facteur])
   curseur = Math.max(curseur, fin)
 }
-for (const [d, f] of plages.filter(([, f]) => f <= a)) {
-  if (d > curseur) poser(d, 1)
-  poser(f, Math.min(12, (f - d) / CIBLE_FIGE))
+const vitesse = (instant) => (instant >= a && instant < b ? VITESSE_AGENT : 1)
+for (const [d, f] of plages) {
+  if (d > curseur) poser(d, vitesse(curseur))
+  poser(f, Math.min(14, (f - d) / CIBLE_FIGE))
 }
-if (curseur < a) poser(a, 1)
-poser(b, ACCELERATION)
-for (const [d, f] of plages.filter(([d]) => d >= b)) {
-  if (d > curseur) poser(d, 1)
-  poser(f, Math.min(12, (f - d) / CIBLE_FIGE))
-}
-poser(duree, 1)
+poser(duree, vitesse(curseur))
 
 const montage =
   segments
@@ -555,7 +556,7 @@ await run('ffmpeg', [
 ], { maxBuffer: 1 << 28 })
 console.log(
   `${segments.length} segments · ${plages.length} plages figées resserrées · ` +
-    `agent ${(b - a).toFixed(1)} s à ${ACCELERATION.toFixed(2)}×`
+    `mouvement de l'agent à ${VITESSE_AGENT}×`
 )
 
 await rename(webm, join(sortie, 'demo.webm')).catch(() => undefined)
