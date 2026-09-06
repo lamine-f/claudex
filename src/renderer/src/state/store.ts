@@ -73,6 +73,8 @@ interface EtatUi {
   chargerServices: (workspaceId: string) => Promise<void>
   demarrerServices: (workspaceId: string, noms: string[]) => Promise<void>
   arreterServices: (workspaceId: string, noms: string[]) => Promise<void>
+  /** Tue ce qui tient le port d'un service, quand ce n'est pas Claudex. */
+  libererPort: (workspaceId: string, nom: string) => Promise<number[]>
 
   /** Sessions Claude Code par workspace, chargées au dépli. */
   sessions: Record<string, ClaudeSession[]>
@@ -436,6 +438,12 @@ export const useStore = create<EtatUi>((set, get) => ({
   arreterServices: async (workspaceId, noms) => {
     await window.claudex.services.arreter(workspaceId, noms)
     await get().chargerServices(workspaceId)
+  },
+
+  libererPort: async (workspaceId, nom) => {
+    const pids = await window.claudex.services.liberer(workspaceId, nom)
+    await get().chargerServices(workspaceId)
+    return pids
   },
 
   chargerSessions: async (workspaceId) => {

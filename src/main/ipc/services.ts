@@ -33,6 +33,16 @@ export function registerServicesIpc(): void {
     }
   })
 
+  /**
+   * Libère le port d'un service déclaré, et rend les processus visés.
+   *
+   * Réservé à un port que la déclaration du projet cite : c'est le garde-fou.
+   */
+  ipcMain.handle('services:liberer', async (_evenement, workspaceId: string, nom: string) => {
+    const chemin = projet(workspaceId)
+    return chemin ? services.liberer(chemin, nom) : []
+  })
+
   /** Écrit le skill qui dit aux agents où sont les journaux. Rend son chemin. */
   ipcMain.handle('services:skill', async (_evenement, workspaceId: string) => {
     const chemin = projet(workspaceId)

@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -52,6 +52,9 @@ services:
   - nom: variable
     commande: echo "salut $QUI"; sleep 30
     env: { QUI: le monde }
+  - nom: squatte
+    port: 47821
+    commande: sleep 300
 `
     )
     // Les journaux d'une exécution précédente fausseraient les attentes : ils
@@ -168,5 +171,27 @@ services:
     )
     // Il dit aussi ce qu'il ne faut pas faire : relancer un service à la main.
     expect(await readFile(skill, 'utf8')).toContain('deux instances')
+  })
+
+  test('libérer le port tue ce qui le tient hors de Claudex', async () => {
+    test.skip(SUR_WINDOWS, 'netstat et taskkill, éprouvés de leur côté')
+
+    // Un intrus, lancé hors de l'application : c'est exactement le cas où
+    // « arrêter » ne peut rien, n'ayant aucune session à détruire.
+    const intrus = spawn(process.execPath, [
+      '-e',
+      "require('node:net').createServer().listen(47821, '127.0.0.1')"
+    ])
+    try {
+      await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+      const ligne = ctx.page.locator('li', { hasText: 'squatte' }).last()
+      await expect(ligne.getByLabel('hors Claudex')).toBeVisible({ timeout: 20_000 })
+
+      await ligne.getByRole('button', { name: 'libérer le port' }).click()
+      await expect(ligne.getByLabel('arrêté')).toBeVisible({ timeout: 20_000 })
+      expect(intrus.exitCode ?? intrus.signalCode).toBeTruthy()
+    } finally {
+      intrus.kill('SIGKILL')
+    }
   })
 })

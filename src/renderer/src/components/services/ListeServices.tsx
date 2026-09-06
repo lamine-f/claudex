@@ -36,6 +36,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const charger = useStore((e) => e.chargerServices)
   const demarrer = useStore((e) => e.demarrerServices)
   const arreter = useStore((e) => e.arreterServices)
+  const liberer = useStore((e) => e.libererPort)
   const [enCours, setEnCours] = useState<string[]>([])
   const [skillEcrit, setSkillEcrit] = useState<string | null>(null)
 
@@ -56,10 +57,14 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
     return [...par.entries()]
   }, [services])
 
-  const agir = async (action: 'demarrer' | 'arreter', noms: string[]): Promise<void> => {
+  const agir = async (
+    action: 'demarrer' | 'arreter' | 'liberer',
+    noms: string[]
+  ): Promise<void> => {
     setEnCours((v) => [...v, ...noms])
     try {
-      await (action === 'demarrer' ? demarrer : arreter)(workspaceId, noms)
+      if (action === 'liberer') await Promise.all(noms.map((n) => liberer(workspaceId, n)))
+      else await (action === 'demarrer' ? demarrer : arreter)(workspaceId, noms)
     } finally {
       setEnCours((v) => v.filter((n) => !noms.includes(n)))
     }
@@ -169,9 +174,15 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                         pilotage, démarrer et arrêter sont ce qu'on vient y faire,
                         et les cacher oblige à les chercher. */}
                     <span className="flex shrink-0 items-center gap-0.5">
+                      {/* Le port est tenu par quelqu'un d'autre : « arrêter » ne
+                          peut rien, n'ayant aucune session à détruire. Le
+                          libérer est le seul geste qui vaille. */}
+                      {service.etat === 'dehors' &&
+                        bouton('libérer le port', () => void agir('liberer', [service.nom]))}
                       {service.etat === 'arrete'
                         ? bouton('démarrer', () => void agir('demarrer', [service.nom]), true)
-                        : bouton('arrêter', () => void agir('arreter', [service.nom]))}
+                        : service.etat !== 'dehors' &&
+                          bouton('arrêter', () => void agir('arreter', [service.nom]))}
                     </span>
 
                     {service.reproche && (

@@ -143,6 +143,9 @@ const api = {
       ipcRenderer.invoke('services:demarrer', workspaceId, noms),
     arreter: (workspaceId: string, noms: string[]): Promise<void> =>
       ipcRenderer.invoke('services:arreter', workspaceId, noms),
+    /** Tue ce qui écoute sur le port d'un service déclaré. Rend les PID visés. */
+    liberer: (workspaceId: string, nom: string): Promise<number[]> =>
+      ipcRenderer.invoke('services:liberer', workspaceId, nom),
     skill: (workspaceId: string): Promise<string | null> =>
       ipcRenderer.invoke('services:skill', workspaceId),
     /** Ouvre une fenêtre qui suit le journal d'un service. */

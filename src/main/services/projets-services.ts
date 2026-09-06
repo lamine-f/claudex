@@ -1,10 +1,14 @@
+import { execFile } from 'node:child_process'
 import { createConnection } from 'node:net'
+import { promisify } from 'node:util'
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { resoudre, vagues, type Declaration, type Reproche, type Service } from '@shared/services'
 import type { EtatService, ServiceVu } from '@shared/types'
 import { multiplexeur } from './multiplexeur'
+
+const run = promisify(execFile)
 
 /** Le fichier que lit Claudex, et le dossier où il verse les journaux. */
 export const FICHIER = join('.claudex', 'services.yml')
@@ -241,4 +245,69 @@ Démarrer ou arrêter un service. Ils sont pilotés depuis Claudex, et les relan
   const chemin = join(dossier, 'SKILL.md')
   await writeFile(chemin, contenu)
   return chemin
+}
+
+/**
+ * Qui écoute sur ce port.
+ *
+ * `lsof` sur les systèmes POSIX, `netstat` sur Windows. Rien de tout cela n'est
+ * garanti présent : un système qui ne répond pas rend une liste vide, et le
+ * bouton dira simplement qu'il n'a trouvé personne.
+ */
+async function occupants(port: number): Promise<number[]> {
+  if (process.platform === 'win32') {
+    const { stdout } = await run('netstat', ['-ano', '-p', 'tcp']).catch(() => ({ stdout: '' }))
+    return [
+      ...new Set(
+        stdout
+          .split('\n')
+          .filter((l) => /LISTENING/i.test(l) && new RegExp(`[:.]${port}\\s`).test(l))
+          .map((l) => Number(l.trim().split(/\s+/).at(-1)))
+          .filter((n) => Number.isInteger(n) && n > 0)
+      )
+    ]
+  }
+
+  const { stdout } = await run('lsof', ['-ti', `tcp:${port}`, '-sTCP:LISTEN']).catch(() => ({
+    stdout: ''
+  }))
+  return [...new Set(stdout.split('\n').map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+}
+
+/**
+ * Libère le port d'un service déclaré.
+ *
+ * Le port doit figurer dans la déclaration du projet : c'est le garde-fou. Tuer
+ * ce qui écoute sur un port quelconque serait un pouvoir qu'une interface n'a
+ * pas à donner, et l'erreur de frappe y coûterait cher.
+ *
+ * On demande d'abord, on impose ensuite. Un service Java qui reçoit `TERM`
+ * ferme ses connexions et vide ses tampons ; `KILL` ne lui laisserait pas le
+ * temps, et le port resterait parfois pris quelques secondes de plus.
+ */
+export async function liberer(projet: string, nom: string): Promise<number[]> {
+  const { services } = await charger(projet)
+  const service = services.find((s) => s.nom === nom)
+  if (!service?.port) return []
+
+  const pids = await occupants(service.port)
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM')
+    } catch {
+      /* déjà parti */
+    }
+  }
+
+  // Laisser le temps de s'arrêter proprement avant d'insister.
+  await new Promise((suite) => setTimeout(suite, 1500))
+  for (const pid of pids) {
+    if (!(await ecoute(service.port))) break
+    try {
+      process.kill(pid, 'SIGKILL')
+    } catch {
+      /* déjà parti */
+    }
+  }
+  return pids
 }
