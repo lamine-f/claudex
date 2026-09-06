@@ -41,6 +41,12 @@ await mkdir(sortie, { recursive: true })
 const LARGEUR = 1200
 const HAUTEUR = 780
 
+/** Ce que devient une plage figée, et en deçà de quoi on n'y touche pas. */
+const CIBLE_FIGE = 0.5
+const PLANCHER_FIGE = 1.0
+/** L'ouverture garde son souffle : c'est là que le lecteur arrive. */
+const OUVERTURE = 3.0
+
 /** Les projets du décor, avec leurs conversations. */
 const DECOR = [
   {
@@ -190,6 +196,56 @@ await writeFile(
 const tLancement = Date.now()
 const marque = () => (Date.now() - tLancement) / 1000
 
+/**
+ * Les instants où l'image change, dix fois par seconde.
+ *
+ * Une démonstration passe l'essentiel de son temps devant un écran arrêté : un
+ * agent qui réfléchit, une fenêtre qu'on laisse voir, une application qui
+ * démarre. Mesuré sur une prise, plus de vingt secondes sur quatre-vingts sans
+ * un pixel de changement. Les repérer permet de les resserrer sans toucher à ce
+ * qui bouge.
+ */
+async function plagesFigees(video, agent) {
+  const l = 240
+  const h = Math.round((l * HAUTEUR) / LARGEUR / 2) * 2
+  const brut = await new Promise((ok, ko) => {
+    execFile(
+      'ffmpeg',
+      ['-v', 'error', '-i', video, '-vf', `fps=10,scale=${l}:${h},format=gray`, '-f', 'rawvideo', '-'],
+      { encoding: 'buffer', maxBuffer: 1 << 30 },
+      (e, sortie) => (e ? ko(e) : ok(sortie))
+    )
+  })
+
+  const taille = l * h
+  const images = []
+  for (let i = 0; i + taille <= brut.length; i += taille) images.push(brut.subarray(i, i + taille))
+
+  const bouge = []
+  for (let i = 1; i < images.length; i++) {
+    let n = 0
+    for (let j = 0; j < taille; j++) if (Math.abs(images[i][j] - images[i - 1][j]) > 12) n++
+    bouge.push(n / taille > 0.0005)
+  }
+
+  const duree = (bouge.length + 1) / 10
+  const plages = []
+  let debut = null
+  for (let i = 0; i < bouge.length; i++) {
+    const t = (i + 1) / 10
+    // Le plan de l'agent a son propre rythme, on ne le découpe pas.
+    const dedans = t > agent[0] && t < agent[1]
+    if (!bouge[i] && !dedans) {
+      if (debut === null) debut = t
+    } else {
+      if (debut !== null && t - debut >= PLANCHER_FIGE && debut >= OUVERTURE) plages.push([debut, t])
+      debut = null
+    }
+  }
+  if (debut !== null && duree - debut >= PLANCHER_FIGE) plages.push([debut, duree])
+  return { plages, duree }
+}
+
 const app = await electron.launch({
   args: [resolve('out/main/index.js'), `--user-data-dir=${profil}`],
   // Serveur tmux distinct : la démonstration ne touche pas aux sessions ouvertes.
@@ -325,10 +381,8 @@ if (await attendreTexte(0, /trust this folder/i, 10000)) {
   await pause(600)
   await taper(0, '', '\r')
 }
-// Le démarrage de Claude Code est une attente, pas un spectacle : ses bornes
-// sont notées pour le resserrer au montage. La question de confiance, elle,
-// garde son rythme, étant posée juste au-dessus.
-const debutAttente = marque()
+// Le démarrage de Claude Code est une attente, pas un spectacle. Rien n'est
+// noté ici : le montage la trouvera tout seul, n'y voyant rien bouger.
 await attendreTexte(0, /Try "|\/help|bypass permissions/i, 30000)
 await pause(1200)
 
@@ -443,43 +497,65 @@ const gif = join(sortie, 'demo.gif')
  * jamais descendre sous deux, où le mouvement se hache et où le fichier
  * s'alourdit, ni monter au-delà de quatre, où plus rien ne se lit.
  */
-// Sans marge au début : le segment du démarrage s'arrête exactement ici.
 const a = debutAgent
 const b = finAgent + 0.8
-const ACCELERATION = Math.min(4, Math.max(2, (b - a) / 18)).toFixed(2)
+const ACCELERATION = Math.min(4, Math.max(2, (b - a) / 18))
 
 /*
- * Le démarrage de Claude Code est resserré plus fort, et pour une autre raison.
+ * Le reste du montage tient en une règle : ce qui bouge garde sa vitesse, ce qui
+ * ne bouge pas est resserré à une demi-seconde.
  *
- * Rien n'y bouge : la bannière est dessinée, l'invite attend. Mesuré sur une
- * prise, onze secondes sans un pixel de changement, au milieu d'une
- * démonstration qui en fait quarante. Un huitième suffit à dire que l'agent
- * démarre.
+ * Une démonstration passe l'essentiel de son temps devant un écran arrêté. Sur
+ * une prise de quatre-vingt-deux secondes, vingt-cinq ne portaient aucun
+ * changement : l'application qui démarre, Claude Code qui charge, un agent qui
+ * réfléchit entre deux outils. Les couper une par une donnait un montage taillé
+ * au jugé ; les mesurer donne le même résultat sans rien décider soi-même.
  *
- * En deçà de deux secondes on n'y touche pas : resserrer un battement le
- * transformerait en saut.
+ * Deux exceptions. L'ouverture garde son souffle, une boucle qui démarre sur un
+ * plan escamoté ne se lit pas. Et le plan de l'agent n'est pas découpé, ayant
+ * déjà son propre rythme.
  */
-const RESSERRAGE = 8
-const resserree = a - debutAttente >= 2 ? RESSERRAGE : 1
+const { plages, duree } = await plagesFigees(webm, [a, b])
+
+const segments = []
+let curseur = 0
+const poser = (fin, facteur) => {
+  if (fin - curseur > 0.04) segments.push([curseur, fin, facteur])
+  curseur = Math.max(curseur, fin)
+}
+for (const [d, f] of plages.filter(([, f]) => f <= a)) {
+  if (d > curseur) poser(d, 1)
+  poser(f, Math.min(12, (f - d) / CIBLE_FIGE))
+}
+if (curseur < a) poser(a, 1)
+poser(b, ACCELERATION)
+for (const [d, f] of plages.filter(([d]) => d >= b)) {
+  if (d > curseur) poser(d, 1)
+  poser(f, Math.min(12, (f - d) / CIBLE_FIGE))
+}
+poser(duree, 1)
 
 const montage =
-  `[0:v]trim=0:${debutAttente.toFixed(2)},setpts=PTS-STARTPTS[avant];` +
-  `[0:v]trim=${debutAttente.toFixed(2)}:${a.toFixed(2)},` +
-  `setpts=(PTS-STARTPTS)/${resserree}[demarrage];` +
-  `[0:v]trim=${a.toFixed(2)}:${b.toFixed(2)},setpts=(PTS-STARTPTS)/${ACCELERATION}[agent];` +
-  `[0:v]trim=${b.toFixed(2)},setpts=PTS-STARTPTS[apres];` +
-  `[avant][demarrage][agent][apres]concat=n=4:v=1:a=0[monte];` +
+  segments
+    .map(
+      ([d, f, k], i) =>
+        `[0:v]trim=${d.toFixed(2)}:${f.toFixed(2)},setpts=(PTS-STARTPTS)/${k.toFixed(2)}[s${i}];`
+    )
+    .join('') +
+  segments.map((_, i) => `[s${i}]`).join('') +
+  `concat=n=${segments.length}:v=1:a=0[monte];` +
   // La source est enregistrée à 25 images par seconde : n'en rendre que 11
   // jetait plus de la moitié du mouvement, et le curseur avançait par bonds.
-  `[monte]fps=25,scale=1000:-1:flags=lanczos,split[s0][s1];` +
-  `[s0]palettegen=max_colors=128:stats_mode=diff[p];` +
-  `[s1][p]paletteuse=dither=bayer:bayer_scale=4[sortie]`
+  `[monte]fps=25,scale=1000:-1:flags=lanczos,split[p0][p1];` +
+  `[p0]palettegen=max_colors=128:stats_mode=diff[pal];` +
+  `[p1][pal]paletteuse=dither=bayer:bayer_scale=4[sortie]`
+
 await run('ffmpeg', [
   '-y', '-i', webm, '-filter_complex', montage, '-map', '[sortie]', '-loop', '0', gif
-])
+], { maxBuffer: 1 << 28 })
 console.log(
-  `démarrage : ${(a - debutAttente).toFixed(1)} s à ${resserree}× · ` +
-    `agent : ${(b - a).toFixed(1)} s à ${ACCELERATION}×`
+  `${segments.length} segments · ${plages.length} plages figées resserrées · ` +
+    `agent ${(b - a).toFixed(1)} s à ${ACCELERATION.toFixed(2)}×`
 )
 
 await rename(webm, join(sortie, 'demo.webm')).catch(() => undefined)

@@ -212,11 +212,14 @@ démonstration s'étirait au-delà de la minute. Le reste garde sa vitesse, sans
 de souris deviennent illisibles. Rien n'est coupé ni rejoué, seule l'horloge de ce segment est
 resserrée, et les bornes sont relevées pendant la prise.
 
-**Le démarrage de Claude Code est resserré au huitième**, et pour une autre raison que
-l'accélération de l'agent : rien n'y bouge. La bannière est dessinée, l'invite attend, et cela
-a duré onze secondes sur une prise, sans un pixel de changement, au milieu d'une démonstration
-qui en fait quarante. En deçà de deux secondes le segment est laissé tel quel, resserrer un
-battement le transformerait en saut.
+**Ce qui ne bouge pas est resserré à une demi-seconde**, et le montage le trouve seul. Une
+démonstration passe l'essentiel de son temps devant un écran arrêté : sur une prise de
+quatre-vingt-deux secondes, vingt-cinq ne portaient aucun changement, l'application qui démarre,
+Claude Code qui charge, un agent qui réfléchit entre deux outils. Le montage compare les images
+dix fois par seconde, relève ces plages et les resserre, sans toucher à ce qui bouge.
+
+Deux exceptions. L'ouverture garde son souffle : une boucle qui démarre sur un plan escamoté ne
+se lit pas. Et le plan de l'agent n'est pas découpé, ayant déjà son propre rythme.
 
 **Le GIF est rendu à 25 images par seconde**, la cadence à laquelle Playwright enregistre. En
 rendre 11 jetait plus de la moitié du mouvement et le curseur avançait par bonds. La finesse
