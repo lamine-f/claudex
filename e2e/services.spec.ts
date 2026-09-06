@@ -52,9 +52,12 @@ services:
   - nom: variable
     commande: echo "salut $QUI"; sleep 30
     env: { QUI: le monde }
+  # Il écoute vraiment son port : un service qui le déclare sans l'ouvrir
+  # resterait « démarre » pour toujours, et le cas mesurerait autre chose.
   - nom: squatte
     port: 47821
-    commande: sleep 300
+    commande: >-
+      node -e "require('node:net').createServer().listen(47821, '127.0.0.1')"
 `
     )
     // Les journaux d'une exécution précédente fausseraient les attentes : ils
@@ -187,11 +190,46 @@ services:
       const ligne = ctx.page.locator('li', { hasText: 'squatte' }).last()
       await expect(ligne.getByLabel('hors Claudex')).toBeVisible({ timeout: 20_000 })
 
-      await ligne.getByRole('button', { name: 'libérer le port' }).click()
+      await ligne.getByRole('button', { name: 'libérer', exact: true }).click()
       await expect(ligne.getByLabel('arrêté')).toBeVisible({ timeout: 20_000 })
       expect(intrus.exitCode ?? intrus.signalCode).toBeTruthy()
     } finally {
       intrus.kill('SIGKILL')
     }
+  })
+
+  test('reprendre le port tue l’intrus et lance le service à sa place', async () => {
+    test.skip(SUR_WINDOWS, 'netstat et taskkill, éprouvés de leur côté')
+
+    const intrus = spawn(process.execPath, [
+      '-e',
+      "require('node:net').createServer().listen(47821, '127.0.0.1')"
+    ])
+    try {
+      await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+      const ligne = ctx.page.locator('li', { hasText: 'squatte' }).last()
+      await expect(ligne.getByLabel('hors Claudex')).toBeVisible({ timeout: 20_000 })
+
+      await ligne.getByRole('button', { name: 'reprendre' }).click()
+      // Le service tourne, et c'est Claudex qui le tient : plus « hors Claudex ».
+      await expect(ligne.getByLabel('en marche')).toBeVisible({ timeout: 30_000 })
+      expect(intrus.exitCode ?? intrus.signalCode).toBeTruthy()
+    } finally {
+      intrus.kill('SIGKILL')
+    }
+  })
+
+  test('relancer un service le remet en marche', async () => {
+    test.skip(SUR_WINDOWS, 'le pilote ConPTY journalise autrement, éprouvé de son côté')
+
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const ligne = ctx.page.locator('li', { hasText: 'seconde' }).last()
+    if (await ligne.getByRole('button', { name: 'démarrer' }).isVisible().catch(() => false)) {
+      await ligne.getByRole('button', { name: 'démarrer' }).click()
+      await expect(ligne.getByLabel('en marche')).toBeVisible({ timeout: 20_000 })
+    }
+
+    await ligne.getByRole('button', { name: 'relancer' }).click()
+    await expect(ligne.getByLabel('en marche')).toBeVisible({ timeout: 30_000 })
   })
 })

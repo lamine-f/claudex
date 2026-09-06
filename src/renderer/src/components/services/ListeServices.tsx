@@ -37,6 +37,8 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const demarrer = useStore((e) => e.demarrerServices)
   const arreter = useStore((e) => e.arreterServices)
   const liberer = useStore((e) => e.libererPort)
+  const relancer = useStore((e) => e.relancerService)
+  const reprendre = useStore((e) => e.reprendrePort)
   const [enCours, setEnCours] = useState<string[]>([])
   const [skillEcrit, setSkillEcrit] = useState<string | null>(null)
 
@@ -58,21 +60,31 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   }, [services])
 
   const agir = async (
-    action: 'demarrer' | 'arreter' | 'liberer',
+    action: 'demarrer' | 'arreter' | 'liberer' | 'relancer' | 'reprendre',
     noms: string[]
   ): Promise<void> => {
     setEnCours((v) => [...v, ...noms])
     try {
-      if (action === 'liberer') await Promise.all(noms.map((n) => liberer(workspaceId, n)))
+      const seul = { liberer, relancer, reprendre }[action as 'liberer' | 'relancer' | 'reprendre']
+      if (seul) await Promise.all(noms.map((n) => seul(workspaceId, n)))
       else await (action === 'demarrer' ? demarrer : arreter)(workspaceId, noms)
     } finally {
       setEnCours((v) => v.filter((n) => !noms.includes(n)))
     }
   }
 
+  const TITRES: Record<string, string> = {
+    reprendre: 'Tuer ce qui tient le port, puis démarrer le service sous Claudex',
+    libérer: 'Tuer ce qui tient le port, sans rien lancer',
+    relancer: 'Arrêter puis redémarrer, pour reprendre un code qui a changé',
+    arrêter: 'Détruire la session du service',
+    démarrer: 'Lancer le service et journaliser sa sortie'
+  }
+
   const bouton = (libelle: string, onClic: () => void, accent = false): React.JSX.Element => (
     <button
       type="button"
+      title={TITRES[libelle]}
       onClick={onClic}
       className={`rounded px-2 py-0.5 font-mono text-[10.5px] transition-colors ${
         accent
@@ -177,12 +189,20 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                       {/* Le port est tenu par quelqu'un d'autre : « arrêter » ne
                           peut rien, n'ayant aucune session à détruire. Le
                           libérer est le seul geste qui vaille. */}
-                      {service.etat === 'dehors' &&
-                        bouton('libérer le port', () => void agir('liberer', [service.nom]))}
-                      {service.etat === 'arrete'
-                        ? bouton('démarrer', () => void agir('demarrer', [service.nom]), true)
-                        : service.etat !== 'dehors' &&
-                          bouton('arrêter', () => void agir('arreter', [service.nom]))}
+                      {service.etat === 'dehors' && (
+                        <>
+                          {bouton('reprendre', () => void agir('reprendre', [service.nom]), true)}
+                          {bouton('libérer', () => void agir('liberer', [service.nom]))}
+                        </>
+                      )}
+                      {service.etat === 'arrete' &&
+                        bouton('démarrer', () => void agir('demarrer', [service.nom]), true)}
+                      {(service.etat === 'vivant' || service.etat === 'demarrage') && (
+                        <>
+                          {bouton('relancer', () => void agir('relancer', [service.nom]), true)}
+                          {bouton('arrêter', () => void agir('arreter', [service.nom]))}
+                        </>
+                      )}
                     </span>
 
                     {service.reproche && (

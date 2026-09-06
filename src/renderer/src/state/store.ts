@@ -75,6 +75,10 @@ interface EtatUi {
   arreterServices: (workspaceId: string, noms: string[]) => Promise<void>
   /** Tue ce qui tient le port d'un service, quand ce n'est pas Claudex. */
   libererPort: (workspaceId: string, nom: string) => Promise<number[]>
+  /** Arrête puis redémarre un service que Claudex tient. */
+  relancerService: (workspaceId: string, nom: string) => Promise<void>
+  /** Tue ce qui tient le port, puis démarre le service sous Claudex. */
+  reprendrePort: (workspaceId: string, nom: string) => Promise<void>
 
   /** Sessions Claude Code par workspace, chargées au dépli. */
   sessions: Record<string, ClaudeSession[]>
@@ -444,6 +448,20 @@ export const useStore = create<EtatUi>((set, get) => ({
     const pids = await window.claudex.services.liberer(workspaceId, nom)
     await get().chargerServices(workspaceId)
     return pids
+  },
+
+  relancerService: async (workspaceId, nom) => {
+    await window.claudex.services.arreter(workspaceId, [nom])
+    await window.claudex.services.demarrer(workspaceId, [nom])
+    await get().chargerServices(workspaceId)
+  },
+
+  // Tuer puis démarrer : le geste qu'on veut quand un service traîne d'une
+  // exécution précédente et tient le port qu'on réclame.
+  reprendrePort: async (workspaceId, nom) => {
+    await window.claudex.services.liberer(workspaceId, nom)
+    await window.claudex.services.demarrer(workspaceId, [nom])
+    await get().chargerServices(workspaceId)
   },
 
   chargerSessions: async (workspaceId) => {
