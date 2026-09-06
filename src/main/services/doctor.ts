@@ -4,6 +4,7 @@ import { copyFile, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { DoctorCheck } from '@shared/types'
+import { trouvable } from '../util/chemin'
 import { binaireClaude, claudeProjectsRoot, claudeSettingsPath } from '../util/paths'
 import { installes } from './hooks'
 import { multiplexeur } from './multiplexeur'
@@ -117,6 +118,24 @@ export async function check(): Promise<DoctorCheck[]> {
           detail: "La commande `claude` est introuvable. Les terminaux fonctionneront, mais les sessions d'agent ne seront pas disponibles."
         }
   ]
+
+  // Le contrôle n'existe que là où l'outil peut manquer. macOS a le Finder et
+  // Windows l'explorateur, qui font partie du système : une ligne toujours verte
+  // n'apprendrait rien et encombrerait l'écran.
+  if (process.platform === 'linux' && !trouvable('xdg-open')) {
+    checks.push({
+      id: 'gestionnaire',
+      label: 'Gestionnaire de fichiers',
+      severity: 'warn',
+      detail:
+        "`xdg-open` est introuvable, et c'est par lui que « Ouvrir dans le " +
+        "gestionnaire de fichiers » passe. Le clic droit reste sans effet. " +
+        'Installe-le avec `sudo apt install xdg-utils`, et le gestionnaire ' +
+        "lui-même s'il manque aussi : `sudo apt install nautilus`. Le paquet " +
+        "Debian de Claudex réclame déjà `xdg-utils` ; l'AppImage ne peut rien " +
+        "exiger, et c'est là que le cas se rencontre."
+    })
+  }
 
   // Une promesse que le pilote ne tient pas se dit à l'écran d'état, jamais par
   // la surprise d'un agent disparu à la réouverture de l'application.
