@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EtatService, ServiceVu } from '@shared/types'
 import { useStore } from '@renderer/state/store'
+import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 
 /**
  * Les services d'un projet, groupés.
@@ -41,6 +42,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const reprendre = useStore((e) => e.reprendrePort)
   const [enCours, setEnCours] = useState<string[]>([])
   const [skillEcrit, setSkillEcrit] = useState<string | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
 
   // Un démarrage passe par plusieurs états sans que personne ne le dise : on
   // relit tant que la colonne est à l'écran, et seulement tant qu'elle l'est.
@@ -124,6 +126,37 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
     setTimeout(() => setSkillEcrit(null), 6000)
   }
 
+  /**
+   * Ce que le clic droit propose sur un service.
+   *
+   * Tuer ce qui tient le port y figure toujours, quel que soit l'état. Le bouton
+   * de la ligne ne le montre que lorsqu'un autre tient le port, mais le cas
+   * arrive aussi quand Claudex croit tenir un service qui n'a jamais démarré :
+   * il faut alors pouvoir libérer sans deviner à quel état l'interface le range.
+   */
+  const actionsDe = (service: ServiceVu): Action[] => [
+    { libelle: 'Voir le journal', onChoisir: () => onVoirJournal(service) },
+    ...(service.etat === 'arrete'
+      ? [{ libelle: 'Démarrer', onChoisir: () => void agir('demarrer', [service.nom]) }]
+      : [
+          { libelle: 'Relancer', onChoisir: () => void agir('relancer', [service.nom]) },
+          { libelle: 'Arrêter', onChoisir: () => void agir('arreter', [service.nom]) }
+        ]),
+    ...(service.port !== undefined
+      ? [
+          {
+            libelle: `Tuer le processus sur le port ${service.port}`,
+            ecarte: true,
+            onChoisir: () => void agir('liberer', [service.nom])
+          },
+          {
+            libelle: 'Tuer, puis démarrer sous Claudex',
+            onChoisir: () => void agir('reprendre', [service.nom])
+          }
+        ]
+      : [])
+  ]
+
   return (
     <>
       <div className="flex items-center gap-2 border-b border-separateur px-3 py-1.5">
@@ -158,6 +191,10 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                 return (
                   <li
                     key={service.nom}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      setMenu({ x: e.clientX, y: e.clientY, actions: actionsDe(service) })
+                    }}
                     className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-fond-survol"
                   >
                     <span
@@ -222,6 +259,16 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
         )
       })}
     </ul>
+
+    {menu && (
+      <MenuContextuel
+        x={menu.x}
+        y={menu.y}
+        actions={menu.actions}
+        intitule="Actions du service"
+        onFermer={() => setMenu(null)}
+      />
+    )}
     </>
   )
 }

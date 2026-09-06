@@ -232,4 +232,45 @@ services:
     await ligne.getByRole('button', { name: 'relancer' }).click()
     await expect(ligne.getByLabel('en marche')).toBeVisible({ timeout: 30_000 })
   })
+
+  test('le clic droit propose de tuer le processus sur le port, quel que soit l’état', async () => {
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const ligne = ctx.page.locator('li', { hasText: 'squatte' }).last()
+    await ligne.click({ button: 'right' })
+
+    const menu = ctx.page.getByRole('menu')
+    await expect(menu.getByRole('menuitem', { name: /Tuer le processus sur le port 47821/ })).toBeVisible()
+    await ctx.page.keyboard.press('Escape')
+  })
+
+  test('démarrer sur un port déjà tenu ne lance rien', async () => {
+    test.skip(SUR_WINDOWS, 'netstat et taskkill, éprouvés de leur côté')
+
+    // Les cas d'avant ont pu laisser ce service sous Claudex : on le rend au
+    // repos, sans quoi ce cas mesurerait un tout autre état.
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const ligne = ctx.page.locator('li', { hasText: 'squatte' }).last()
+    if (await ligne.getByRole('button', { name: 'arrêter' }).isVisible().catch(() => false)) {
+      await ligne.getByRole('button', { name: 'arrêter' }).click()
+    }
+    await expect(ligne.getByLabel('arrêté')).toBeVisible({ timeout: 20_000 })
+
+    const intrus = spawn(process.execPath, [
+      '-e',
+      "require('node:net').createServer().listen(47821, '127.0.0.1')"
+    ])
+    try {
+      await expect(ligne.getByLabel('hors Claudex')).toBeVisible({ timeout: 20_000 })
+
+      // « tout démarrer » ne regarde pas l'état des lignes : c'est par là que le
+      // service partait quand même, pour se heurter au port et attendre une
+      // réponse à une question que personne ne voyait.
+      await ctx.page.getByRole('button', { name: 'tout démarrer' }).last().click()
+      await ctx.page.waitForTimeout(3000)
+      await expect(ligne.getByLabel('hors Claudex')).toBeVisible()
+      expect(intrus.exitCode ?? intrus.signalCode).toBeNull()
+    } finally {
+      intrus.kill('SIGKILL')
+    }
+  })
 })

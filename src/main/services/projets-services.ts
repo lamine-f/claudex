@@ -147,6 +147,23 @@ export async function demarrer(
   await fairePlace(journal)
 
   const session = nomSession(workspaceId, service.nom)
+
+  /*
+   * Un port déjà tenu par un autre arrête tout ici.
+   *
+   * Sans cette garde, la commande part quand même et se heurte au port pris.
+   * Mesuré sur un `ng serve` : il demande alors « Port 4200 is already in use.
+   * Would you like to use a different port ? » et attend une réponse que
+   * personne ne donne. Le service restait « démarre » pour toujours, et rien à
+   * l'écran ne disait pourquoi — il fallait ouvrir le journal pour le savoir.
+   *
+   * L'appelant n'a rien à décider : l'état passera à « hors Claudex », qui
+   * propose déjà de reprendre le port ou de le libérer.
+   */
+  if (service.port !== undefined && !(await multiplexeur.existe(session))) {
+    if (await ecoute(service.port)) return
+  }
+
   const cwd = join(projet, service.dossier)
   // Le journal part avec l'amorce, non après : c'est le pilote qui sait
   // brancher le tuyau avant que la commande ne parte, et l'ordre inverse
