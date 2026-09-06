@@ -40,11 +40,10 @@ export function ColonneLaterale(): React.JSX.Element {
   const services = useStore((e) => (actif ? e.services[actif] : undefined))
   const debout = services?.filter((s) => s.etat !== 'arrete').length
 
-  // Le journal s'ouvre dans une fenêtre à part, qu'on peut poser sur un second
-  // écran. Elle lit le fichier plutôt que de s'attacher à la session.
-  const ouvrirJournal = (service: ServiceVu): void => {
-    void window.claudex.services.fenetreJournal(service.journal, service.nom)
-  }
+  // Le journal s'ouvre en onglet, à côté des conversations, et prend toute la
+  // place du terminal. L'onglet est une vue : le fermer ne touche pas au
+  // service, qui continue de tourner.
+  const ouvrirJournal = useStore((e) => e.ouvrirJournal)
 
   // Le compte annoncé est celui des conversations, groupées ou non : c'est ce
   // que l'on cherche, pas le nombre de lignes de la colonne.
@@ -136,7 +135,7 @@ export function ColonneLaterale(): React.JSX.Element {
         <FileTree />
       ) : panneau === 'services' ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <ListeServices workspaceId={courant.id} onVoirJournal={ouvrirJournal} />
+          <ListeServices workspaceId={courant.id} onVoirJournal={(service) => ouvrirJournal(courant.id, service)} />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">

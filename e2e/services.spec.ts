@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, SUR_WINDOWS, type Contexte } from './fixtures'
+import { fermer, lancer, nouveauTerminal, SUR_WINDOWS, type Contexte } from './fixtures'
 
 /**
  * Les services d'un projet, de la déclaration au fichier de journal.
@@ -71,5 +71,43 @@ services:
     await ligne.hover()
     await ligne.getByRole('button', { name: 'arrêter' }).click()
     await expect(ligne.getByLabel('arrêté')).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('cliquer un service ouvre son journal en onglet, à la place du terminal', async () => {
+    test.skip(SUR_WINDOWS, 'le pilote ConPTY journalise autrement, éprouvé de son côté')
+
+    // Un terminal d'abord, pour vérifier que le journal prend sa place sans le
+    // fermer, et que l'onglet du terminal le ramène.
+    await nouveauTerminal(ctx.page)
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const ligne = ctx.page.locator('li', { hasText: 'seconde' }).last()
+    await ligne.hover()
+    await ligne.getByRole('button', { name: 'démarrer' }).click()
+    await ctx.page.getByRole('button', { name: 'seconde' }).first().click()
+
+    // L'onglet du journal porte le chemin du fichier en infobulle, là où la
+    // ligne de la liste porte le même nom : c'est ce qui les distingue.
+    const onglet = ctx.page.getByTitle(/seconde\.log$/)
+    await expect(onglet).toHaveAttribute('aria-current', 'true')
+    await expect(ctx.page.getByRole('button', { name: /suit|gelé/ })).toBeVisible()
+
+    // Revenir au terminal, puis fermer la vue sans arrêter le service.
+    await ctx.page.getByRole('button', { name: 'Terminal', exact: true }).first().click()
+    await expect(ctx.page.getByRole('button', { name: /suit|gelé/ })).toHaveCount(0)
+
+    await onglet.hover()
+    await ctx.page
+      .getByTitle('Fermer la vue. Le service continue de tourner.')
+      .first()
+      .click()
+    await expect(onglet).toHaveCount(0)
+
+    // Le service, lui, tourne toujours.
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    await expect(
+      ctx.page.locator('li', { hasText: 'seconde' }).last().getByLabel('en marche')
+    ).toBeVisible()
   })
 })

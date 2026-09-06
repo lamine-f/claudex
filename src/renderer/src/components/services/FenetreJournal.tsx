@@ -15,12 +15,15 @@ import { THEME } from '@renderer/theme-terminal'
  *
  * C'est aussi le fichier que lit l'agent. Une seule source, plusieurs lecteurs.
  */
-export function FenetreJournal({
+export function SuiviJournal({
   chemin,
-  titre
+  titre,
+  onFermer
 }: {
   chemin: string
   titre: string
+  /** Ferme la vue. Le service, lui, continue de tourner. */
+  onFermer?: () => void
 }): React.JSX.Element {
   const hote = useRef<HTMLDivElement | null>(null)
   const [suit, setSuit] = useState(true)
@@ -97,7 +100,7 @@ export function FenetreJournal({
         : `${(taille / 1024 / 1024).toFixed(1)} Mo`
 
   return (
-    <div className="flex h-screen flex-col bg-fond">
+    <div className="flex h-full min-h-0 flex-col bg-fond">
       <div className="flex shrink-0 items-center gap-3 border-b border-separateur px-3 py-2">
         <span className="truncate text-[13px] text-texte">{titre}</span>
         <span className="truncate font-mono text-[11px] text-texte-tenu">{chemin}</span>
@@ -113,8 +116,27 @@ export function FenetreJournal({
         >
           {suit ? 'suit' : 'gelé'}
         </button>
+        {onFermer && (
+          <button
+            type="button"
+            onClick={onFermer}
+            title="Fermer la vue. Le service continue de tourner."
+            className="shrink-0 rounded px-1.5 text-texte-tenu transition-colors hover:text-texte"
+          >
+            ✕
+          </button>
+        )}
       </div>
       <div ref={hote} className="min-h-0 flex-1 px-2 py-1" />
+    </div>
+  )
+}
+
+/** La même chose, seule dans sa fenêtre. */
+export function FenetreJournal(props: { chemin: string; titre: string }): React.JSX.Element {
+  return (
+    <div className="h-screen">
+      <SuiviJournal {...props} />
     </div>
   )
 }

@@ -55,6 +55,21 @@ interface EtatUi {
    * régulier tant qu'on le regarde, un démarrage passant par plusieurs états.
    */
   services: Record<string, ServiceVu[]>
+  /**
+   * Journaux ouverts, par projet.
+   *
+   * Ils s'affichent en onglets à côté des conversations, mais ne sont pas de
+   * même nature : un onglet de conversation *est* la session, et la fermer la
+   * tue ; un onglet de journal n'est qu'une vue posée sur un fichier, et la
+   * fermer ne touche pas au service, qui continue de tourner.
+   */
+  journaux: Record<string, { nom: string; chemin: string }[]>
+  /** Le journal regardé, s'il en est un. Sinon, c'est le terminal qu'on voit. */
+  journalActif?: string
+  ouvrirJournal: (workspaceId: string, service: ServiceVu) => void
+  /** Ramène l'écran sur un journal déjà ouvert. */
+  choisirJournal: (nom: string) => void
+  fermerJournal: (workspaceId: string, nom: string) => void
   chargerServices: (workspaceId: string) => Promise<void>
   demarrerServices: (workspaceId: string, noms: string[]) => Promise<void>
   arreterServices: (workspaceId: string, noms: string[]) => Promise<void>
@@ -211,6 +226,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   tabs: [],
   comptesOnglets: {},
   services: {},
+  journaux: {},
   sessions: {},
   rangements: {},
   sessionsEnCours: {},
@@ -379,6 +395,32 @@ export const useStore = create<EtatUi>((set, get) => ({
     const retenu = tabs.some((t) => t.id === courant) ? courant : dernierRegarde(tabs)?.id
     set({ tabs, activeTabId: retenu })
     if (retenu && retenu !== courant) void window.claudex.term.focus(retenu)
+  },
+
+  ouvrirJournal: (workspaceId, service) => {
+    const ouverts = get().journaux[workspaceId] ?? []
+    const deja = ouverts.some((j) => j.nom === service.nom)
+    set({
+      journaux: deja
+        ? get().journaux
+        : {
+            ...get().journaux,
+            [workspaceId]: [...ouverts, { nom: service.nom, chemin: service.journal }]
+          },
+      journalActif: service.nom
+    })
+  },
+
+  choisirJournal: (nom) => set({ journalActif: nom }),
+
+  fermerJournal: (workspaceId, nom) => {
+    const restants = (get().journaux[workspaceId] ?? []).filter((j) => j.nom !== nom)
+    set({
+      journaux: { ...get().journaux, [workspaceId]: restants },
+      // Fermer celui qu'on regardait rend l'écran au terminal, jamais à un
+      // journal voisin qu'on n'a pas demandé.
+      journalActif: get().journalActif === nom ? undefined : get().journalActif
+    })
   },
 
   chargerServices: async (workspaceId) => {
@@ -608,7 +650,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   },
 
   choisirOnglet: (id) => {
-    set({ activeTabId: id })
+    set({ activeTabId: id, journalActif: undefined })
     // Le processus principal tient l'ordre des onglets par dernière visite :
     // sans ce mot, il ne saurait pas lequel on regarde.
     void window.claudex.term.focus(id)

@@ -1,4 +1,5 @@
 import { useStore } from '@renderer/state/store'
+import { SuiviJournal } from '../services/FenetreJournal'
 import { TerminalInstance } from './TerminalInstance'
 import { TerminalTabs } from './TerminalTabs'
 
@@ -12,8 +13,14 @@ export function TerminalPane(): React.JSX.Element {
   const fermerOnglet = useStore((e) => e.fermerOnglet)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const sollicitations = useStore((e) => e.sollicitations)
+  const journaux = useStore((e) => (e.activeWorkspaceId ? e.journaux[e.activeWorkspaceId] : undefined))
+  const journalActif = useStore((e) => e.journalActif)
+  const choisirJournal = useStore((e) => e.choisirJournal)
+  const fermerJournal = useStore((e) => e.fermerJournal)
 
   const courant = workspaces.find((w) => w.id === workspaceActif)
+  const ouverts = journaux ?? []
+  const regarde = ouverts.find((j) => j.nom === journalActif)
 
   if (!courant) {
     return (
@@ -31,6 +38,10 @@ export function TerminalPane(): React.JSX.Element {
     <section className="flex h-full min-w-0 flex-col bg-fond">
       <TerminalTabs
         tabs={tabs}
+        journaux={ouverts}
+        journalActif={journalActif}
+        onChoisirJournal={choisirJournal}
+        onFermerJournal={(nom) => fermerJournal(courant.id, nom)}
         sollicitees={new Set(Object.keys(sollicitations))}
         actifId={activeTabId}
         onChoisir={choisirOnglet}
@@ -43,7 +54,17 @@ export function TerminalPane(): React.JSX.Element {
       />
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {tabs.length === 0 ? (
+        {regarde ? (
+          // Le journal prend toute la place du terminal : c'est un écran, pas un
+          // panneau. Les terminaux restent montés dessous, leur session vivant
+          // sa vie, et reviennent tels quels au clic sur leur onglet.
+          <SuiviJournal
+            key={regarde.nom}
+            chemin={regarde.chemin}
+            titre={regarde.nom}
+            onFermer={() => fermerJournal(courant.id, regarde.nom)}
+          />
+        ) : tabs.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             {/* Le logo seul : ouvrir un terminal se fait depuis l'en-tête, la
                 colonne des conversations ou au clavier, et un bouton de plus au milieu
