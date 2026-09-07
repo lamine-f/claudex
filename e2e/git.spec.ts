@@ -248,13 +248,17 @@ test.describe('vue de diff', () => {
     )
     await writeFile(join(projet, 'neuf.txt'), 'tout neuf\n')
 
-    // Deux cents lignes changées : de quoi dépasser la fenêtre.
-    const corps = (marque: string): string =>
-      Array.from({ length: 200 }, (_, n) => `ligne ${n} ${marque}`).join('\n') + '\n'
-    await writeFile(join(projet, 'long.txt'), corps('avant'))
+    // Deux cents lignes, dont trois changées et bien espacées : de quoi
+    // dépasser la fenêtre, faire plusieurs sections, et laisser du contexte
+    // entre elles.
+    const corps = (changees: number[]): string =>
+      Array.from({ length: 200 }, (_, n) =>
+        changees.includes(n) ? `ligne ${n} après` : `ligne ${n}`
+      ).join('\n') + '\n'
+    await writeFile(join(projet, 'long.txt'), corps([]))
     await run('git', ['-C', projet, 'add', 'long.txt'])
     await run('git', ['-C', projet, 'commit', '-qm', 'long'])
-    await writeFile(join(projet, 'long.txt'), corps('après'))
+    await writeFile(join(projet, 'long.txt'), corps([20, 100, 180]))
 
     // Une ligne bien plus large que la colonne, comme un fichier minifié.
     await writeFile(join(projet, 'large.txt'), 'court\n')
@@ -315,6 +319,19 @@ test.describe('vue de diff', () => {
     await expect(ctx.page.getByText('tout neuf', { exact: true })).toBeVisible()
   })
 
+  /**
+   * Met la vue sur le fichier entier, d'où qu'elle parte, et attend qu'il soit
+   * là. Basculer relit le diff : mesurer aussitôt attrape l'état d'avant.
+   */
+  const montrerTout = async (): Promise<void> => {
+    const bascule = ctx.page.getByRole('button', { name: /^(changements|fichier entier)$/ })
+    if ((await bascule.textContent()) === 'changements') await bascule.click()
+    await expect(ctx.page.getByRole('button', { name: 'fichier entier' })).toBeVisible()
+    await expect
+      .poll(async () => ctx.page.getByLabel('Contenu du diff').locator('tr').count())
+      .toBeGreaterThan(150)
+  }
+
   test('un long diff défile', async () => {
     // Deux cents lignes changées tiennent plus que la fenêtre. Sans hauteur
     // bornée quelque part dans la chaîne, la vue pousse la fenêtre au lieu de
@@ -324,6 +341,7 @@ test.describe('vue de diff', () => {
     const zone = ctx.page.getByLabel('Contenu du diff')
     // Le diff se lit derrière : mesurer avant qu'il n'arrive ne dirait rien.
     await expect(zone.locator('tr').first()).toBeVisible()
+    await montrerTout()
 
     const mesures = await zone.evaluate((el) => ({
       contenu: el.scrollHeight,
@@ -359,6 +377,75 @@ test.describe('vue de diff', () => {
     }))
     expect(unifie.contenu).toBeGreaterThan(unifie.visible)
     await ctx.page.getByRole('button', { name: /côte à côte|unifié/ }).click()
+  })
+
+  test('montre le fichier entier, ou les seuls changements', async () => {
+    // Trois lignes de contexte font des îlots que l'on saute d'un bond. Le
+    // fichier entier se parcourt, ce qui est parfois la seule façon de
+    // comprendre ce qu'un changement touche. C'est la vue d'IntelliJ, qui
+    // montre tout et propose de replier.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    const zone = ctx.page.getByLabel('Contenu du diff')
+    const bascule = ctx.page.getByRole('button', { name: /^(changements|fichier entier)$/ })
+    const coupures = zone.getByText(/^@@ /)
+
+    // Le test d'avant a pu laisser la vue sur le fichier entier. On la ramène
+    // sur les changements seuls, et l'on attend qu'elle y soit : basculer relit
+    // le diff, et compter entre-temps compterait celui d'avant.
+    if ((await bascule.textContent()) === 'fichier entier') await bascule.click()
+    await expect(bascule).toHaveText('changements')
+    await expect(coupures.first()).toBeVisible()
+
+    // Trois lignes de contexte font des îlots séparés par des coupures.
+    const troisChangements = 3
+    await expect(coupures).toHaveCount(troisChangements)
+    // Trois îlots de sept lignes au plus : loin des deux cents du fichier.
+    await expect.poll(async () => zone.locator('tr').count()).toBeLessThan(40)
+
+    // Tout le fichier : les deux cents lignes, et plus une seule coupure. C'est
+    // la vue d'IntelliJ, qui montre tout et propose de replier.
+    await bascule.click()
+    await expect(bascule).toHaveText('fichier entier')
+    await expect(coupures).toHaveCount(0)
+    await expect.poll(async () => zone.locator('tr').count()).toBeGreaterThan(150)
+
+    // Le choix se retient d'un fichier à l'autre, comme la forme.
+    await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
+    await ctx.page.getByTitle(/voir le diff de base\.txt/).click()
+    await expect(ctx.page.getByRole('button', { name: 'fichier entier' })).toBeVisible()
+  })
+
+  test('mène d’un changement au suivant', async () => {
+    // Le geste de F7 dans IntelliJ. Il prend tout son sens le fichier entier
+    // affiché, où deux lignes changées se perdent dans quatre mille.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    const zone = ctx.page.getByLabel('Contenu du diff')
+    await expect(zone.locator('tr').first()).toBeVisible()
+    await montrerTout()
+
+    const haut = async (): Promise<number> => zone.evaluate((el) => el.scrollTop)
+    const suivant = ctx.page.getByRole('button', { name: 'Changement suivant' })
+    const precedent = ctx.page.getByRole('button', { name: 'Changement précédent' })
+    expect(await haut()).toBe(0)
+
+    await suivant.click()
+    const premier = await haut()
+    expect(premier).toBeGreaterThan(0)
+
+    await suivant.click()
+    const second = await haut()
+    expect(second).toBeGreaterThan(premier)
+
+    // Et l'on revient sur ses pas, à l'endroit exact d'où l'on venait.
+    await precedent.click()
+    expect(await haut()).toBe(premier)
+
+    // Au bout, on ne bouge plus : repartir de l'autre extrémité ferait sauter
+    // l'écran d'un bout à l'autre du fichier sans qu'on l'ait demandé.
+    await precedent.click()
+    const debut = await haut()
+    await precedent.click()
+    expect(await haut()).toBe(debut)
   })
 
   test('un binaire le dit, plutôt que de rester vide', async () => {

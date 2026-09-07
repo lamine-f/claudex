@@ -17,7 +17,7 @@ export function registerGitIpc(): void {
       workspaceId: string,
       depot: string,
       fichier: string,
-      options: { indexe?: boolean; nonSuivi?: boolean }
+      options: { indexe?: boolean; nonSuivi?: boolean; contexte?: number }
     ): Promise<DiffLu> => {
       const workspace = store.get().workspaces.find((w) => w.id === workspaceId)
       if (!workspace) return { sortie: '' }

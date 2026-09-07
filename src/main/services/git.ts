@@ -248,9 +248,20 @@ export interface DiffLu {
 export async function diff(
   depot: string,
   fichier: string,
-  options: { indexe?: boolean; nonSuivi?: boolean } = {}
+  options: { indexe?: boolean; nonSuivi?: boolean; contexte?: number } = {}
 ): Promise<DiffLu> {
-  const commun = ['-c', 'core.quotepath=false', '-C', depot, 'diff', '--no-color', '-U3']
+  // Trois lignes autour de chaque changement, ou le fichier entier. IntelliJ
+  // montre tout par défaut et propose de replier ; l'inverse coûte moins cher
+  // à afficher, et la bascule mène au même endroit.
+  const commun = [
+    '-c',
+    'core.quotepath=false',
+    '-C',
+    depot,
+    'diff',
+    '--no-color',
+    `-U${options.contexte ?? 3}`
+  ]
   const arguments_ = options.nonSuivi
     ? [...commun, '--no-index', '--', '/dev/null', fichier]
     : [...commun, ...(options.indexe ? ['--cached'] : []), '--', fichier]

@@ -167,7 +167,7 @@ const api = {
       workspaceId: string,
       depot: string,
       fichier: string,
-      options: { indexe?: boolean; nonSuivi?: boolean } = {}
+      options: { indexe?: boolean; nonSuivi?: boolean; contexte?: number } = {}
     ): Promise<{ sortie: string; trop?: number }> =>
       ipcRenderer.invoke('git:diff', workspaceId, depot, fichier, options),
     commiter: (

@@ -156,6 +156,15 @@ interface EtatUi {
   /** Forme du diff, retenue d'un fichier à l'autre. */
   diffCoteACote: boolean
   basculerDiffCoteACote: () => void
+  /**
+   * Le fichier entier plutôt que les seuls changements.
+   *
+   * IntelliJ montre tout et propose de replier. L'inverse coûte moins cher à
+   * afficher, mais parcourir un fichier de bout en bout est parfois la seule
+   * façon de comprendre ce qu'un changement touche.
+   */
+  diffEntier: boolean
+  basculerDiffEntier: () => void
 
   /** Conversation dont on s'apprête à bifurquer, le temps de la nommer. */
   bifurcationEnCours?: { workspaceId: string; uuid: string; titre: string }
@@ -295,6 +304,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   depotsReplies: {},
   coches: [],
   diffCoteACote: true,
+  diffEntier: false,
   groupesReplies: {},
   sessions: {},
   rangements: {},
@@ -496,6 +506,8 @@ export const useStore = create<EtatUi>((set, get) => ({
   },
 
   basculerDiffCoteACote: () => set({ diffCoteACote: !get().diffCoteACote }),
+
+  basculerDiffEntier: () => set({ diffEntier: !get().diffEntier }),
 
   cocher: (cles, coche) => {
     const restantes = get().coches.filter((c) => !cles.includes(c))
