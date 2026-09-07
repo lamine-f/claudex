@@ -1,4 +1,5 @@
 import { useStore } from '@renderer/state/store'
+import type { Vue } from '@renderer/state/vues'
 import { SuiviJournal } from '../services/FenetreJournal'
 import { TerminalInstance } from './TerminalInstance'
 import { TerminalTabs } from './TerminalTabs'
@@ -14,13 +15,12 @@ export function TerminalPane(): React.JSX.Element {
   const fermerOnglets = useStore((e) => e.fermerOnglets)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const sollicitations = useStore((e) => e.sollicitations)
-  const journaux = useStore((e) => (e.activeWorkspaceId ? e.journaux[e.activeWorkspaceId] : undefined))
-  const journalActif = useStore((e) => e.journalActif)
-  const fermerJournal = useStore((e) => e.fermerJournal)
+  const vues = useStore((e) => (e.activeWorkspaceId ? e.vues[e.activeWorkspaceId] : undefined))
+  const vueActive = useStore((e) => e.vueActive)
+  const fermerVue = useStore((e) => e.fermerVue)
 
   const courant = workspaces.find((w) => w.id === workspaceActif)
-  const ouverts = journaux ?? []
-  const regarde = ouverts.find((j) => j.nom === journalActif)
+  const regarde = (vues ?? []).find((v) => v.id === vueActive)
 
   if (!courant) {
     return (
@@ -38,7 +38,7 @@ export function TerminalPane(): React.JSX.Element {
     <section className="flex h-full min-w-0 flex-col bg-fond">
       <TerminalTabs
         tabs={tabs}
-        journalOuvert={Boolean(regarde)}
+        vueOuverte={Boolean(regarde)}
         sollicitees={new Set(Object.keys(sollicitations))}
         actifId={activeTabId}
         onChoisir={choisirOnglet}
@@ -53,14 +53,13 @@ export function TerminalPane(): React.JSX.Element {
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {regarde ? (
-          // Le journal prend toute la place du terminal : c'est un écran, pas un
+          // Une vue prend toute la place du terminal : c'est un écran, pas un
           // panneau. Les terminaux restent montés dessous, leur session vivant
           // sa vie, et reviennent tels quels au clic sur leur onglet.
-          <SuiviJournal
-            key={regarde.nom}
-            chemin={regarde.chemin}
-            titre={regarde.nom}
-            onFermer={() => fermerJournal(courant.id, regarde.nom)}
+          <VueOuverte
+            key={regarde.id}
+            vue={regarde}
+            onFermer={() => fermerVue(courant.id, regarde.id)}
           />
         ) : tabs.length === 0 ? (
           <div className="flex h-full items-center justify-center">
@@ -82,4 +81,17 @@ export function TerminalPane(): React.JSX.Element {
       </div>
     </section>
   )
+}
+
+/**
+ * Ce qu'une vue montre, selon son genre.
+ *
+ * Le point unique où le genre se lit. Ailleurs, une vue est une vue : elle
+ * s'ouvre, elle se ferme, elle occupe l'écran.
+ */
+function VueOuverte({ vue, onFermer }: { vue: Vue; onFermer: () => void }): React.JSX.Element {
+  switch (vue.genre) {
+    case 'journal':
+      return <SuiviJournal chemin={vue.chemin} titre={vue.titre} onFermer={onFermer} />
+  }
 }

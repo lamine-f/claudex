@@ -6,8 +6,8 @@ import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icon
 
 interface Props {
   tabs: Tab[]
-  /** Vrai quand un journal de service occupe l'écran à la place du terminal. */
-  journalOuvert?: boolean
+  /** Vrai quand une vue occupe l'écran à la place du terminal. */
+  vueOuverte?: boolean
   /** Conversations qui réclament leur utilisateur, par identifiant de session. */
   sollicitees: Set<string>
   actifId?: string
@@ -25,7 +25,7 @@ interface Props {
  */
 export function TerminalTabs({
   tabs,
-  journalOuvert,
+  vueOuverte,
   sollicitees,
   actifId,
   onChoisir,
@@ -34,8 +34,8 @@ export function TerminalTabs({
   onNouveau,
   onBifurquer
 }: Props): React.JSX.Element {
-  // Rien à bifurquer quand on regarde un journal : ce n'est pas une conversation.
-  const actif = journalOuvert ? undefined : tabs.find((t) => t.id === actifId)
+  // Rien à bifurquer quand on regarde une vue : ce n'est pas une conversation.
+  const actif = vueOuverte ? undefined : tabs.find((t) => t.id === actifId)
   const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
 
   /**

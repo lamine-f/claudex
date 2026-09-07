@@ -26,6 +26,7 @@ import type {
   Tab,
   Workspace
 } from '@shared/types'
+import type { Vue } from './vues'
 
 interface EtatUi {
   workspaces: Workspace[]
@@ -58,12 +59,12 @@ interface EtatUi {
   /**
    * Journaux ouverts, par projet.
    *
-   * Ils s'affichent en onglets à côté des conversations, mais ne sont pas de
-   * même nature : un onglet de conversation *est* la session, et la fermer la
-   * tue ; un onglet de journal n'est qu'une vue posée sur un fichier, et la
-   * fermer ne touche pas au service, qui continue de tourner.
+   * Elles prennent la place du terminal sans le démonter, mais ne sont pas de
+   * même nature qu'un onglet. Un onglet *est* la session, et la fermer la tue.
+   * Une vue n'est qu'un regard posé sur ce qui existe ailleurs, et la fermer
+   * ne touche à rien : le service continue de tourner, le fichier reste.
    */
-  journaux: Record<string, { nom: string; chemin: string }[]>
+  vues: Record<string, Vue[]>
   /**
    * Groupes de services repliés, par projet.
    *
@@ -73,12 +74,11 @@ interface EtatUi {
    */
   groupesReplies: Record<string, string[]>
   replierGroupeService: (workspaceId: string, groupe: string) => void
-  /** Le journal regardé, s'il en est un. Sinon, c'est le terminal qu'on voit. */
-  journalActif?: string
-  ouvrirJournal: (workspaceId: string, service: ServiceVu) => void
-  /** Ramène l'écran sur un journal déjà ouvert. */
-  choisirJournal: (nom: string) => void
-  fermerJournal: (workspaceId: string, nom: string) => void
+  /** La vue regardée, s'il en est une. Sinon, c'est le terminal qu'on voit. */
+  vueActive?: string
+  /** Ouvre une vue, ou revient dessus si elle l'est déjà. */
+  ouvrirVue: (workspaceId: string, vue: Vue) => void
+  fermerVue: (workspaceId: string, id: string) => void
   chargerServices: (workspaceId: string) => Promise<void>
   demarrerServices: (workspaceId: string, noms: string[]) => Promise<void>
   arreterServices: (workspaceId: string, noms: string[]) => Promise<void>
@@ -270,7 +270,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   tabs: [],
   comptesOnglets: {},
   services: {},
-  journaux: {},
+  vues: {},
   groupesReplies: {},
   sessions: {},
   rangements: {},
@@ -445,21 +445,14 @@ export const useStore = create<EtatUi>((set, get) => ({
     if (retenu && retenu !== courant) void window.claudex.term.focus(retenu)
   },
 
-  ouvrirJournal: (workspaceId, service) => {
-    const ouverts = get().journaux[workspaceId] ?? []
-    const deja = ouverts.some((j) => j.nom === service.nom)
+  ouvrirVue: (workspaceId, vue) => {
+    const ouvertes = get().vues[workspaceId] ?? []
+    const deja = ouvertes.some((v) => v.id === vue.id)
     set({
-      journaux: deja
-        ? get().journaux
-        : {
-            ...get().journaux,
-            [workspaceId]: [...ouverts, { nom: service.nom, chemin: service.journal }]
-          },
-      journalActif: service.nom
+      vues: deja ? get().vues : { ...get().vues, [workspaceId]: [...ouvertes, vue] },
+      vueActive: vue.id
     })
   },
-
-  choisirJournal: (nom) => set({ journalActif: nom }),
 
   replierGroupeService: (workspaceId, groupe) => {
     const replies = get().groupesReplies[workspaceId] ?? []
@@ -473,13 +466,13 @@ export const useStore = create<EtatUi>((set, get) => ({
     })
   },
 
-  fermerJournal: (workspaceId, nom) => {
-    const restants = (get().journaux[workspaceId] ?? []).filter((j) => j.nom !== nom)
+  fermerVue: (workspaceId, id) => {
+    const restantes = (get().vues[workspaceId] ?? []).filter((v) => v.id !== id)
     set({
-      journaux: { ...get().journaux, [workspaceId]: restants },
-      // Fermer celui qu'on regardait rend l'écran au terminal, jamais à un
-      // journal voisin qu'on n'a pas demandé.
-      journalActif: get().journalActif === nom ? undefined : get().journalActif
+      vues: { ...get().vues, [workspaceId]: restantes },
+      // Fermer celle qu'on regardait rend l'écran au terminal, jamais à une
+      // vue voisine qu'on n'a pas demandée.
+      vueActive: get().vueActive === id ? undefined : get().vueActive
     })
   },
 
@@ -769,7 +762,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   },
 
   choisirOnglet: (id) => {
-    set({ activeTabId: id, journalActif: undefined })
+    set({ activeTabId: id, vueActive: undefined })
     // Le processus principal tient l'ordre des onglets par dernière visite :
     // sans ce mot, il ne saurait pas lequel on regarde.
     void window.claudex.term.focus(id)

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { ServiceVu } from '@shared/types'
 import { useStore } from '@renderer/state/store'
+import { vueJournal } from '@renderer/state/vues'
 import { raccourci } from '@renderer/systeme'
 import { FileTree } from '../files/FileTree'
 import { ListeServices } from '../services/ListeServices'
@@ -41,10 +42,9 @@ export function ColonneLaterale(): React.JSX.Element {
   const services = useStore((e) => (actif ? e.services[actif] : undefined))
   const debout = services?.filter((s) => s.etat !== 'arrete').length
 
-  // Le journal s'ouvre en onglet, à côté des conversations, et prend toute la
-  // place du terminal. L'onglet est une vue : le fermer ne touche pas au
-  // service, qui continue de tourner.
-  const ouvrirJournal = useStore((e) => e.ouvrirJournal)
+  // Le journal prend toute la place du terminal. C'est une vue : la fermer ne
+  // touche pas au service, qui continue de tourner.
+  const ouvrirVue = useStore((e) => e.ouvrirVue)
   const rafraichirArbre = useStore((e) => e.rafraichirArbre)
 
   /** Écrit le skill qui dit aux agents où sont les journaux des services. */
@@ -174,7 +174,7 @@ export function ColonneLaterale(): React.JSX.Element {
         <FileTree />
       ) : panneau === 'services' ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <ListeServices workspaceId={courant.id} onVoirJournal={(service) => ouvrirJournal(courant.id, service)} />
+          <ListeServices workspaceId={courant.id} onVoirJournal={(service) => ouvrirVue(courant.id, vueJournal(service))} />
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
