@@ -8,6 +8,7 @@ import {
   IconeArborescence,
   IconeConversations,
   IconeServices,
+  IconeSkill,
   IconeNouveauGroupe,
   IconePlus,
   IconeSynchro
@@ -44,6 +45,12 @@ export function ColonneLaterale(): React.JSX.Element {
   // place du terminal. L'onglet est une vue : le fermer ne touche pas au
   // service, qui continue de tourner.
   const ouvrirJournal = useStore((e) => e.ouvrirJournal)
+  const rafraichirArbre = useStore((e) => e.rafraichirArbre)
+
+  /** Écrit le skill qui dit aux agents où sont les journaux des services. */
+  const ecrireSkill = (workspaceId: string): void => {
+    void window.claudex.services.skill(workspaceId)
+  }
 
   // Le compte annoncé est celui des conversations, groupées ou non : c'est ce
   // que l'on cherche, pas le nombre de lignes de la colonne.
@@ -105,29 +112,61 @@ export function ColonneLaterale(): React.JSX.Element {
         {onglet('fichiers', 'Fichiers', <IconeArborescence taille={17} />)}
         {onglet('services', 'Services', <IconeServices taille={16} />, debout)}
         <div className="flex-1" />
-
-        {panneau === 'sessions' && courant && (
-          <>
-            {outil(
-              'Relire les conversations',
-              <IconeSynchro taille={15} />,
-              () => void chargerSessions(courant.id),
-              chargement ? 'animate-spin' : ''
-            )}
-            {outil('Nouveau groupe', <IconeNouveauGroupe taille={15} />, () =>
-              void ouvrirGroupe(courant.id)
-            )}
-            {outil(
-              'Nouvelle conversation',
-              <IconePlus taille={16} />,
-              () => void ouvrirSession(courant.id, 'nouvelle'),
-              'hover:text-accent'
-            )}
-          </>
-        )}
-
         <span className="pr-1 font-mono text-[10px] text-texte-tenu">{raccourci('E')}</span>
       </div>
+
+      {/* Une barre par page, de même facture : le filtre à gauche, les gestes
+          de la page à droite. Les gestes vivaient dans la rangée des onglets,
+          où ils changeaient de place selon la page regardée, et le filtre
+          n'existait que pour les conversations. */}
+      {courant && (
+        <div className="flex shrink-0 items-center gap-1.5 px-2.5 pb-2">
+          <input
+            type="search"
+            value={filtre}
+            onChange={(e) => filtrer(e.target.value)}
+            placeholder={
+              panneau === 'sessions'
+                ? 'Filtrer les conversations'
+                : panneau === 'fichiers'
+                  ? 'Filtrer les fichiers'
+                  : 'Filtrer les services'
+            }
+            aria-label="Filtrer"
+            className="min-w-0 flex-1 rounded-md border border-separateur bg-fond-creux px-3 py-2 font-mono text-[12.5px] text-texte-doux placeholder:text-texte-tenu focus:border-bordure focus:outline-none"
+          />
+
+          {panneau === 'sessions' && (
+            <>
+              {outil(
+                'Relire les conversations',
+                <IconeSynchro taille={15} />,
+                () => void chargerSessions(courant.id),
+                chargement ? 'animate-spin' : ''
+              )}
+              {outil('Nouveau groupe', <IconeNouveauGroupe taille={15} />, () =>
+                void ouvrirGroupe(courant.id)
+              )}
+              {outil(
+                'Nouvelle conversation',
+                <IconePlus taille={16} />,
+                () => void ouvrirSession(courant.id, 'nouvelle'),
+                'hover:text-accent'
+              )}
+            </>
+          )}
+
+          {panneau === 'fichiers' &&
+            outil('Relire l’arborescence', <IconeSynchro taille={15} />, () =>
+              void rafraichirArbre(courant.path)
+            )}
+
+          {panneau === 'services' &&
+            outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
+              void ecrireSkill(courant.id)
+            )}
+        </div>
+      )}
 
       {!courant ? (
         <p className="px-3 py-2 text-[12.5px] text-texte-faible">Aucun projet sélectionné.</p>
@@ -138,20 +177,8 @@ export function ColonneLaterale(): React.JSX.Element {
           <ListeServices workspaceId={courant.id} onVoirJournal={(service) => ouvrirJournal(courant.id, service)} />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="px-2.5 pb-2">
-            <input
-              type="search"
-              value={filtre}
-              onChange={(e) => filtrer(e.target.value)}
-              placeholder="Filtrer les sessions"
-              className="w-full rounded-md border border-separateur bg-fond-creux px-3 py-2 font-mono text-[12.5px] text-texte-doux placeholder:text-texte-tenu focus:border-bordure focus:outline-none"
-            />
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <ListeSessions workspaceId={courant.id} />
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ListeSessions workspaceId={courant.id} />
         </div>
       )}
     </section>

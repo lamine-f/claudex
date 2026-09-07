@@ -191,7 +191,7 @@ services:
 
   test('le skill s’écrit sur demande, et dit où sont les journaux', async () => {
     await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
-    await ctx.page.getByRole('button', { name: 'écrire le skill' }).click()
+    await ctx.page.getByRole('button', { name: 'Écrire le skill des services' }).click()
 
     const skill = join(ctx.projet, '.claude', 'skills', 'services-du-projet', 'SKILL.md')
     await expect.poll(async () => readFile(skill, 'utf8').catch(() => '')).toContain(

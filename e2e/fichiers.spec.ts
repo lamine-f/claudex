@@ -132,7 +132,9 @@ test.describe('arborescence et aperçu', () => {
 
     // Sous la dernière ligne : là, le clic droit ne vise plus une entrée mais
     // le projet lui-même.
-    const arbre = ctx.page.getByLabel('Arborescence')
+    // Le bouton de la barre porte « Relire l'arborescence » : on vise la zone
+    // elle-même, dont l'intitulé est exactement « Arborescence ».
+    const arbre = ctx.page.getByLabel('Arborescence', { exact: true })
     const cadre = await arbre.boundingBox()
     if (!cadre) throw new Error('l’arborescence n’est pas à l’écran')
     await ctx.page.mouse.click(cadre.x + 30, cadre.y + cadre.height - 12, { button: 'right' })

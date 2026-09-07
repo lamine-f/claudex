@@ -6,8 +6,7 @@ import {
   IconeArreter,
   IconeDemarrer,
   IconeLiberer,
-  IconeRelancer,
-  IconeSkill
+  IconeRelancer
 } from '../ui/Icones'
 
 /**
@@ -40,7 +39,12 @@ interface Props {
 }
 
 export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.Element {
-  const services = useStore((e) => e.services[workspaceId])
+  const tous = useStore((e) => e.services[workspaceId])
+  const filtre = useStore((e) => e.filtre)
+  const services = useMemo(() => {
+    const terme = filtre.trim().toLowerCase()
+    return terme ? tous?.filter((s) => s.nom.toLowerCase().includes(terme)) : tous
+  }, [tous, filtre])
   const charger = useStore((e) => e.chargerServices)
   const demarrer = useStore((e) => e.demarrerServices)
   const arreter = useStore((e) => e.arreterServices)
@@ -48,7 +52,6 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const relancer = useStore((e) => e.relancerService)
   const reprendre = useStore((e) => e.reprendrePort)
   const [enCours, setEnCours] = useState<string[]>([])
-  const [skillEcrit, setSkillEcrit] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
   const [echec, setEchec] = useState<string | null>(null)
 
@@ -167,12 +170,6 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
         <IconeArreter taille={13} />,
         onClic
       ),
-      'écrire le skill': geste(
-        'écrire le skill',
-        'Écrire le skill qui dit aux agents où sont les journaux',
-        <IconeSkill taille={15} />,
-        onClic
-      )
     })[libelle] ?? <span />
 
   if (services === undefined) {
@@ -191,17 +188,6 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
     )
   }
 
-  /**
-   * Écrit le skill qui dit aux agents où sont les journaux.
-   *
-   * Sur demande et non d'office : c'est un fichier qui entre dans le dépôt, et
-   * Claudex n'ajoute rien au projet de quelqu'un sans qu'on le lui demande.
-   */
-  const ecrireSkill = async (): Promise<void> => {
-    const chemin = await window.claudex.services.skill(workspaceId)
-    setSkillEcrit(chemin)
-    setTimeout(() => setSkillEcrit(null), 6000)
-  }
 
   /**
    * Ce que le clic droit propose sur un service.
@@ -236,21 +222,11 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-separateur px-3 py-1.5">
-        <span
-          title={echec ?? undefined}
-          className={`min-w-0 flex-1 truncate font-mono text-[10.5px] ${
-            echec ? 'text-erreur' : 'text-texte-tenu'
-          }`}
-        >
-          {echec
-            ? echec
-            : skillEcrit
-              ? `skill écrit : ${skillEcrit.split(/[\\/]/).slice(-3).join('/')}`
-              : ''}
-        </span>
-        {bouton('écrire le skill', () => void ecrireSkill())}
-      </div>
+    {echec && (
+      <p title={echec} className="truncate px-3 py-1.5 font-mono text-[10.5px] text-erreur">
+        {echec}
+      </p>
+    )}
 
     <ul className="pb-2">
       {groupes.map(([groupe, membres]) => {

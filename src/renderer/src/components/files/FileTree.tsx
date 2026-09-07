@@ -68,10 +68,16 @@ export function FileTree(): React.JSX.Element {
     return window.claudex.fs.onChange((racine) => void rafraichirArbre(racine))
   }, [courant, rafraichirArbre])
 
-  const lignes = useMemo(
-    () => (courant ? aplatir(courant.path, arbre, new Set(dossiersOuverts)) : []),
-    [courant, arbre, dossiersOuverts]
-  )
+  const filtre = useStore((e) => e.filtre)
+
+  const lignes = useMemo(() => {
+    const toutes = courant ? aplatir(courant.path, arbre, new Set(dossiersOuverts)) : []
+    const terme = filtre.trim().toLowerCase()
+    // Le filtre ne montre que ce qui est déjà déplié : il tamise l'affichage,
+    // il ne parcourt pas le disque. Un dossier fermé garde donc ses secrets,
+    // ce qui vaut mieux que de lire un projet entier à chaque frappe.
+    return terme ? toutes.filter((l) => l.entree.nom.toLowerCase().includes(terme)) : toutes
+  }, [courant, arbre, dossiersOuverts, filtre])
 
   /**
    * Ce que le clic droit propose sur une entrée.
