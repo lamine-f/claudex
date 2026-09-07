@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { fermer, lancer, nouveauTerminal, type Contexte } from './fixtures'
 
 const run = promisify(execFile)
@@ -414,5 +414,69 @@ test.describe('changement de projet', () => {
       timeout: 5000
     })
     await expect(ctx.page.getByText('Lecture…')).toHaveCount(0)
+  })
+})
+
+/**
+ * L'indentation de la page Git est celle de l'arbre des fichiers.
+ *
+ * Deux arbres côte à côte dans la même colonne, à deux crans différents, se
+ * liraient comme deux applications.
+ */
+test.describe('imbrication de la page Git', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const projet = await mkdtemp(join(tmpdir(), 'claudex-crans-'))
+    await depot(projet, 'local')
+    await mkdir(join(projet, 'src'), { recursive: true })
+    await writeFile(join(projet, 'src', 'Lien.java'), 'class Lien {}\n')
+    await run('git', ['-C', projet, 'add', '-A'])
+    await run('git', ['-C', projet, 'commit', '-qm', 'source'])
+    await writeFile(join(projet, 'src', 'Lien.java'), 'class Lien { int x; }\n')
+
+    ctx = await lancer({ projet })
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  /** L'abscisse d'un élément à l'écran. */
+  const abscisse = async (cible: Locator): Promise<number> => {
+    const cadre = await cible.boundingBox()
+    expect(cadre).not.toBeNull()
+    return cadre!.x
+  }
+
+  test('descend d’un cran de la même largeur que l’arbre des fichiers', async () => {
+    // L'arbre donne la mesure : un dossier et le fichier qu'il porte.
+    await ctx.page.getByRole('button', { name: 'Fichiers', exact: true }).click()
+    await ctx.page.getByTitle(join(ctx.projet, 'src')).click()
+    const dossier = await abscisse(ctx.page.getByText('src', { exact: true }))
+    const dedans = await abscisse(
+      ctx.page.getByTitle(join(ctx.projet, 'src', 'Lien.java')).getByText('Lien.java')
+    )
+    const cran = dedans - dossier
+    expect(cran).toBeGreaterThan(0)
+
+    // La page Git suit le même cran. Les cases à cocher sont les points
+    // homologues : le premier élément de chaque ligne après ses traits.
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+    const caseDepot = ctx.page.getByRole('checkbox', { name: /^Tout cocher dans claudex-/ })
+    const caseFichier = ctx.page.getByRole('checkbox', { name: 'src/Lien.java' })
+    expect((await abscisse(caseFichier)) - (await abscisse(caseDepot))).toBeCloseTo(cran, 0)
+  })
+
+  test('peint la ligne d’un fichier d’un bord à l’autre', async () => {
+    // Le décalage est posé dans la ligne et non en marge du conteneur : mis en
+    // marge, la zone d'indentation sortirait du survol, et la ligne d'un
+    // fichier ne se peindrait plus jusqu'au bord.
+    const section = ctx.page
+      .getByRole('checkbox', { name: 'Tout cocher dans Changements' })
+      .locator('xpath=..')
+    const fichier = ctx.page.getByTitle('Voir le diff de src/Lien.java').locator('xpath=..')
+
+    expect(await abscisse(fichier)).toBeCloseTo(await abscisse(section), 0)
   })
 })

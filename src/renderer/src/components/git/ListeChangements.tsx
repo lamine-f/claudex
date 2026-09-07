@@ -142,7 +142,8 @@ function Racine({
 
   return (
     <li>
-      <div className="flex h-9 items-center gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
+      <div className="flex h-9 items-stretch gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
+        <Traits profondeur={0} />
         <Case
           cochee={tout}
           partielle={!tout && cles.some((c) => coches.includes(c))}
@@ -165,13 +166,7 @@ function Racine({
         </button>
       </div>
 
-      {/* Le filet rattache les dépôts à leur section : sans lui, l'indentation
-          seule ne dit pas où la section s'arrête. */}
-      <ul
-        hidden={replie}
-        aria-label={TITRES[section]}
-        className="ml-[13px] border-l border-separateur"
-      >
+      <ul hidden={replie} aria-label={TITRES[section]}>
         {depots.map((depot) => (
           <Depot
             key={depot.chemin}
@@ -210,7 +205,8 @@ function Depot({
 
   return (
     <li>
-      <div className="flex h-9 items-center gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
+      <div className="flex h-9 items-stretch gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
+        <Traits profondeur={1} />
         <Case
           cochee={tout}
           partielle={!tout && cles.some((c) => coches.includes(c))}
@@ -257,11 +253,7 @@ function Depot({
         </button>
       </div>
 
-      <ul
-        hidden={replie}
-        aria-label={`${depot.nom} dans ${TITRES[section]}`}
-        className="ml-[13px] border-l border-separateur"
-      >
+      <ul hidden={replie} aria-label={`${depot.nom} dans ${TITRES[section]}`}>
         {depot.fichiers.map((fichier) => {
           const cle = cleDe(depot.chemin, fichier.chemin)
           const marque = MARQUES[marqueDe(fichier)]
@@ -270,8 +262,9 @@ function Depot({
           return (
             <li
               key={fichier.chemin}
-              className="flex items-center gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol"
+              className="flex items-stretch gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol"
             >
+              <Traits profondeur={2} />
               <Case
                 cochee={coches.includes(cle)}
                 libelle={fichier.chemin}
@@ -280,7 +273,7 @@ function Depot({
               <span
                 aria-label={marque.mot}
                 title={marque.mot}
-                className={`ml-1 h-[7px] w-[7px] shrink-0 rounded-full ${marque.teinte}`}
+                className={`ml-1 h-[7px] w-[7px] shrink-0 self-center rounded-full ${marque.teinte}`}
               />
               <button
                 type="button"
@@ -329,6 +322,25 @@ function Depot({
   )
 }
 
+/**
+ * Un trait par niveau parcouru, posé dans la ligne elle-même.
+ *
+ * La même mesure que l'arbre des fichiers, et le même procédé : mis en marge du
+ * conteneur, le décalage sortirait la zone d'indentation du survol, et la ligne
+ * ne se peindrait plus d'un bord à l'autre.
+ */
+const Traits = ({ profondeur }: { profondeur: number }): React.JSX.Element => (
+  // Les traits vivent dans une boîte à eux, et non côte à côte dans la ligne :
+  // l'espacement du conteneur s'y glisserait entre chacun, et un cran vaudrait
+  // vingt pixels au premier niveau, vingt-six au suivant. La boîte est là même
+  // quand elle est vide, pour que le décalage soit le même partout.
+  <span aria-hidden className="flex shrink-0">
+    {Array.from({ length: profondeur }, (_, niveau) => (
+      <span key={niveau} className="ml-[9px] w-[11px] shrink-0 border-l border-separateur" />
+    ))}
+  </span>
+)
+
 const Chevron = ({ replie }: { replie: boolean }): React.JSX.Element => (
   <span
     aria-hidden
@@ -365,7 +377,7 @@ function Case({
       aria-checked={partielle ? 'mixed' : cochee}
       aria-label={libelle}
       onClick={onBasculer}
-      className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+      className={`flex h-3.5 w-3.5 shrink-0 self-center items-center justify-center rounded-[3px] border transition-colors ${
         cochee || partielle
           ? 'border-projet bg-projet text-fond'
           : 'border-bordure hover:border-texte-tenu'
