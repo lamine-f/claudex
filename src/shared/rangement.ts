@@ -1,11 +1,14 @@
-import type { ClaudeSession } from './types'
-
 /**
- * Rangement des conversations d'un projet.
+ * Rangement d'une liste, à la main.
  *
- * Les conversations viennent du disque, où rien ne dit dans quel ordre on veut
- * les voir ni ce qui va avec quoi. Ce rangement est la couche que l'on pose
- * par-dessus : un ordre choisi à la main, et des groupes nommés.
+ * Les conversations viennent du disque, les projets d'un fichier d'état : ni
+ * les unes ni les autres ne disent dans quel ordre on veut les voir ni ce qui
+ * va avec quoi. Ce rangement est la couche que l'on pose par-dessus : un ordre
+ * choisi à la main, et des groupes nommés.
+ *
+ * Il ne connaît de ce qu'il range que son identifiant. C'est ce qui lui permet
+ * de servir aux conversations comme aux projets, sans qu'on écrive deux fois la
+ * même mécanique de glisser-déposer.
  *
  * Il ne cite que ce que l'on a déplacé. Tant qu'on n'a rien touché, il est vide
  * et la liste garde son ordre naturel — favoris en tête, puis les plus
@@ -33,10 +36,10 @@ export interface Rangement {
 
 export const RANGEMENT_VIDE: Rangement = { ordre: [], groupes: {} }
 
-/** Une ligne de la colonne, une fois le rangement appliqué aux conversations. */
-export type Ligne =
-  | { type: 'groupe'; id: string; nom: string; replie: boolean; sessions: ClaudeSession[] }
-  | { type: 'session'; session: ClaudeSession }
+/** Une ligne de la liste, une fois le rangement appliqué. */
+export type Ligne<T> =
+  | { type: 'groupe'; id: string; nom: string; replie: boolean; membres: T[] }
+  | { type: 'element'; element: T }
 
 /** Où déposer ce que l'on déplace : dans quel conteneur, à quel rang. */
 export interface Cible {
@@ -59,9 +62,12 @@ function borner(index: number, longueur: number): number {
   return Math.max(0, Math.min(index, longueur))
 }
 
-/** Applique le rangement aux conversations lues sur le disque. */
-export function assembler(sessions: ClaudeSession[], rangement: Rangement): Ligne[] {
-  const parId = new Map(sessions.map((s) => [s.id, s]))
+/** Applique le rangement aux éléments tels qu'on les a lus. */
+export function assembler<T extends { id: string }>(
+  elements: T[],
+  rangement: Rangement
+): Ligne<T>[] {
+  const parId = new Map(elements.map((e) => [e.id, e]))
   const rangees = new Set<string>()
   for (const element of rangement.ordre) {
     if (element.type === 'session') rangees.add(element.id)
@@ -73,26 +79,26 @@ export function assembler(sessions: ClaudeSession[], rangement: Rangement): Lign
     for (const uuid of groupe.sessions) rangees.add(uuid)
   }
 
-  const lignes: Ligne[] = sessions
-    .filter((s) => !rangees.has(s.id))
-    .map((session) => ({ type: 'session', session }))
+  const lignes: Ligne<T>[] = elements
+    .filter((e) => !rangees.has(e.id))
+    .map((element) => ({ type: 'element', element }))
 
-  const ligneDeGroupe = (id: string, groupe: Groupe): Ligne => ({
+  const ligneDeGroupe = (id: string, groupe: Groupe): Ligne<T> => ({
     type: 'groupe',
     id,
     nom: groupe.nom,
     replie: groupe.replie ?? false,
-    // Une conversation citée mais disparue du disque est simplement omise :
-    // le rangement n'a pas à être nettoyé pour rester lisible.
-    sessions: groupe.sessions
-      .map((uuid) => parId.get(uuid))
-      .filter((s): s is ClaudeSession => s !== undefined)
+    // Un membre cité mais disparu est simplement omis : le rangement n'a pas à
+    // être nettoyé pour rester lisible.
+    membres: groupe.sessions
+      .map((membre) => parId.get(membre))
+      .filter((e): e is T => e !== undefined)
   })
 
   for (const element of rangement.ordre) {
     if (element.type === 'session') {
-      const session = parId.get(element.id)
-      if (session) lignes.push({ type: 'session', session })
+      const trouve = parId.get(element.id)
+      if (trouve) lignes.push({ type: 'element', element: trouve })
     } else {
       const groupe = rangement.groupes[element.id]
       if (groupe) lignes.push(ligneDeGroupe(element.id, groupe))
@@ -117,14 +123,17 @@ export function assembler(sessions: ClaudeSession[], rangement: Rangement): Lign
  * cela, déplacer une conversation la ferait sauter au milieu d'une liste dont
  * le reste n'est encore rangé nulle part.
  */
-export function materialiser(sessions: ClaudeSession[], rangement: Rangement): Rangement {
+export function materialiser<T extends { id: string }>(
+  elements: T[],
+  rangement: Rangement
+): Rangement {
   const groupes: Record<string, Groupe> = {}
-  const ordre = assembler(sessions, rangement).map((ligne): Element => {
-    if (ligne.type === 'session') return { type: 'session', id: ligne.session.id }
+  const ordre = assembler(elements, rangement).map((ligne): Element => {
+    if (ligne.type === 'element') return { type: 'session', id: ligne.element.id }
     groupes[ligne.id] = {
       nom: ligne.nom,
       replie: ligne.replie,
-      sessions: ligne.sessions.map((s) => s.id)
+      sessions: ligne.membres.map((m) => m.id)
     }
     return { type: 'groupe', id: ligne.id }
   })

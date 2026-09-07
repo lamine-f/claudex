@@ -29,7 +29,9 @@ const onglets = (page: Page): Locator => page.getByRole('button', { name: 'Termi
 
 /** Le rail des projets, et la ligne d'un projet donné. */
 const rail = (page: Page): Locator => page.getByLabel('Projets')
-const projet = (page: Page, nom: string): Locator => rail(page).locator('li', { hasText: nom })
+/** La ligne d'un projet : la plus profonde, s'il est rangé dans un groupe. */
+const projet = (page: Page, nom: string): Locator =>
+  rail(page).locator('li', { hasText: nom }).last()
 
 /** L'ordre des projets tel qu'il est affiché, lu sur leur hauteur à l'écran. */
 async function ordre(page: Page, ...noms: string[]): Promise<string[]> {
@@ -169,5 +171,34 @@ test.describe('les projets du rail', () => {
     // onglets, plutôt qu'une colonne vide.
     await expect(onglets(page)).toHaveCount(2)
     await expect(projet(page, 'Alpha')).toContainText('2')
+  })
+
+  test('les projets se rangent en groupes, qui se replient et se retiennent', async () => {
+    const { page } = ctx
+
+    // Un groupe créé avec un projet dedans, par le clic droit sur ce projet.
+    await projet(page, 'Alpha').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Nouveau groupe avec ce projet' }).click()
+
+    const nom = page.getByLabel('Nom du groupe')
+    await expect(nom).toBeVisible()
+    await nom.fill('Travail')
+    await nom.press('Enter')
+
+    const entete = page.getByRole('button', { name: 'Replier le groupe' })
+    await expect(entete).toBeVisible()
+    await expect(projet(page, 'Alpha')).toBeVisible()
+
+    // Replié, le groupe cache son projet sans le perdre.
+    await entete.click()
+    await expect(projet(page, 'Alpha')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Déployer le groupe' }).click()
+    await expect(projet(page, 'Alpha')).toBeVisible()
+
+    // Le rangement est écrit : il survit à la fermeture.
+    await fermer(ctx, { nettoyer: false })
+    ctx = await lancer({ donnees: ctx.donnees, projet: ctx.projet })
+    await expect(ctx.page.getByRole('button', { name: 'Replier le groupe' })).toBeVisible()
+    await expect(ctx.page.getByText('Travail')).toBeVisible()
   })
 })

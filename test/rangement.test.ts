@@ -25,11 +25,11 @@ function sessions(...ids: string[]): ClaudeSession[] {
 }
 
 /** Ce que la colonne affiche, à plat, pour comparer d'un coup d'œil. */
-function affiche(lignes: ReturnType<typeof assembler>): string[] {
+function affiche(lignes: ReturnType<typeof assembler<ClaudeSession>>): string[] {
   return lignes.flatMap((ligne) =>
-    ligne.type === 'session'
-      ? [ligne.session.id]
-      : [`[${ligne.nom}]`, ...ligne.sessions.map((s) => `  ${s.id}`)]
+    ligne.type === 'element'
+      ? [ligne.element.id]
+      : [`[${ligne.nom}]`, ...ligne.membres.map((s) => `  ${s.id}`)]
   )
 }
 

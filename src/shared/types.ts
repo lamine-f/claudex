@@ -40,6 +40,14 @@ export interface Tab {
 
 export interface AppState {
   workspaces: Workspace[]
+  /**
+   * Groupes et ordre du rail, posés à la main.
+   *
+   * Le même modèle que celui des conversations : il ne connaît de ce qu'il
+   * range que son identifiant, et sert donc aux deux sans qu'on écrive deux
+   * fois la mécanique du glisser-déposer.
+   */
+  rangementProjets?: Rangement
   tabs: Tab[]
   /**
    * Noms donnés à la main, par identifiant de conversation.

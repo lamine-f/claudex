@@ -10,7 +10,10 @@ describe('contrôle du pont', () => {
   it('nomme précisément la méthode qui manque', () => {
     const pont = {
       state: { get: () => {}, setLayout: () => {}, setActiveWorkspace: () => {} },
-      workspace: { list: () => {}, add: () => {}, remove: () => {}, update: () => {}, ranger: () => {} },
+      workspace: {
+        list: () => {}, add: () => {}, remove: () => {}, update: () => {},
+        ranger: () => {}, rangement: () => {}, arranger: () => {}
+      },
       term: {
         list: () => {}, comptes: () => {}, create: () => {}, open: () => {}, focus: () => {},
         input: () => {},

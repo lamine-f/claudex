@@ -9,7 +9,7 @@
  */
 const ATTENDU: Record<string, string[]> = {
   state: ['get', 'setLayout', 'setActiveWorkspace'],
-  workspace: ['list', 'add', 'remove', 'update', 'ranger'],
+  workspace: ['list', 'add', 'remove', 'update', 'ranger', 'rangement', 'arranger'],
   term: [
     'list',
     'comptes',

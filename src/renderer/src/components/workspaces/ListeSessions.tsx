@@ -64,11 +64,11 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
     const terme = filtre.trim().toLowerCase()
     if (!terme) return lignes
     const garde = (s: ClaudeSession): boolean => s.titre.toLowerCase().includes(terme)
-    return lignes.flatMap((ligne): Ligne[] => {
-      if (ligne.type === 'session') return garde(ligne.session) ? [ligne] : []
-      const trouvees = ligne.sessions.filter(garde)
+    return lignes.flatMap((ligne): Ligne<ClaudeSession>[] => {
+      if (ligne.type === 'element') return garde(ligne.element) ? [ligne] : []
+      const trouvees = ligne.membres.filter(garde)
       // Un groupe replié ne doit pas cacher ce que l'on cherche.
-      return trouvees.length > 0 ? [{ ...ligne, sessions: trouvees, replie: false }] : []
+      return trouvees.length > 0 ? [{ ...ligne, membres: trouvees, replie: false }] : []
     })
   }, [lignes, filtre])
 
@@ -176,7 +176,7 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
     )
   }
 
-  const rangeeGroupe = (ligne: Ligne & { type: 'groupe' }, index: number): React.JSX.Element => {
+  const rangeeGroupe = (ligne: Ligne<ClaudeSession> & { type: 'groupe' }, index: number): React.JSX.Element => {
     const cle = `g:${ligne.id}`
     return (
       <li key={ligne.id}>
@@ -184,7 +184,7 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
           <EnteteGroupe
             nom={ligne.nom}
             replie={ligne.replie}
-            compte={ligne.sessions.length}
+            compte={ligne.membres.length}
             enEdition={groupeANommer === ligne.id || renomme === ligne.id}
             onNommer={(nom) => void nommerGroupe(workspaceId, ligne.id, nom)}
             onEditer={(ouvert) => {
@@ -228,7 +228,7 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
                     onDepot: (position) =>
                       deposer(
                         position === 'dans'
-                          ? { groupe: ligne.id, index: ligne.sessions.length }
+                          ? { groupe: ligne.id, index: ligne.membres.length }
                           : { groupe: null, index: position === 'avant' ? index : index + 1 }
                       )
                   }
@@ -244,10 +244,10 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
                 aria-label={`Conversations de ${ligne.nom || 'Sans nom'}`}
                 className="ml-3.5 border-l border-separateur"
               >
-                {ligne.sessions.map((session, rang) =>
+                {ligne.membres.map((session, rang) =>
                   rangeeSession(session, ligne.id, rang, index + 1)
                 )}
-                {ligne.sessions.length === 0 && (
+                {ligne.membres.length === 0 && (
                   <li
                     onDragOver={(e) => {
                       if (!glissable || !glisse) return
@@ -289,8 +289,8 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
     <>
       <ul>
         {visibles.map((ligne, index) =>
-          ligne.type === 'session'
-            ? rangeeSession(ligne.session, null, index, index)
+          ligne.type === 'element'
+            ? rangeeSession(ligne.element, null, index, index)
             : rangeeGroupe(ligne, index)
         )}
         {reste > 0 && (

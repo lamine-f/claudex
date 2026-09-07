@@ -39,6 +39,10 @@ const api = {
     update: (id: string, patch: Partial<Omit<Workspace, 'id'>>): Promise<Workspace[]> =>
       ipcRenderer.invoke('workspace:update', id, patch),
     /** Range les projets dans l'ordre donné. */
+    /** Groupes et ordre du rail. */
+    rangement: (): Promise<Rangement> => ipcRenderer.invoke('workspace:rangement'),
+    arranger: (rangement: Rangement): Promise<void> =>
+      ipcRenderer.invoke('workspace:arranger', rangement),
     ranger: (ids: string[]): Promise<Workspace[]> => ipcRenderer.invoke('workspace:ranger', ids)
   },
   term: {

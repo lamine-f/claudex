@@ -93,6 +93,23 @@ interface EtatUi {
   sessions: Record<string, ClaudeSession[]>
   /** Ordre voulu et groupes, par workspace. */
   rangements: Record<string, Rangement>
+
+  /**
+   * Groupes et ordre du rail des projets.
+   *
+   * Le même modèle que celui des conversations, appliqué à une autre liste :
+   * un projet et une conversation n'ont en commun que d'avoir un identifiant,
+   * et c'est tout ce dont le rangement a besoin.
+   */
+  rangementProjets: Rangement
+  ouvrirGroupeProjets: (index?: number, avec?: string[]) => Promise<string>
+  nommerGroupeProjets: (id: string, nom: string) => Promise<void>
+  replierGroupeProjets: (id: string, replie: boolean) => Promise<void>
+  defaireGroupeProjets: (id: string) => Promise<void>
+  deplacerProjet: (quoi: Element, cible: Cible) => Promise<void>
+  /** Groupe du rail dont le nom attend d'être saisi. */
+  groupeProjetANommer?: string
+  finirNommageProjet: () => void
   /**
    * Groupe qui vient d'être créé et attend son nom.
    *
@@ -234,6 +251,16 @@ async function enregistrerRangement(
   await window.claudex.claude.arranger(workspaceId, rangement)
 }
 
+/** Applique un rangement du rail : à l'écran d'abord, sur le disque ensuite. */
+async function enregistrerRangementProjets(
+  rangement: Rangement,
+  set: Poser,
+  get: Lire
+): Promise<void> {
+  set({ rangementProjets: rangement })
+  await window.claudex.workspace.arranger(rangement)
+}
+
 export const useStore = create<EtatUi>((set, get) => ({
   workspaces: [],
   layout: { leftWidth: 260, middleWidth: 300 },
@@ -247,6 +274,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   groupesReplies: {},
   sessions: {},
   rangements: {},
+  rangementProjets: RANGEMENT_VIDE,
   sessionsEnCours: {},
   toutAfficher: {},
   sollicitations: {},
@@ -280,11 +308,13 @@ export const useStore = create<EtatUi>((set, get) => ({
       return
     }
 
-    const [etat, diagnostics] = await Promise.all([
+    const [etat, diagnostics, rangementProjets] = await Promise.all([
       window.claudex.state.get(),
-      window.claudex.doctor.check()
+      window.claudex.doctor.check(),
+      window.claudex.workspace.rangement()
     ])
     set({
+      rangementProjets,
       workspaces: etat.workspaces,
       layout: etat.layout,
       activeWorkspaceId: etat.activeWorkspaceId,
@@ -569,6 +599,45 @@ export const useStore = create<EtatUi>((set, get) => ({
     const base = get().rangements[workspaceId] ?? RANGEMENT_VIDE
     await enregistrerRangement(workspaceId, dissoudreGroupe(base, id), set, get)
   },
+
+  /*
+   * Les gestes du rail, sur le modèle de ceux des conversations.
+   *
+   * Chacun part de l'ordre affiché plutôt que du rangement seul : tant qu'on
+   * n'a rien déplacé, celui-ci est vide, et un premier geste ferait sinon
+   * sauter un projet au milieu d'une liste dont le reste n'est rangé nulle part.
+   */
+  ouvrirGroupeProjets: async (index = 0, avec = []) => {
+    const id = crypto.randomUUID()
+    const base = materialiser(get().workspaces, get().rangementProjets)
+    await enregistrerRangementProjets(creerGroupe(base, id, '', index, avec), set, get)
+    set({ groupeProjetANommer: id })
+    return id
+  },
+
+  nommerGroupeProjets: async (id, nom) => {
+    set({ groupeProjetANommer: undefined })
+    await enregistrerRangementProjets(
+      renommerGroupe(get().rangementProjets, id, nom.trim().slice(0, 60) || 'Groupe'),
+      set,
+      get
+    )
+  },
+
+  replierGroupeProjets: async (id, replie) => {
+    await enregistrerRangementProjets(replierGroupe(get().rangementProjets, id, replie), set, get)
+  },
+
+  defaireGroupeProjets: async (id) => {
+    await enregistrerRangementProjets(dissoudreGroupe(get().rangementProjets, id), set, get)
+  },
+
+  deplacerProjet: async (quoi, cible) => {
+    const base = materialiser(get().workspaces, get().rangementProjets)
+    await enregistrerRangementProjets(deplacer(base, quoi, cible), set, get)
+  },
+
+  finirNommageProjet: () => set({ groupeProjetANommer: undefined }),
 
   choisirPanneau: (panneau) => set({ panneau }),
 
