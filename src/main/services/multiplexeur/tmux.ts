@@ -314,7 +314,12 @@ function composer(amorce?: Amorce): string | undefined {
     const variables = Object.entries(amorce.env ?? {}).map(
       ([cle, valeur]) => `export ${cle}=${proteger(valeur)}`
     )
-    morceaux.push([...variables, amorce.commande].join('; '))
+    // Les variables sont posées avant le shell de connexion, qui en hérite :
+    // son profil peut ainsi compléter le PATH sans écraser ce qu'on a déclaré.
+    const commande = amorce.connexion
+      ? `${shellDeConnexion()} -lc ${proteger(amorce.commande)}`
+      : amorce.commande
+    morceaux.push([...variables, commande].join('; '))
   }
   return morceaux.length ? morceaux.join('; ') : undefined
 }

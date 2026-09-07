@@ -35,6 +35,18 @@ export interface Amorce {
    * n'arrivait jamais dans le fichier.
    */
   journal?: string
+
+  /**
+   * Joue la commande dans un shell de connexion, avec l'environnement de
+   * l'utilisateur.
+   *
+   * Un service lancé sans lui ne voit que le PATH du système. Mesuré : `./mvnw`
+   * trouvait `/usr/bin/java`, l'ébauche que macOS livre, et répondait « Unable
+   * to locate a Java Runtime » — le vrai JDK et `JAVA_HOME` venaient d'un
+   * `.zprofile`, que seuls les shells de connexion lisent. Le même écart vaut
+   * pour nvm, sdkman ou pyenv.
+   */
+  connexion?: boolean
 }
 
 /**

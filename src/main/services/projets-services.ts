@@ -206,7 +206,11 @@ export async function demarrer(
   await multiplexeur.assurer(session, cwd, COLONNES, LIGNES, {
     commande: service.commande,
     env: service.env,
-    journal
+    journal,
+    // Un service se lance comme si on l'avait tapé soi-même : sans
+    // l'environnement de connexion, `./mvnw` ne trouve pas le JDK que le
+    // profil de l'utilisateur installe.
+    connexion: true
   })
 }
 

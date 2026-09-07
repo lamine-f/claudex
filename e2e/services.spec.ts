@@ -1,9 +1,18 @@
 import { execFile, spawn } from 'node:child_process'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, nouveauTerminal, SOCKET_TEST, SUR_WINDOWS, type Contexte } from './fixtures'
+import {
+  fermer,
+  lancer,
+  nouveauTerminal,
+  simulerRedemarrage,
+  SOCKET_TEST,
+  SUR_WINDOWS,
+  type Contexte
+} from './fixtures'
 
 const run = promisify(execFile)
 
@@ -36,8 +45,23 @@ test.describe('services du projet', () => {
   let ctx: Contexte
 
   test.beforeAll(async () => {
-    await ardoiseVierge()
-    const provisoire = await lancer()
+
+    // Un profil de shell jetable, qui pose une variable que seuls les shells de
+    // connexion voient. C'est ainsi que l'environnement d'un développeur arrive
+    // à ses services : JAVA_HOME, nvm, sdkman vivent tous là.
+    const zdotdir = await mkdtemp(join(tmpdir(), 'claudex-zdot-'))
+    await writeFile(join(zdotdir, '.zprofile'), 'export MARQUE_PROFIL=vu\n')
+
+    // Posé sur ce processus, et non seulement passé à l'application : c'est la
+    // sentinelle du serveur tmux qui part la première, depuis ici, et un pane
+    // hérite de l'environnement du serveur.
+    process.env.ZDOTDIR = zdotdir
+
+    // Le serveur entier, et non les seules sessions : un pane hérite de
+    // l'environnement du serveur, figé par son premier client.
+    await simulerRedemarrage()
+
+    const provisoire = await lancer({ env: { ZDOTDIR: zdotdir } })
     await mkdir(join(provisoire.projet, '.claudex'), { recursive: true })
     await writeFile(
       join(provisoire.projet, '.claudex', 'services.yml'),
@@ -52,6 +76,9 @@ services:
   - nom: variable
     commande: echo "salut $QUI"; sleep 30
     env: { QUI: le monde }
+  # Ce que seul un shell de connexion sait : la variable vient d'un .zprofile.
+  - nom: connexion
+    commande: echo "profil $MARQUE_PROFIL"; sleep 30
   # Il écoute vraiment son port : un service qui le déclare sans l'ouvrir
   # resterait « démarre » pour toujours, et le cas mesurerait autre chose.
   - nom: squatte
@@ -64,7 +91,11 @@ services:
     // portent déjà ce que ce cas s'apprête à vérifier.
     await rm(join(provisoire.projet, '.claudex', 'logs'), { recursive: true, force: true })
     await fermer(provisoire, { nettoyer: false })
-    ctx = await lancer({ donnees: provisoire.donnees, projet: provisoire.projet })
+    ctx = await lancer({
+      donnees: provisoire.donnees,
+      projet: provisoire.projet,
+      env: { ZDOTDIR: zdotdir }
+    })
   })
 
   test.afterAll(async () => {
@@ -267,22 +298,58 @@ services:
   })
 
   test('un dossier introuvable se dit, et rien ne se lance', async () => {
-    await writeFile(
-      join(ctx.projet, '.claudex', 'services.yml'),
-      `
+    // La déclaration est remise ensuite : la réécrire laisserait les cas
+    // suivants sans décor, et c'est arrivé.
+    const fichier = join(ctx.projet, '.claudex', 'services.yml')
+    const original = await readFile(fichier, 'utf8')
+    try {
+      await writeFile(
+        fichier,
+        `
 services:
   - { nom: egare, dossier: nulle/part, commande: echo bonjour }
 `
-    )
+      )
+      await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+
+      const ligne = ctx.page.locator('li', { hasText: 'egare' }).last()
+      // Le reproche porte le chemin cherché : sans lui, la commande partirait
+      // depuis le dossier personnel et son message parlerait d'autre chose.
+      await expect(ligne.getByText(/dossier est introuvable/)).toBeVisible({ timeout: 20_000 })
+
+      await ligne.getByRole('button', { name: 'démarrer' }).click()
+      await ctx.page.waitForTimeout(2500)
+      await expect(ligne.getByLabel('arrêté')).toBeVisible()
+    } finally {
+      await writeFile(fichier, original)
+      await expect(ctx.page.locator('li', { hasText: 'veilleuse' }).last()).toBeVisible({
+        timeout: 20_000
+      })
+    }
+  })
+
+  test('un service voit l’environnement du profil de connexion', async () => {
+    test.skip(SUR_WINDOWS, 'Windows tient ses variables ailleurs que dans un profil de shell')
+
     await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const ligne = ctx.page.locator('li', { hasText: 'connexion' }).last()
 
-    const ligne = ctx.page.locator('li', { hasText: 'egare' }).last()
-    // Le reproche porte le chemin cherché : sans lui, la commande partirait
-    // depuis le dossier personnel et son message parlerait d'autre chose.
-    await expect(ligne.getByText(/dossier est introuvable/)).toBeVisible({ timeout: 20_000 })
-
+    // Un cas d'avant a pu le démarrer par son groupe : on le rend au repos pour
+    // que le journal porte le démarrage qu'on s'apprête à mesurer.
+    if (await ligne.getByRole('button', { name: 'arrêter' }).isVisible().catch(() => false)) {
+      await ligne.getByRole('button', { name: 'arrêter' }).click()
+      await expect(ligne.getByLabel('arrêté')).toBeVisible({ timeout: 20_000 })
+    }
     await ligne.getByRole('button', { name: 'démarrer' }).click()
-    await ctx.page.waitForTimeout(2500)
-    await expect(ligne.getByLabel('arrêté')).toBeVisible()
+
+    // Sans shell de connexion, la variable est vide et la ligne dirait
+    // « profil » tout court. C'est exactement ce qui faisait répondre à `mvnw`
+    // qu'il ne trouvait pas de Java.
+    const journal = join(ctx.projet, '.claudex', 'logs', 'connexion.log')
+    await expect
+      .poll(async () => (await readFile(journal, 'utf8').catch(() => '')).includes('profil vu'), {
+        timeout: 20_000
+      })
+      .toBe(true)
   })
 })
