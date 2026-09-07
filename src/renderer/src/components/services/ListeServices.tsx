@@ -281,55 +281,59 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                       e.preventDefault()
                       setMenu({ x: e.clientX, y: e.clientY, actions: actionsDe(service) })
                     }}
-                    // Deux lignes, comme une conversation : le nom, puis ce
-                    // qu'on veut savoir de lui. La colonne garde ainsi le même
-                    // rythme d'un panneau à l'autre.
-                    className="group flex flex-col gap-1 border-l-2 border-l-separateur py-2.5 pr-2 pl-3.5 transition-colors hover:border-l-bordure hover:bg-fond-survol"
+                    className="relative border-l-2 border-l-separateur transition-colors hover:border-l-bordure hover:bg-fond-survol"
                   >
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span
-                        aria-label={etat.mot}
-                        title={etat.titre}
-                        className={`h-[7px] w-[7px] shrink-0 rounded-full ${etat.teinte} ${
-                          occupe ? 'animate-pulse' : ''
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => onVoirJournal(service)}
-                        title="Voir son journal"
-                        className="min-w-0 flex-1 truncate text-left text-[14px] text-texte-doux hover:text-texte"
-                      >
-                        {service.nom}
-                      </button>
+                    {/* Toute la surface ouvre le journal, comme une ligne de
+                        conversation ouvre la sienne. Les gestes se posent
+                        par-dessus : un bouton ne s'imbrique pas dans un bouton,
+                        et la place leur est réservée à droite. */}
+                    {/* Hors du bouton : dedans, son intitulé passait devant le
+                        nom du service dans ce que la ligne annonce. */}
+                    <span
+                      aria-label={etat.mot}
+                      title={etat.titre}
+                      className={`absolute top-[17px] left-3.5 h-[7px] w-[7px] rounded-full ${
+                        etat.teinte
+                      } ${occupe ? 'animate-pulse' : ''}`}
+                    />
 
-                      <span className="flex shrink-0 items-center gap-0.5">
-                        {service.etat === 'dehors' && (
-                          <>
-                            {bouton('reprendre', () => void agir('reprendre', [service.nom]), true)}
-                            {bouton('libérer', () => void agir('liberer', [service.nom]))}
-                          </>
-                        )}
-                        {service.etat === 'arrete' &&
-                          bouton('démarrer', () => void agir('demarrer', [service.nom]), true)}
-                        {(service.etat === 'vivant' || service.etat === 'demarrage') && (
-                          <>
-                            {bouton('relancer', () => void agir('relancer', [service.nom]), true)}
-                            {bouton('arrêter', () => void agir('arreter', [service.nom]))}
-                          </>
+                    <button
+                      type="button"
+                      onClick={() => onVoirJournal(service)}
+                      title="Voir son journal"
+                      className="flex w-full flex-col gap-1 py-2.5 pr-16 pl-8 text-left"
+                    >
+                      <span className="min-w-0 truncate text-[14px] text-texte-doux">
+                        {service.nom}
+                      </span>
+
+                      {/* Ce qu'on veut savoir sans ouvrir le journal : où il en
+                          est, sur quel port, et ce qui cloche s'il y a lieu. */}
+                      <span className="flex items-center gap-1.5 overflow-hidden font-mono text-[11.5px] whitespace-nowrap text-texte-tenu">
+                        <span>{etat.mot}</span>
+                        {service.port !== undefined && <span>· {service.port}</span>}
+                        {service.reproche && (
+                          <span title={service.reproche} className="truncate text-attention">
+                            · {service.reproche}
+                          </span>
                         )}
                       </span>
-                    </span>
+                    </button>
 
-                    {/* Ce qu'on veut savoir sans ouvrir le journal : où il en
-                        est, sur quel port, et ce qui cloche s'il y a lieu. */}
-                    <span className="flex items-center gap-1.5 overflow-hidden pl-[17px] font-mono text-[11.5px] whitespace-nowrap text-texte-tenu">
-                      <span>{etat.mot}</span>
-                      {service.port !== undefined && <span>· {service.port}</span>}
-                      {service.reproche && (
-                        <span title={service.reproche} className="truncate text-attention">
-                          · {service.reproche}
-                        </span>
+                    <span className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5">
+                      {service.etat === 'dehors' && (
+                        <>
+                          {bouton('reprendre', () => void agir('reprendre', [service.nom]), true)}
+                          {bouton('libérer', () => void agir('liberer', [service.nom]))}
+                        </>
+                      )}
+                      {service.etat === 'arrete' &&
+                        bouton('démarrer', () => void agir('demarrer', [service.nom]), true)}
+                      {(service.etat === 'vivant' || service.etat === 'demarrage') && (
+                        <>
+                          {bouton('relancer', () => void agir('relancer', [service.nom]), true)}
+                          {bouton('arrêter', () => void agir('arreter', [service.nom]))}
+                        </>
                       )}
                     </span>
                   </li>

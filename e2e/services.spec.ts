@@ -154,7 +154,9 @@ services:
     // Le journal occupe l'écran, et rien n'est venu s'ajouter à la barre des
     // conversations : un service n'y a pas sa place.
     await expect(ctx.page.getByRole('button', { name: /suit|gelé/ })).toBeVisible()
-    await expect(ctx.page.getByRole('button', { name: 'seconde', exact: true })).toHaveCount(1)
+    // Une seule mention de ce service à l'écran : sa ligne dans la colonne. Si
+    // un onglet était apparu dans la barre des conversations, il y en aurait deux.
+    await expect(ctx.page.getByRole('button', { name: /^seconde/ })).toHaveCount(1)
 
     await ctx.page
       .getByTitle('Fermer la vue. Le service continue de tourner.')
