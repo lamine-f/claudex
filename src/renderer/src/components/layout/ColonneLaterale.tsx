@@ -120,8 +120,8 @@ export function ColonneLaterale(): React.JSX.Element {
       <div className="flex h-12 shrink-0 items-center gap-1.5 px-2.5">
         {onglet('sessions', 'Conversations', <IconeConversations taille={17} />, compte)}
         {onglet('fichiers', 'Fichiers', <IconeArborescence taille={17} />)}
-        {onglet('services', 'Services', <IconeServices taille={16} />, debout)}
         {onglet('git', 'Git', <IconeBranche taille={15} />, aCommiter)}
+        {onglet('services', 'Services', <IconeServices taille={16} />, debout)}
         <div className="flex-1" />
         <span className="pr-1 font-mono text-[10px] text-texte-tenu">{raccourci('E')}</span>
       </div>

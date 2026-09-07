@@ -61,9 +61,9 @@ export function useShortcuts(): void {
         evenement.preventDefault()
         const suivant = {
           sessions: 'fichiers',
-          fichiers: 'services',
-          services: 'git',
-          git: 'sessions'
+          fichiers: 'git',
+          git: 'services',
+          services: 'sessions'
         } as const
         etat.choisirPanneau(suivant[etat.panneau])
         return

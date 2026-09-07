@@ -99,7 +99,7 @@ export function VueDiff({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div aria-label="Contenu du diff" className="min-h-0 flex-1 overflow-auto">
         {etat.phase === 'lecture' && <Mot>Lecture…</Mot>}
         {etat.phase === 'binaire' && (
           <Mot>Fichier binaire. Git ne le compare pas ligne à ligne.</Mot>
@@ -176,7 +176,11 @@ function SectionCote({ section }: { section: Section }): React.JSX.Element {
   return (
     <>
       <Coupure section={section} />
-      <table className="w-full table-fixed border-collapse font-mono text-[12px] leading-[1.5]">
+      {/* Sans `table-fixed`, la table s'élargit pour ce qui dépasse et le
+          conteneur la fait défiler. Fixée, elle écrêtait : une ligne minifiée
+          ou un long littéral se perdait au-delà du bord, sans rien pour aller
+          le voir. Les deux colonnes défilent ensemble, étant d'une même table. */}
+      <table className="w-full border-collapse font-mono text-[12px] leading-[1.5]">
         <tbody>
           {apparier(section).map((paire, rang) => (
             <tr key={rang}>
@@ -197,7 +201,7 @@ function Cote({ ligne, numero }: { ligne?: LigneDiff; numero?: number }): React.
     <>
       <Numero valeur={numero} />
       <td
-        className={`w-1/2 overflow-hidden pr-3 whitespace-pre text-texte-doux ${
+        className={`w-1/2 pr-3 whitespace-pre text-texte-doux ${
           ligne ? FONDS[ligne.genre] : 'bg-fond-creux'
         }`}
       >

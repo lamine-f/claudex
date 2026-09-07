@@ -247,6 +247,20 @@ test.describe('vue de diff', () => {
       'un\ndeux MODIFIE\ntrois\nquatre\ncinq\nsix\nsept\n'
     )
     await writeFile(join(projet, 'neuf.txt'), 'tout neuf\n')
+
+    // Deux cents lignes changées : de quoi dépasser la fenêtre.
+    const corps = (marque: string): string =>
+      Array.from({ length: 200 }, (_, n) => `ligne ${n} ${marque}`).join('\n') + '\n'
+    await writeFile(join(projet, 'long.txt'), corps('avant'))
+    await run('git', ['-C', projet, 'add', 'long.txt'])
+    await run('git', ['-C', projet, 'commit', '-qm', 'long'])
+    await writeFile(join(projet, 'long.txt'), corps('après'))
+
+    // Une ligne bien plus large que la colonne, comme un fichier minifié.
+    await writeFile(join(projet, 'large.txt'), 'court\n')
+    await run('git', ['-C', projet, 'add', 'large.txt'])
+    await run('git', ['-C', projet, 'commit', '-qm', 'large'])
+    await writeFile(join(projet, 'large.txt'), `${'x'.repeat(600)}\n`)
     // Un binaire, que git renonce à comparer ligne à ligne.
     await writeFile(join(projet, 'image.bin'), Buffer.from([0, 1, 2, 0, 255, 0, 3]))
     await run('git', ['-C', projet, 'add', 'image.bin'])
@@ -299,6 +313,52 @@ test.describe('vue de diff', () => {
     // `git diff` seul n'en dirait rien : il n'a pas d'ancien côté.
     await expect(ctx.page.getByText('fichier neuf')).toBeVisible()
     await expect(ctx.page.getByText('tout neuf', { exact: true })).toBeVisible()
+  })
+
+  test('un long diff défile', async () => {
+    // Deux cents lignes changées tiennent plus que la fenêtre. Sans hauteur
+    // bornée quelque part dans la chaîne, la vue pousse la fenêtre au lieu de
+    // défiler, et le bas devient inatteignable.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+
+    const zone = ctx.page.getByLabel('Contenu du diff')
+    // Le diff se lit derrière : mesurer avant qu'il n'arrive ne dirait rien.
+    await expect(zone.locator('tr').first()).toBeVisible()
+
+    const mesures = await zone.evaluate((el) => ({
+      contenu: el.scrollHeight,
+      visible: el.clientHeight
+    }))
+    expect(mesures.contenu).toBeGreaterThan(mesures.visible)
+
+    // Et il défile réellement, jusqu'en bas.
+    await zone.evaluate((el) => el.scrollTo(0, el.scrollHeight))
+    expect(await zone.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+  })
+
+  test('une ligne trop longue reste atteignable', async () => {
+    // En côte à côte, les cellules coupaient ce qui dépassait, sans que rien ne
+    // permette d'aller le voir. Une ligne minifiée ou un long littéral se
+    // perdait au-delà du bord.
+    await ctx.page.getByTitle(/voir le diff de large\.txt/).click()
+    const zone = ctx.page.getByLabel('Contenu du diff')
+    await expect(zone.locator('tr').first()).toBeVisible()
+
+    const mesures = await zone.evaluate((el) => ({
+      contenu: el.scrollWidth,
+      visible: el.clientWidth
+    }))
+    expect(mesures.contenu).toBeGreaterThan(mesures.visible)
+
+    // Le même défaut valait pour le mode d'un seul tenant : la mesure vaut donc
+    // pour les deux formes.
+    await ctx.page.getByRole('button', { name: /côte à côte|unifié/ }).click()
+    const unifie = await zone.evaluate((el) => ({
+      contenu: el.scrollWidth,
+      visible: el.clientWidth
+    }))
+    expect(unifie.contenu).toBeGreaterThan(unifie.visible)
+    await ctx.page.getByRole('button', { name: /côte à côte|unifié/ }).click()
   })
 
   test('un binaire le dit, plutôt que de rester vide', async () => {
