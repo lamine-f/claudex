@@ -29,6 +29,17 @@ type Etat =
 const TOUT = 100_000
 
 /**
+ * Les hauteurs des deux sortes de rangées, en pixels.
+ *
+ * Elles sont dites plutôt que déduites du contenu. Les trois zones du diff
+ * défilent ensemble mais sont trois tables distinctes : la moindre différence
+ * de hauteur décale les numéros du code qu'ils désignent, et l'écart
+ * s'accumule à chaque rangée.
+ */
+const HAUTEUR_LIGNE = 'h-[18px]'
+const HAUTEUR_COUPURE = 'h-[22px]'
+
+/**
  * Le diff d'un fichier, côte à côte ou d'un seul tenant.
  *
  * Le format unifié porte déjà les numéros de ligne des deux côtés : la vue à
@@ -314,7 +325,7 @@ const Geste = ({
 /** La barre qui sépare deux sections, et dit où l'on se trouve dans le fichier. */
 function Coupure({ section }: { section: Section }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-2 border-y border-separateur bg-fond-creux px-3 py-1 font-mono text-[10.5px] text-texte-tenu">
+    <div className="flex h-full items-center gap-2 border-y border-separateur bg-fond-creux px-3 font-mono text-[10.5px] text-texte-tenu">
       <span>
         @@ {section.departGauche} → {section.departDroite}
       </span>
@@ -358,7 +369,7 @@ function SectionUnifiee({
           {section.lignes.map((ligne, rang) => (
             <tr
               key={rang}
-              className={FONDS[ligne.genre]}
+              className={`${HAUTEUR_LIGNE} ${FONDS[ligne.genre]}`}
               {...repere(
                 ligne.genre !== 'contexte' &&
                   (rang === 0 || section.lignes[rang - 1]?.genre === 'contexte')
@@ -451,11 +462,11 @@ function DeuxVolets({
           <tbody>
             {rangees.map((r, rang) =>
               r.genre === 'coupure' ? (
-                <tr key={rang}>
-                  <td className="h-[22px]" colSpan={2} />
+                <tr key={rang} className={HAUTEUR_COUPURE}>
+                  <td className={HAUTEUR_COUPURE} colSpan={2} />
                 </tr>
               ) : (
-                <tr key={rang}>
+                <tr key={rang} className={HAUTEUR_LIGNE}>
                   <Numero valeur={numeroGauche(r.paire.gauche)} />
                   <Numero valeur={numeroDroite(r.paire.droite)} />
                 </tr>
@@ -503,8 +514,8 @@ function Volet({
           {rangees.map((r, rang) => {
             if (r.genre === 'coupure') {
               return (
-                <tr key={rang}>
-                  <td className="h-[22px] p-0">
+                <tr key={rang} className={HAUTEUR_COUPURE}>
+                  <td className={`${HAUTEUR_COUPURE} overflow-hidden p-0`}>
                     <Coupure section={r.section} />
                   </td>
                 </tr>
@@ -512,9 +523,9 @@ function Volet({
             }
             const ligne = cote === 'gauche' ? r.paire.gauche : r.paire.droite
             return (
-              <tr key={rang} {...repere(r.debut)}>
+              <tr key={rang} className={HAUTEUR_LIGNE} {...repere(r.debut)}>
                 <td
-                  className={`px-3 whitespace-pre text-texte-doux ${
+                  className={`${HAUTEUR_LIGNE} px-3 whitespace-pre text-texte-doux ${
                     ligne ? FONDS[ligne.genre] : 'bg-fond-creux'
                   }`}
                 >

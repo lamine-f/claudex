@@ -334,6 +334,13 @@ test.describe('vue de diff', () => {
       .toBeGreaterThan(150)
   }
 
+  /** Ramène la vue aux seuls changements, d'où qu'elle parte. */
+  const montrerChangements = async (): Promise<void> => {
+    const replier = ctx.page.getByRole('button', { name: 'Ne montrer que les changements' })
+    if (await replier.isVisible()) await replier.click()
+    await expect(ctx.page.getByRole('button', { name: 'Montrer le fichier entier' })).toBeVisible()
+  }
+
   /** Remet la vue en deux volets, d'où qu'elle parte. */
   const montrerCoteACote = async (): Promise<void> => {
     const bouton = ctx.page.getByRole('button', { name: 'Passer au diff côte à côte' })
@@ -496,6 +503,41 @@ test.describe('vue de diff', () => {
     await expect(compteur).toHaveText('1/5')
     // Au premier, on ne remonte plus.
     await expect(ctx.page.getByRole('button', { name: 'Fichier précédent' })).toBeDisabled()
+  })
+
+  test('garde les numéros en face du code, coupures comprises', async () => {
+    // Les trois zones défilent ensemble mais sont trois tables distinctes. La
+    // moindre différence de hauteur décale les numéros du code qu'ils
+    // désignent, et l'écart s'accumule à chaque rangée : les coupures `@@`
+    // valaient vingt-deux pixels dans la gouttière et davantage dans le volet.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await montrerCoteACote()
+    await montrerChangements()
+    const gauche = ctx.page.getByLabel('Volet gauche')
+    await expect(gauche.locator('tr').first()).toBeVisible()
+
+    // Trois sections, donc trois coupures : de quoi accumuler un écart.
+    await expect(gauche.getByText(/^@@ /)).toHaveCount(3)
+
+    const ordonnees = (cible: Locator): Promise<number[]> =>
+      cible.evaluate((el) =>
+        [...el.querySelectorAll('tr')].map((r) => (r as HTMLElement).offsetTop)
+      )
+
+    const aGauche = await ordonnees(gauche)
+    const aDroite = await ordonnees(ctx.page.getByLabel('Volet droit'))
+    expect(aGauche.length).toBeGreaterThan(20)
+    expect(aDroite).toEqual(aGauche)
+
+    // La gouttière suit la même mesure, jusqu'à la dernière rangée.
+    const numeros = await ctx.page.evaluate(() => {
+      const zones = [...document.querySelectorAll('[aria-hidden="true"] table')]
+      const table = zones.find((t) => t.querySelectorAll('tr').length > 20)
+      return table
+        ? [...table.querySelectorAll('tr')].map((r) => (r as HTMLElement).offsetTop)
+        : []
+    })
+    expect(numeros).toEqual(aGauche)
   })
 
   test('un binaire le dit, plutôt que de rester vide', async () => {
