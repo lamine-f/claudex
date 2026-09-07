@@ -162,3 +162,40 @@ test.describe('barre de menus', () => {
     await expect(champ).toHaveValue('bonjour presse-papiers')
   })
 })
+
+/**
+ * La sélection de texte, accordée au reste.
+ *
+ * Le navigateur la peint en bleu vif, la seule couleur de l'interface à ne pas
+ * venir de la palette. Le cas la mesure là où elle se voyait : dans un champ.
+ */
+test.describe('sélection de texte', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('prend la teinte du thème, pas le bleu du navigateur', async () => {
+    const teinte = await ctx.page.evaluate(() => {
+      const regle = [...document.styleSheets]
+        .flatMap((f) => {
+          try {
+            return [...f.cssRules]
+          } catch {
+            return []
+          }
+        })
+        .find((r) => r.cssText.startsWith('::selection'))
+      return regle?.cssText ?? ''
+    })
+    // Le navigateur rend la couleur résolue, non celle qu'on a écrite.
+    expect(teinte).toContain('rgb(46, 42, 38)')
+    // La même que celle du terminal, qui la tient de son côté depuis toujours.
+    expect(teinte).toContain('var(--color-texte)')
+  })
+})

@@ -107,3 +107,15 @@ label[for] {
   background: #433d37;
   background-clip: content-box;
 }
+
+/*
+ * La sélection de texte, accordée au reste.
+ *
+ * Le navigateur la peint en bleu vif, la seule couleur de l'interface à ne pas
+ * venir de la palette. C'est la même teinte que celle du terminal, qui la tient
+ * de son côté depuis toujours.
+ */
+::selection {
+  background: #2e2a26;
+  color: var(--color-texte);
+}
