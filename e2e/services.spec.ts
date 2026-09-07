@@ -354,4 +354,19 @@ services:
       })
       .toBe(true)
   })
+
+  test('un groupe se replie et se rouvre', async () => {
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const entete = ctx.page.getByRole('button', { name: /^bruit/ })
+    await expect(entete).toHaveAttribute('aria-expanded', 'true')
+    await expect(ctx.page.getByRole('button', { name: /^veilleuse/ })).toBeVisible()
+
+    await entete.click()
+    await expect(entete).toHaveAttribute('aria-expanded', 'false')
+    // Replié, le groupe cache ses services sans les arrêter.
+    await expect(ctx.page.getByRole('button', { name: /^veilleuse/ })).toBeHidden()
+
+    await entete.click()
+    await expect(ctx.page.getByRole('button', { name: /^veilleuse/ })).toBeVisible()
+  })
 })

@@ -64,6 +64,15 @@ interface EtatUi {
    * fermer ne touche pas au service, qui continue de tourner.
    */
   journaux: Record<string, { nom: string; chemin: string }[]>
+  /**
+   * Groupes de services repliés, par projet.
+   *
+   * Onze services back tiennent la colonne entière : les replier rend visibles
+   * les autres groupes sans avoir à faire défiler. Le repli vit ici et non dans
+   * le composant, sans quoi il se déferait à chaque passage sur une autre page.
+   */
+  groupesReplies: Record<string, string[]>
+  replierGroupeService: (workspaceId: string, groupe: string) => void
   /** Le journal regardé, s'il en est un. Sinon, c'est le terminal qu'on voit. */
   journalActif?: string
   ouvrirJournal: (workspaceId: string, service: ServiceVu) => void
@@ -235,6 +244,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   comptesOnglets: {},
   services: {},
   journaux: {},
+  groupesReplies: {},
   sessions: {},
   rangements: {},
   sessionsEnCours: {},
@@ -420,6 +430,18 @@ export const useStore = create<EtatUi>((set, get) => ({
   },
 
   choisirJournal: (nom) => set({ journalActif: nom }),
+
+  replierGroupeService: (workspaceId, groupe) => {
+    const replies = get().groupesReplies[workspaceId] ?? []
+    set({
+      groupesReplies: {
+        ...get().groupesReplies,
+        [workspaceId]: replies.includes(groupe)
+          ? replies.filter((g) => g !== groupe)
+          : [...replies, groupe]
+      }
+    })
+  },
 
   fermerJournal: (workspaceId, nom) => {
     const restants = (get().journaux[workspaceId] ?? []).filter((j) => j.nom !== nom)

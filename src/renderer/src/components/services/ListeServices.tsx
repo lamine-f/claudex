@@ -4,6 +4,7 @@ import { useStore } from '@renderer/state/store'
 import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import {
   IconeArreter,
+  IconeChevron,
   IconeDemarrer,
   IconeLiberer,
   IconeRelancer
@@ -49,6 +50,8 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
   const demarrer = useStore((e) => e.demarrerServices)
   const arreter = useStore((e) => e.arreterServices)
   const liberer = useStore((e) => e.libererPort)
+  const replies = useStore((e) => e.groupesReplies[workspaceId])
+  const replier = useStore((e) => e.replierGroupeService)
   const relancer = useStore((e) => e.relancerService)
   const reprendre = useStore((e) => e.reprendrePort)
   const [enCours, setEnCours] = useState<string[]>([])
@@ -232,21 +235,38 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
       {groupes.map(([groupe, membres]) => {
         const noms = membres.map((s) => s.nom)
         const debout = membres.filter((s) => s.etat !== 'arrete').length
+        const replie = (replies ?? []).includes(groupe)
         return (
           <li key={groupe}>
-            <div className="flex items-center gap-2 px-3 pt-3 pb-1">
-              <span className="font-mono text-[10.5px] tracking-wide text-texte-tenu uppercase">
-                {groupe}
-              </span>
-              <span className="font-mono text-[10.5px] text-texte-tenu">
-                {debout}/{membres.length}
-              </span>
-              <div className="flex-1" />
+            <div className="flex items-center gap-1.5 py-2 pr-2 pl-1.5">
+              {/* L'en-tête ouvre et referme son groupe : onze services back
+                  tiennent la colonne entière et cachent les autres groupes. */}
+              <button
+                type="button"
+                onClick={() => replier(workspaceId, groupe)}
+                aria-expanded={!replie}
+                className="flex min-w-0 flex-1 items-center gap-1.5 rounded py-0.5 text-left transition-colors hover:bg-fond-survol"
+              >
+                <span
+                  aria-hidden
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center text-texte-tenu transition-transform ${
+                    replie ? '' : 'rotate-90'
+                  }`}
+                >
+                  <IconeChevron taille={13} />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-texte-doux">
+                  {groupe}
+                </span>
+                <span className="shrink-0 font-mono text-[11px] text-texte-tenu">
+                  {debout}/{membres.length}
+                </span>
+              </button>
               {bouton('tout démarrer', () => void agir('demarrer', noms), true)}
               {bouton('tout arrêter', () => void agir('arreter', noms))}
             </div>
 
-            <ul>
+            <ul hidden={replie}>
               {membres.map((service) => {
                 const etat = ETATS[service.etat]
                 const occupe = enCours.includes(service.nom)

@@ -365,5 +365,19 @@ export async function liberer(projet: string, nom: string): Promise<number[]> {
       /* déjà parti */
     }
   }
+
+  /*
+   * On ne rend la main qu'une fois le port réellement libre.
+   *
+   * Un processus tué ne lâche pas sa prise à l'instant même. « Reprendre »
+   * enchaînait alors sur un démarrage que la garde du port refusait, le port
+   * répondant encore : le service restait arrêté, et le geste paraissait sans
+   * effet.
+   */
+  const limite = Date.now() + 5000
+  while (Date.now() < limite) {
+    if (!(await ecoute(service.port))) break
+    await new Promise((suite) => setTimeout(suite, 200))
+  }
   return pids
 }
