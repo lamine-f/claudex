@@ -109,7 +109,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
       title={titre}
       aria-label={libelle}
       onClick={onClic}
-      className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+      className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
         accent
           ? 'text-texte-tenu hover:bg-fond-survol hover:text-accent'
           : 'text-texte-tenu hover:bg-fond-survol hover:text-texte'
@@ -124,53 +124,53 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
       démarrer: geste(
         'démarrer',
         'Lancer le service et journaliser sa sortie',
-        <IconeDemarrer taille={12} />,
+        <IconeDemarrer taille={15} />,
         onClic,
         true
       ),
       arrêter: geste(
         'arrêter',
         'Détruire la session du service',
-        <IconeArreter taille={11} />,
+        <IconeArreter taille={13} />,
         onClic
       ),
       relancer: geste(
         'relancer',
         'Arrêter puis redémarrer, pour reprendre un code qui a changé',
-        <IconeRelancer taille={12} />,
+        <IconeRelancer taille={15} />,
         onClic,
         true
       ),
       libérer: geste(
         'libérer',
         'Tuer ce qui tient le port, sans rien lancer',
-        <IconeLiberer taille={12} />,
+        <IconeLiberer taille={15} />,
         onClic
       ),
       reprendre: geste(
         'reprendre',
         'Tuer ce qui tient le port, puis démarrer le service sous Claudex',
-        <IconeDemarrer taille={12} />,
+        <IconeDemarrer taille={15} />,
         onClic,
         true
       ),
       'tout démarrer': geste(
         'tout démarrer',
         'Lancer tout le groupe, dans l’ordre de ses dépendances',
-        <IconeDemarrer taille={12} />,
+        <IconeDemarrer taille={15} />,
         onClic,
         true
       ),
       'tout arrêter': geste(
         'tout arrêter',
         'Arrêter tout le groupe',
-        <IconeArreter taille={11} />,
+        <IconeArreter taille={13} />,
         onClic
       ),
       'écrire le skill': geste(
         'écrire le skill',
         'Écrire le skill qui dit aux agents où sont les journaux',
-        <IconeSkill taille={13} />,
+        <IconeSkill taille={15} />,
         onClic
       )
     })[libelle] ?? <span />
@@ -301,7 +301,7 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                       type="button"
                       onClick={() => onVoirJournal(service)}
                       title="Voir son journal"
-                      className="flex w-full flex-col gap-1 py-2.5 pr-16 pl-8 text-left"
+                      className="flex w-full flex-col gap-1 py-2.5 pr-[74px] pl-8 text-left"
                     >
                       <span className="min-w-0 truncate text-[14px] text-texte-doux">
                         {service.nom}
