@@ -84,3 +84,105 @@ test.describe('état git d’un projet qui est lui-même un dépôt', () => {
     await expect(ctx.page.getByTitle(/dépôt\(s\) avec des changements/)).toHaveCount(0)
   })
 })
+
+/**
+ * La page Git de la colonne, où l'on choisit ce qui partira au commit.
+ */
+test.describe('page Git', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const projet = await mkdtemp(join(tmpdir(), 'claudex-page-git-'))
+    await depot(join(projet, 'coeur'), 'local')
+    await depot(join(projet, 'passerelle'), 'master')
+    await depot(join(projet, 'repos'), 'local')
+
+    await writeFile(join(projet, 'coeur', 'base.txt'), 'deux\n')
+    await mkdir(join(projet, 'coeur', 'src'), { recursive: true })
+    await writeFile(join(projet, 'coeur', 'src', 'Lien.java'), 'class Lien {}\n')
+    await writeFile(join(projet, 'passerelle', 'neuf.txt'), 'neuf\n')
+
+    ctx = await lancer({ projet })
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('range les fichiers sous leur dépôt, avec sa branche', async () => {
+    const coeur = ctx.page.getByRole('button', { name: /^coeur/ })
+    await expect(coeur).toContainText('local')
+    await expect(coeur).toContainText('2')
+
+    await expect(ctx.page.getByRole('button', { name: /^passerelle/ })).toContainText('master')
+    // Un dépôt sans changement n'encombre pas la liste.
+    await expect(ctx.page.getByRole('button', { name: /^repos/ })).toHaveCount(0)
+  })
+
+  test('montre le dossier d’un fichier autant que son nom', async () => {
+    // Dix `index.ts` dans un même dépôt ne se distinguent que par leur dossier.
+    await expect(ctx.page.getByTitle('src/Lien.java')).toBeVisible()
+  })
+
+  test('un dépôt se replie et cache ses fichiers sans les décocher', async () => {
+    const coeur = ctx.page.getByRole('button', { name: /^coeur/ })
+    const fichier = ctx.page.getByRole('checkbox', { name: 'base.txt' })
+
+    await fichier.click()
+    await expect(fichier).toHaveAttribute('aria-checked', 'true')
+
+    await coeur.click()
+    await expect(coeur).toHaveAttribute('aria-expanded', 'false')
+    await expect(fichier).toBeHidden()
+
+    await coeur.click()
+    await expect(fichier).toHaveAttribute('aria-checked', 'true')
+  })
+
+  test('la case du dépôt coche et décoche tout ce qu’il porte', async () => {
+    const tout = ctx.page.getByRole('checkbox', { name: 'Tout cocher dans coeur' })
+    const base = ctx.page.getByRole('checkbox', { name: 'base.txt' })
+    const lien = ctx.page.getByRole('checkbox', { name: 'src/Lien.java' })
+
+    await tout.click()
+    await expect(base).toHaveAttribute('aria-checked', 'true')
+    await expect(lien).toHaveAttribute('aria-checked', 'true')
+    await expect(tout).toHaveAttribute('aria-checked', 'true')
+
+    // Décocher un seul fichier laisse le dépôt dans l'entre-deux.
+    await lien.click()
+    await expect(tout).toHaveAttribute('aria-checked', 'mixed')
+
+    await tout.click()
+    await expect(base).toHaveAttribute('aria-checked', 'true')
+    await tout.click()
+    await expect(base).toHaveAttribute('aria-checked', 'false')
+  })
+
+  test('le filtre porte sur le chemin, et écarte les dépôts vides', async () => {
+    await ctx.page.getByLabel('Filtrer').fill('Lien')
+    await expect(ctx.page.getByRole('button', { name: /^coeur/ })).toBeVisible()
+    await expect(ctx.page.getByRole('button', { name: /^passerelle/ })).toHaveCount(0)
+
+    await ctx.page.getByLabel('Filtrer').fill('')
+    await expect(ctx.page.getByRole('button', { name: /^passerelle/ })).toBeVisible()
+  })
+})
+
+test.describe('page Git sans dépôt', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('le dit en une phrase, sans afficher d’erreur', async () => {
+    await expect(ctx.page.getByText('Ce projet ne contient aucun dépôt git.')).toBeVisible()
+  })
+})

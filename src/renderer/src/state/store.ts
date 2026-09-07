@@ -130,11 +130,29 @@ interface EtatUi {
   sollicitations: Record<string, Sollicitation>
 
   /** Onglet de la colonne latérale : les conversations ou les fichiers. */
-  panneau: 'sessions' | 'fichiers' | 'services'
+  panneau: 'sessions' | 'fichiers' | 'services' | 'git'
   /** Filtre de la liste des sessions. */
   filtre: string
-  /** État git du projet courant, pour la barre de statut. */
+  /** État git du projet courant, pour la barre de statut et la page Git. */
   git?: EtatGit | null
+  /**
+   * Dépôts repliés, par projet.
+   *
+   * Seize dépôts dont onze ont des changements tiennent plus que la colonne :
+   * les replier rend visibles les autres. Le repli vit ici et non dans le
+   * composant, sans quoi il se déferait à chaque passage sur une autre page.
+   */
+  depotsReplies: Record<string, string[]>
+  replierDepot: (workspaceId: string, depot: string) => void
+  /**
+   * Fichiers cochés, par leur clé `dépôt fichier`.
+   *
+   * Une liste plutôt qu'un ensemble : zustand compare par référence, et un
+   * `Set` muté ne redessinerait rien. La sélection traverse les projets sans
+   * dommage, puisque la clé porte le chemin absolu du dépôt.
+   */
+  coches: string[]
+  cocher: (cles: string[], coche: boolean) => void
 
   /** Conversation dont on s'apprête à bifurquer, le temps de la nommer. */
   bifurcationEnCours?: { workspaceId: string; uuid: string; titre: string }
@@ -180,7 +198,7 @@ interface EtatUi {
   finirNommage: () => void
   replierGroupeSessions: (workspaceId: string, id: string, replie: boolean) => Promise<void>
   defaireGroupe: (workspaceId: string, id: string) => Promise<void>
-  choisirPanneau: (panneau: 'sessions' | 'fichiers' | 'services') => void
+  choisirPanneau: (panneau: 'sessions' | 'fichiers' | 'services' | 'git') => void
   demanderBifurcation: (workspaceId: string, uuid: string, titre: string) => void
   etiqueter: (workspaceId: string, uuid: string, texte: string) => Promise<void>
   renommer: (workspaceId: string, uuid: string, titre: string) => Promise<void>
@@ -271,6 +289,8 @@ export const useStore = create<EtatUi>((set, get) => ({
   comptesOnglets: {},
   services: {},
   vues: {},
+  depotsReplies: {},
+  coches: [],
   groupesReplies: {},
   sessions: {},
   rangements: {},
@@ -452,6 +472,23 @@ export const useStore = create<EtatUi>((set, get) => ({
       vues: deja ? get().vues : { ...get().vues, [workspaceId]: [...ouvertes, vue] },
       vueActive: vue.id
     })
+  },
+
+  replierDepot: (workspaceId, depot) => {
+    const replies = get().depotsReplies[workspaceId] ?? []
+    set({
+      depotsReplies: {
+        ...get().depotsReplies,
+        [workspaceId]: replies.includes(depot)
+          ? replies.filter((d) => d !== depot)
+          : [...replies, depot]
+      }
+    })
+  },
+
+  cocher: (cles, coche) => {
+    const restantes = get().coches.filter((c) => !cles.includes(c))
+    set({ coches: coche ? [...restantes, ...cles] : restantes })
   },
 
   replierGroupeService: (workspaceId, groupe) => {

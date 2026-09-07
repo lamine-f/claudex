@@ -59,7 +59,12 @@ export function useShortcuts(): void {
       // et les services, arrivés après elle, restaient hors d'atteinte.
       if (touche === 'e') {
         evenement.preventDefault()
-        const suivant = { sessions: 'fichiers', fichiers: 'services', services: 'sessions' } as const
+        const suivant = {
+          sessions: 'fichiers',
+          fichiers: 'services',
+          services: 'git',
+          git: 'sessions'
+        } as const
         etat.choisirPanneau(suivant[etat.panneau])
         return
       }

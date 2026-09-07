@@ -113,6 +113,23 @@ describe('état agrégé d’un projet', () => {
     expect((await etat(projet))?.branche).toBe('local')
   })
 
+  it('montre les fichiers d’un dossier neuf, et non le dossier', async () => {
+    // Sans `-uall`, git replie un dossier entier non suivi en une seule ligne
+    // `? src/`. Ce n'est pas un fichier : on ne saurait ni ce qu'il contient,
+    // ni quoi cocher pour le commiter.
+    const projet = join(racine, 'dossier-neuf')
+    await depot(projet)
+    await mkdir(join(projet, 'src'), { recursive: true })
+    await writeFile(join(projet, 'src', 'Un.java'), 'class Un {}\n')
+    await writeFile(join(projet, 'src', 'Deux.java'), 'class Deux {}\n')
+
+    const vu = await etat(projet)
+    expect(vu?.depots[0]?.fichiers.map((f) => f.chemin)).toEqual([
+      'src/Deux.java',
+      'src/Un.java'
+    ])
+  })
+
   it('lit un dépôt sans amont sans en faire une erreur', async () => {
     // Le cas de `deploy` : git n'écrit alors ni branch.upstream ni branch.ab.
     const projet = join(racine, 'sans-amont')

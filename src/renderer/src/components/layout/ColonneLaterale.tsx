@@ -4,9 +4,11 @@ import { useStore } from '@renderer/state/store'
 import { vueJournal } from '@renderer/state/vues'
 import { raccourci } from '@renderer/systeme'
 import { FileTree } from '../files/FileTree'
+import { ListeChangements } from '../git/ListeChangements'
 import { ListeServices } from '../services/ListeServices'
 import {
   IconeArborescence,
+  IconeBranche,
   IconeConversations,
   IconeServices,
   IconeSkill,
@@ -17,10 +19,10 @@ import {
 import { ListeSessions } from '../workspaces/ListeSessions'
 
 /**
- * Colonne unique portant les conversations, les fichiers et les services.
+ * Colonne unique portant les conversations, les fichiers, les services et git.
  *
- * Les deux ne se regardent jamais en même temps : les réunir sous deux onglets
- * rend à l'agent la largeur qu'une troisième colonne lui prenait en permanence.
+ * On ne les regarde jamais ensemble : les réunir sous des onglets rend à
+ * l'agent la largeur que des colonnes séparées lui prendraient en permanence.
  */
 export function ColonneLaterale(): React.JSX.Element {
   const workspaces = useStore((e) => e.workspaces)
@@ -41,6 +43,13 @@ export function ColonneLaterale(): React.JSX.Element {
   // qui est déclaré : c'est la question qu'on se pose en le regardant.
   const services = useStore((e) => (actif ? e.services[actif] : undefined))
   const debout = services?.filter((s) => s.etat !== 'arrete').length
+
+  // Le nombre porté par l'onglet Git est celui des dépôts qui ont de quoi être
+  // commité, non celui des fichiers : seize dépôts en portent parfois trente,
+  // et c'est le nombre d'endroits où agir qui se lit d'un coup d'œil.
+  const git = useStore((e) => e.git)
+  const aCommiter = git?.depots.filter((d) => d.fichiers.length > 0).length || undefined
+  const rafraichirGit = useStore((e) => e.rafraichirGit)
 
   // Le journal prend toute la place du terminal. C'est une vue : la fermer ne
   // touche pas au service, qui continue de tourner.
@@ -63,7 +72,7 @@ export function ColonneLaterale(): React.JSX.Element {
   // Les deux vues se disent par leur icône : deux mots en capitales pesaient
   // plus lourd que ce qu'ils désignaient, en tête d'une colonne étroite.
   const onglet = (
-    cle: 'sessions' | 'fichiers' | 'services',
+    cle: 'sessions' | 'fichiers' | 'services' | 'git',
     libelle: string,
     icone: React.ReactNode,
     nombre?: number
@@ -111,6 +120,7 @@ export function ColonneLaterale(): React.JSX.Element {
         {onglet('sessions', 'Conversations', <IconeConversations taille={17} />, compte)}
         {onglet('fichiers', 'Fichiers', <IconeArborescence taille={17} />)}
         {onglet('services', 'Services', <IconeServices taille={16} />, debout)}
+        {onglet('git', 'Git', <IconeBranche taille={15} />, aCommiter)}
         <div className="flex-1" />
         <span className="pr-1 font-mono text-[10px] text-texte-tenu">{raccourci('E')}</span>
       </div>
@@ -130,7 +140,9 @@ export function ColonneLaterale(): React.JSX.Element {
                 ? 'Filtrer les conversations'
                 : panneau === 'fichiers'
                   ? 'Filtrer les fichiers'
-                  : 'Filtrer les services'
+                  : panneau === 'git'
+                    ? 'Filtrer les changements'
+                    : 'Filtrer les services'
             }
             aria-label="Filtrer"
             className="min-w-0 flex-1 rounded-md border border-separateur bg-fond-creux px-3 py-2 font-mono text-[12.5px] text-texte-doux placeholder:text-texte-tenu focus:border-bordure focus:outline-none"
@@ -165,6 +177,11 @@ export function ColonneLaterale(): React.JSX.Element {
             outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
               void ecrireSkill(courant.id)
             )}
+
+          {panneau === 'git' &&
+            outil('Relire l’état des dépôts', <IconeSynchro taille={15} />, () =>
+              void rafraichirGit()
+            )}
         </div>
       )}
 
@@ -172,6 +189,10 @@ export function ColonneLaterale(): React.JSX.Element {
         <p className="px-3 py-2 text-[12.5px] text-texte-faible">Aucun projet sélectionné.</p>
       ) : panneau === 'fichiers' ? (
         <FileTree />
+      ) : panneau === 'git' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ListeChangements workspaceId={courant.id} />
+        </div>
       ) : panneau === 'services' ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <ListeServices workspaceId={courant.id} onVoirJournal={(service) => ouvrirVue(courant.id, vueJournal(service))} />

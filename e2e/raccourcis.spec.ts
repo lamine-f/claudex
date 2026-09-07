@@ -58,7 +58,7 @@ test.describe('raccourcis clavier', () => {
     await expect(onglets.nth(0)).toHaveAttribute('aria-current', 'true')
   })
 
-  test('la combinaison fait tourner les trois pages de la colonne', async () => {
+  test('la combinaison fait tourner les quatre pages de la colonne', async () => {
     const onglet = (nom: string): Locator =>
       ctx.page.getByRole('button', { name: nom, exact: true })
 
@@ -68,6 +68,8 @@ test.describe('raccourcis clavier', () => {
     await expect(onglet('Fichiers')).toHaveAttribute('aria-pressed', 'true')
     await ctx.page.keyboard.press(`${COMMANDE}+E`)
     await expect(onglet('Services')).toHaveAttribute('aria-pressed', 'true')
+    await ctx.page.keyboard.press(`${COMMANDE}+E`)
+    await expect(onglet('Git')).toHaveAttribute('aria-pressed', 'true')
     await ctx.page.keyboard.press(`${COMMANDE}+E`)
     await expect(onglet('Conversations')).toHaveAttribute('aria-pressed', 'true')
   })
