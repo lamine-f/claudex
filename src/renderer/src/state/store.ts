@@ -159,9 +159,9 @@ interface EtatUi {
   /**
    * Le fichier entier plutôt que les seuls changements.
    *
-   * IntelliJ montre tout et propose de replier. L'inverse coûte moins cher à
-   * afficher, mais parcourir un fichier de bout en bout est parfois la seule
-   * façon de comprendre ce qu'un changement touche.
+   * Vrai par défaut, comme dans IntelliJ, qui montre tout et propose de
+   * replier. Trois lignes de contexte font des îlots que l'on saute : on ne
+   * voit pas ce qu'un changement touche autour de lui.
    */
   diffEntier: boolean
   basculerDiffEntier: () => void
@@ -304,7 +304,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   depotsReplies: {},
   coches: [],
   diffCoteACote: true,
-  diffEntier: false,
+  diffEntier: true,
   groupesReplies: {},
   sessions: {},
   rangements: {},

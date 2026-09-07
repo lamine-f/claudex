@@ -487,6 +487,17 @@ test.describe('vue de diff', () => {
     expect(await haut()).toBe(debut)
   })
 
+  test('s’ouvre sur le fichier entier', async () => {
+    // Trois lignes de contexte font des îlots que l'on saute : on ne voit pas
+    // ce qu'un changement touche autour de lui. C'est le choix d'IntelliJ, qui
+    // montre tout et propose de replier.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await expect(
+      ctx.page.getByRole('button', { name: 'Ne montrer que les changements' })
+    ).toBeVisible()
+    await expect(ctx.page.getByLabel('Volet gauche').getByText(/^@@ /)).toHaveCount(0)
+  })
+
   test('mène d’un fichier au suivant sans repasser par la liste', async () => {
     // Le geste d'IntelliJ, qui annonce « 29/34 files » entre deux flèches.
     // Relire trente fichiers demandait de revenir à la liste après chacun.
