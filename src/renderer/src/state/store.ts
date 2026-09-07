@@ -451,6 +451,11 @@ export const useStore = create<EtatUi>((set, get) => ({
     if (get().sessions[id]) void get().chargerSessions(id)
     else await get().chargerSessions(id)
     void get().chargerServices(id)
+    // L'état git est vidé plus haut parce qu'il appartient au projet qu'on
+    // quitte. Sans cette relecture, rien ne le remplissait avant le battement
+    // de quinze secondes de la bande du haut : la page Git restait sur
+    // « Lecture… » jusqu'à ce qu'on pense au bouton.
+    void get().rafraichirGit()
   },
 
   chargerOnglets: async (workspaceId) => {

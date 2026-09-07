@@ -348,3 +348,51 @@ test.describe('commiter depuis la page Git', () => {
     await expect(ctx.page.getByRole('button', { name: 'Commiter', exact: true })).toBeDisabled()
   })
 })
+
+/**
+ * Changer de projet doit relire l'état git, comme il relit tout le reste.
+ */
+test.describe('changement de projet', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const donnees = await mkdtemp(join(tmpdir(), 'claudex-bascule-'))
+    const nu = await mkdtemp(join(tmpdir(), 'claudex-nu-'))
+    const versionne = await mkdtemp(join(tmpdir(), 'claudex-versionne-'))
+    await depot(versionne, 'local')
+    await writeFile(join(versionne, 'base.txt'), 'deux\n')
+
+    // Deux projets dans le profil : le premier sans dépôt, le second avec.
+    await writeFile(
+      join(donnees, 'state.json'),
+      JSON.stringify({
+        workspaces: [
+          { id: 'ws1', path: nu, name: 'Sans dépôt', color: '#e8825a', order: 0, expanded: true },
+          { id: 'ws2', path: versionne, name: 'Avec dépôt', color: '#7fa8d6', order: 1, expanded: true }
+        ],
+        tabs: [],
+        layout: { leftWidth: 260, middleWidth: 300 },
+        activeWorkspaceId: 'ws1'
+      })
+    )
+
+    ctx = await lancer({ donnees, projet: nu })
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('relit l’état git sans qu’on ait à le demander', async () => {
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+    await expect(ctx.page.getByText('Ce projet ne contient aucun dépôt git.')).toBeVisible()
+
+    // Le passage vidait l'état sans le relire : la page restait sur « Lecture… »
+    // jusqu'au battement de quinze secondes de la bande du haut.
+    await ctx.page.getByLabel('Projets').getByText('Avec dépôt').click()
+    await expect(ctx.page.getByRole('button', { name: /^claudex-versionne/ })).toBeVisible({
+      timeout: 5000
+    })
+    await expect(ctx.page.getByText('Lecture…')).toHaveCount(0)
+  })
+})
