@@ -189,6 +189,16 @@ test.describe('les projets du rail', () => {
     await expect(entete).toBeVisible()
     await expect(projet(page, 'Alpha')).toBeVisible()
 
+    // L'en-tête se peint d'un bord à l'autre du rail, comme celui d'un groupe
+    // de conversations : c'est lui le groupe, pas la pastille en retrait d'un
+    // projet. Il déborde donc de part et d'autre des projets qu'il coiffe.
+    const bandeau = await entete.locator('xpath=..').boundingBox()
+    const pastille = await projet(page, 'Alpha').boundingBox()
+    expect(bandeau).not.toBeNull()
+    expect(pastille).not.toBeNull()
+    expect(bandeau!.x).toBeLessThan(pastille!.x)
+    expect(bandeau!.x + bandeau!.width).toBeGreaterThan(pastille!.x + pastille!.width)
+
     // Replié, le groupe cache son projet sans le perdre.
     await entete.click()
     await expect(projet(page, 'Alpha')).toHaveCount(0)

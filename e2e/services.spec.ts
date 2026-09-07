@@ -368,5 +368,20 @@ services:
 
     await entete.click()
     await expect(ctx.page.getByRole('button', { name: /^veilleuse/ })).toBeVisible()
+
+    // La surface qui se colore au survol est la ligne entière, gestes du groupe
+    // compris. Elle s'arrêtait avant eux : l'en-tête paraissait plus étroit que
+    // celui d'un groupe de conversations, qui se peint d'un bord à l'autre.
+    const ligne = entete.locator('xpath=..')
+    await ligne.hover()
+    const fond = await ligne.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(fond).not.toBe('rgba(0, 0, 0, 0)')
+
+    const bandeau = await ligne.boundingBox()
+    const geste = await ligne.getByRole('button', { name: 'tout arrêter' }).boundingBox()
+    expect(bandeau).not.toBeNull()
+    expect(geste).not.toBeNull()
+    expect(geste!.x).toBeGreaterThanOrEqual(bandeau!.x)
+    expect(geste!.x + geste!.width).toBeLessThanOrEqual(bandeau!.x + bandeau!.width)
   })
 })

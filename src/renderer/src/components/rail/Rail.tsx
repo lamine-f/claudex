@@ -351,7 +351,10 @@ function EnteteGroupeProjets({
       // La même facture que l'en-tête d'un groupe de conversations : même
       // hauteur, même chevron, même taille de texte. Trois listes qui se
       // ressemblent doivent se ressembler jusque dans leurs mesures.
-      className={`flex items-center gap-1.5 py-2 pr-2 pl-1.5 transition-colors ${
+      // Les marges négatives annulent le retrait de la liste : un en-tête de
+      // groupe se peint d'un bord à l'autre du rail, comme celui d'un groupe de
+      // conversations, tandis que les projets restent des pastilles en retrait.
+      className={`-mx-2 flex items-center gap-1.5 py-2 pr-4 pl-3.5 transition-colors ${
         vise ? 'bg-fond-eleve ring-1 ring-projet' : 'hover:bg-fond-survol'
       }`}
     >

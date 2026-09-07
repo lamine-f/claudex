@@ -241,14 +241,14 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
             {/* La facture d'un en-tête de groupe de conversations, à la
                 lettre : trois listes qui se ressemblent doivent se ressembler
                 jusque dans leurs mesures. */}
-            <div className="flex items-center gap-1.5 py-2 pr-2 pl-1.5">
+            <div className="flex items-center gap-1.5 py-2 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
               {/* L'en-tête ouvre et referme son groupe : onze services back
                   tiennent la colonne entière et cachent les autres groupes. */}
               <button
                 type="button"
                 onClick={() => replier(workspaceId, groupe)}
                 aria-expanded={!replie}
-                className="flex min-w-0 flex-1 items-center gap-1.5 rounded py-0.5 text-left transition-colors hover:bg-fond-survol"
+                className="flex min-w-0 flex-1 items-center gap-1.5 py-0.5 text-left"
               >
                 <span
                   aria-hidden
