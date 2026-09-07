@@ -180,6 +180,8 @@ interface EtatUi {
   /** Reçoit du main la liste des conversations qui attendent. */
   poserSollicitations: (sollicitations: Record<string, Sollicitation>) => void
   fermerOnglet: (id: string) => Promise<void>
+  /** Ferme plusieurs onglets d'affilée, et leurs sessions avec eux. */
+  fermerOnglets: (ids: string[]) => Promise<void>
   enregistrerLayout: (layout: Partial<AppState['layout']>) => void
   replier: (quoi: 'rail' | 'colonne') => void
   ouvrirDiagnostic: (ouvert: boolean) => void
@@ -702,6 +704,12 @@ export const useStore = create<EtatUi>((set, get) => ({
     set({ tabs: restants, activeTabId: retenu })
     if (retenu) void window.claudex.term.focus(retenu)
     void get().rafraichirComptes()
+  },
+
+  fermerOnglets: async (ids) => {
+    // L'un après l'autre : chaque fermeture détruit une session, et les mener
+    // de front laisserait l'onglet regardé se décider au hasard des retours.
+    for (const id of ids) await get().fermerOnglet(id)
   },
 
   enregistrerLayout: (layout) => {

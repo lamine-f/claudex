@@ -11,6 +11,7 @@ export function TerminalPane(): React.JSX.Element {
   const nouvelOnglet = useStore((e) => e.nouvelOnglet)
   const choisirOnglet = useStore((e) => e.choisirOnglet)
   const fermerOnglet = useStore((e) => e.fermerOnglet)
+  const fermerOnglets = useStore((e) => e.fermerOnglets)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const sollicitations = useStore((e) => e.sollicitations)
   const journaux = useStore((e) => (e.activeWorkspaceId ? e.journaux[e.activeWorkspaceId] : undefined))
@@ -42,6 +43,7 @@ export function TerminalPane(): React.JSX.Element {
         actifId={activeTabId}
         onChoisir={choisirOnglet}
         onFermer={(id) => void fermerOnglet(id)}
+        onFermerPlusieurs={(ids) => void fermerOnglets(ids)}
         onNouveau={() => void nouvelOnglet()}
         onBifurquer={(tab) =>
           tab.claudeSessionId &&
