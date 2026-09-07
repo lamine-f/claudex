@@ -238,6 +238,9 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
         const replie = (replies ?? []).includes(groupe)
         return (
           <li key={groupe}>
+            {/* La facture d'un en-tête de groupe de conversations, à la
+                lettre : trois listes qui se ressemblent doivent se ressembler
+                jusque dans leurs mesures. */}
             <div className="flex items-center gap-1.5 py-2 pr-2 pl-1.5">
               {/* L'en-tête ouvre et referme son groupe : onze services back
                   tiennent la colonne entière et cachent les autres groupes. */}
@@ -255,10 +258,10 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                 >
                   <IconeChevron taille={13} />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[13.5px] text-texte-doux">
+                <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-texte-doux">
                   {groupe}
                 </span>
-                <span className="shrink-0 font-mono text-[11px] text-texte-tenu">
+                <span className="shrink-0 font-mono text-[10.5px] text-texte-tenu">
                   {debout}/{membres.length}
                 </span>
               </button>

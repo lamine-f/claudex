@@ -348,7 +348,10 @@ function EnteteGroupeProjets({
         e.preventDefault()
         onMenu(e.clientX, e.clientY)
       }}
-      className={`flex items-center gap-1 rounded-lg py-1.5 pr-2 pl-1 transition-colors ${
+      // La même facture que l'en-tête d'un groupe de conversations : même
+      // hauteur, même chevron, même taille de texte. Trois listes qui se
+      // ressemblent doivent se ressembler jusque dans leurs mesures.
+      className={`flex items-center gap-1.5 py-2 pr-2 pl-1.5 transition-colors ${
         vise ? 'bg-fond-eleve ring-1 ring-projet' : 'hover:bg-fond-survol'
       }`}
     >
@@ -380,8 +383,8 @@ function EnteteGroupeProjets({
           className="min-w-0 flex-1 rounded border border-projet-tenu bg-fond-eleve px-1.5 py-px text-[13px] text-texte placeholder:text-texte-tenu focus:outline-none"
         />
       ) : (
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-texte-doux">
-          {nom || 'Groupe'}
+        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-texte-doux">
+          {nom || 'Sans nom'}
         </span>
       )}
 
