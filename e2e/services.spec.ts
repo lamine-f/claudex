@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
 import {
   fermer,
+  HAUTEUR_ENTETE,
   lancer,
   nouveauTerminal,
   simulerRedemarrage,
@@ -383,5 +384,6 @@ services:
     expect(geste).not.toBeNull()
     expect(geste!.x).toBeGreaterThanOrEqual(bandeau!.x)
     expect(geste!.x + geste!.width).toBeLessThanOrEqual(bandeau!.x + bandeau!.width)
+    expect(bandeau!.height).toBe(HAUTEUR_ENTETE)
   })
 })

@@ -240,8 +240,10 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
           <li key={groupe}>
             {/* La facture d'un en-tête de groupe de conversations, à la
                 lettre : trois listes qui se ressemblent doivent se ressembler
-                jusque dans leurs mesures. */}
-            <div className="flex items-center gap-1.5 py-2 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
+                jusque dans leurs mesures. La hauteur est dite, pas déduite —
+                les gestes du groupe font 28 px et poussaient la ligne à 44
+                quand elle se contentait d'un padding vertical. */}
+            <div className="flex h-9 items-center gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol">
               {/* L'en-tête ouvre et referme son groupe : onze services back
                   tiennent la colonne entière et cachent les autres groupes. */}
               <button

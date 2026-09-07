@@ -2,7 +2,7 @@ import { mkdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { fermer, glisser, lancer, type Contexte } from './fixtures'
+import { fermer, glisser, HAUTEUR_ENTETE, lancer, type Contexte } from './fixtures'
 
 const ligneJson = (o: unknown): string => `${JSON.stringify(o)}\n`
 
@@ -135,6 +135,10 @@ test.describe('ranger les conversations à la main', () => {
   })
 
   test('replier le groupe cache son contenu sans le perdre', async () => {
+    // Les conversations donnent la mesure que les deux autres listes suivent.
+    const bandeau = await ctx.page.getByLabel('Replier le groupe').locator('xpath=..').boundingBox()
+    expect(bandeau?.height).toBe(HAUTEUR_ENTETE)
+
     await ctx.page.getByLabel('Replier le groupe').click()
     await expect(colonne(ctx.page).getByText('Beta')).toHaveCount(0)
     await ctx.page.getByLabel('Déployer le groupe').click()

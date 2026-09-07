@@ -340,3 +340,12 @@ export async function glisser(
   await page.mouse.move(x, y)
   await page.mouse.up()
 }
+
+/**
+ * La hauteur d'un en-tête de groupe, en pixels.
+ *
+ * Les conversations donnent la mesure ; les projets et les services la
+ * reprennent. Trois listes qui se ressemblent doivent se ressembler jusque
+ * dans leurs mesures, et rien ne le dit mieux qu'un nombre partagé.
+ */
+export const HAUTEUR_ENTETE = 36

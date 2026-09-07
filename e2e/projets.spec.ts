@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { fermer, glisser, lancer, nouveauTerminal, type Contexte } from './fixtures'
+import { fermer, glisser, HAUTEUR_ENTETE, lancer, nouveauTerminal, type Contexte } from './fixtures'
 
 /** Le dossier où Claude Code range les transcrits d'un projet. */
 function dossierTranscrits(projet: string): string {
@@ -198,6 +198,7 @@ test.describe('les projets du rail', () => {
     expect(pastille).not.toBeNull()
     expect(bandeau!.x).toBeLessThan(pastille!.x)
     expect(bandeau!.x + bandeau!.width).toBeGreaterThan(pastille!.x + pastille!.width)
+    expect(bandeau!.height).toBe(HAUTEUR_ENTETE)
 
     // Replié, le groupe cache son projet sans le perdre.
     await entete.click()
