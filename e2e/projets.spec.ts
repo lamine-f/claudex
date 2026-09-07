@@ -206,10 +206,23 @@ test.describe('les projets du rail', () => {
     await page.getByRole('button', { name: 'Déployer le groupe' }).click()
     await expect(projet(page, 'Alpha')).toBeVisible()
 
+    // Le groupe se renomme, par son menu comme par un double-clic sur son nom.
+    // Le menu réécrivait le nom qu'il avait déjà au lieu d'ouvrir la saisie.
+    await page.getByRole('button', { name: 'Travail' }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Renommer le groupe' }).click()
+    await nom.fill('Chantier')
+    await nom.press('Enter')
+    await expect(page.getByRole('button', { name: 'Chantier' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Chantier' }).dblclick()
+    await nom.fill('Atelier')
+    await nom.press('Enter')
+    await expect(page.getByRole('button', { name: 'Atelier' })).toBeVisible()
+
     // Le rangement est écrit : il survit à la fermeture.
     await fermer(ctx, { nettoyer: false })
     ctx = await lancer({ donnees: ctx.donnees, projet: ctx.projet })
     await expect(ctx.page.getByRole('button', { name: 'Replier le groupe' })).toBeVisible()
-    await expect(ctx.page.getByText('Travail')).toBeVisible()
+    await expect(ctx.page.getByText('Atelier')).toBeVisible()
   })
 })

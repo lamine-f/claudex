@@ -45,6 +45,9 @@ export function Rail(): React.JSX.Element {
   const [aRetirer, setARetirer] = useState<Workspace | null>(null)
   const [glisse, setGlisse] = useState<Element | null>(null)
   const [survol, setSurvol] = useState<{ cle: string; ou: 'avant' | 'apres' | 'dans' } | null>(null)
+  // Renommer un groupe déjà nommé est un geste local : le store, lui, ne
+  // retient que le groupe qui vient de naître et attend son premier nom.
+  const [renomme, setRenomme] = useState<string | null>(null)
 
   const lignes = useMemo(() => {
     const terme = filtre.trim().toLowerCase()
@@ -192,16 +195,30 @@ export function Rail(): React.JSX.Element {
                   compte={ligne.membres.length}
                   replie={ligne.replie}
                   vise={survol?.cle === cle && survol.ou === 'dans'}
-                  enNommage={aNommer === ligne.id}
+                  enNommage={aNommer === ligne.id || renomme === ligne.id}
                   onReplier={() => void replierGroupe(ligne.id, !ligne.replie)}
-                  onNommer={(nom) => void nommerGroupe(ligne.id, nom)}
-                  onAbandonner={finirNommage}
+                  onNommer={(nom) => {
+                    setRenomme(null)
+                    void nommerGroupe(ligne.id, nom)
+                  }}
+                  onAbandonner={() => {
+                    setRenomme(null)
+                    finirNommage()
+                    // Un groupe abandonné sans nom laisserait une ligne muette :
+                    // on lui en donne un par défaut plutôt qu'un blanc.
+                    if (!ligne.nom) void nommerGroupe(ligne.id, '')
+                  }}
+                  onEditer={() => setRenomme(ligne.id)}
                   onMenu={(x, y) =>
                     setMenu({
                       x,
                       y,
                       actions: [
-                        { libelle: 'Renommer le groupe', onChoisir: () => void nommerGroupe(ligne.id, ligne.nom) },
+                        { libelle: 'Renommer le groupe', onChoisir: () => setRenomme(ligne.id) },
+                        {
+                          libelle: ligne.replie ? 'Déployer' : 'Replier',
+                          onChoisir: () => void replierGroupe(ligne.id, !ligne.replie)
+                        },
                         {
                           libelle: 'Défaire le groupe',
                           ecarte: true,
@@ -319,6 +336,7 @@ function EnteteGroupeProjets({
   onReplier,
   onNommer,
   onAbandonner,
+  onEditer,
   onMenu
 }: {
   nom: string
@@ -329,6 +347,7 @@ function EnteteGroupeProjets({
   onReplier: () => void
   onNommer: (nom: string) => void
   onAbandonner: () => void
+  onEditer: () => void
   onMenu: (x: number, y: number) => void
 }): React.JSX.Element {
   const champ = useRef<HTMLInputElement | null>(null)
@@ -386,9 +405,19 @@ function EnteteGroupeProjets({
           className="min-w-0 flex-1 rounded border border-projet-tenu bg-fond-eleve px-1.5 py-px text-[13px] text-texte placeholder:text-texte-tenu focus:outline-none"
         />
       ) : (
-        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-texte-doux">
+        <button
+          type="button"
+          onClick={onReplier}
+          onDoubleClick={(e) => {
+            e.preventDefault()
+            onEditer()
+          }}
+          // Un groupe de projets se renomme comme un groupe de conversations :
+          // double-clic sur le nom, et le clic droit pour le reste.
+          className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-texte-doux"
+        >
           {nom || 'Sans nom'}
-        </span>
+        </button>
       )}
 
       <span className="shrink-0 font-mono text-[10.5px] text-texte-tenu">{compte}</span>
