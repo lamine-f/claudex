@@ -379,6 +379,27 @@ test.describe('commiter depuis la page Git', () => {
     await expect(ctx.page.getByRole('button', { name: /^coeur/ })).toHaveCount(0)
   })
 
+  test('tient les deux gestes sur une seule ligne', async () => {
+    // La mesure de ce qui est coché partageait la ligne des boutons et prenait
+    // la largeur qui manquait au second, dont l'intitulé passait à deux lignes.
+    const commiter = await ctx.page.getByRole('button', { name: 'Commiter', exact: true }).boundingBox()
+    const pousser = await ctx.page
+      .getByRole('button', { name: 'Commiter et pousser' })
+      .boundingBox()
+
+    expect(commiter).not.toBeNull()
+    expect(pousser).not.toBeNull()
+    // Côte à côte et à la même hauteur. Le pixel d'écart vient de la bordure du
+    // second bouton, que le premier n'a pas.
+    expect(Math.abs(pousser!.y - commiter!.y)).toBeLessThanOrEqual(2)
+    expect(Math.abs(pousser!.height - commiter!.height)).toBeLessThanOrEqual(2)
+    expect(pousser!.x).toBeGreaterThan(commiter!.x)
+
+    // Une seule ligne de texte dans chacun : à deux lignes, le bouton ferait le
+    // double de haut.
+    expect(pousser!.height).toBeLessThan(34)
+  })
+
   test('ne commite pas sans message', async () => {
     await ctx.page.getByLabel('Message du commit').fill('')
     await expect(ctx.page.getByRole('button', { name: 'Commiter', exact: true })).toBeDisabled()

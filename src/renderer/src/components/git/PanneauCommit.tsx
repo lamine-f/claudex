@@ -73,12 +73,25 @@ export function PanneauCommit({ workspaceId }: { workspaceId: string }): React.J
 
       {comptes && <CompteRendu comptes={comptes} />}
 
-      <div className="mt-2 flex items-center gap-2">
+      {/* Ce qui est coché se lit au-dessus des gestes, non à côté. Posée sur la
+          même ligne, cette mesure prenait la largeur qui manquait au second
+          bouton, dont l'intitulé passait à deux lignes. */}
+      <p className="mt-2 text-right font-mono text-[10.5px] text-texte-tenu">
+        {enCours
+          ? 'en cours…'
+          : fichiers === 0
+            ? 'rien de coché'
+            : `${fichiers} fichier${fichiers > 1 ? 's' : ''} · ${lots.length} dépôt${
+                lots.length > 1 ? 's' : ''
+              }`}
+      </p>
+
+      <div className="mt-1.5 flex items-center gap-2">
         <button
           type="button"
           disabled={!pret}
           onClick={() => void commiter(false)}
-          className="rounded-md bg-projet px-3 py-1.5 text-[12.5px] text-fond transition-opacity disabled:opacity-35"
+          className="flex-1 truncate rounded-md bg-projet px-3 py-1.5 text-[12.5px] whitespace-nowrap text-fond transition-opacity disabled:opacity-35"
         >
           Commiter
         </button>
@@ -86,20 +99,10 @@ export function PanneauCommit({ workspaceId }: { workspaceId: string }): React.J
           type="button"
           disabled={!pret}
           onClick={() => void commiter(true)}
-          className="rounded-md border border-bordure px-3 py-1.5 text-[12.5px] text-texte-doux transition-opacity hover:bg-fond-survol disabled:opacity-35"
+          className="flex-1 truncate rounded-md border border-bordure px-3 py-1.5 text-[12.5px] whitespace-nowrap text-texte-doux transition-opacity hover:bg-fond-survol disabled:opacity-35"
         >
           Commiter et pousser
         </button>
-
-        <span className="ml-auto font-mono text-[10.5px] text-texte-tenu">
-          {enCours
-            ? 'en cours…'
-            : fichiers === 0
-              ? 'rien de coché'
-              : `${fichiers} fichier${fichiers > 1 ? 's' : ''} · ${lots.length} dépôt${
-                  lots.length > 1 ? 's' : ''
-                }`}
-        </span>
       </div>
     </div>
   )
