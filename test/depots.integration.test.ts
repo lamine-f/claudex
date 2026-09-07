@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { depots, etat } from '../src/main/services/git'
+import { chantier, commiter, depots, etat, pousser } from '../src/main/services/git'
 
 const run = promisify(execFile)
 
@@ -138,5 +138,95 @@ describe('état agrégé d’un projet', () => {
     const vu = await etat(projet)
     expect(vu?.depots[0]).toMatchObject({ branche: 'master', avance: 0, retard: 0 })
     expect(vu?.depots[0]?.amont).toBeUndefined()
+  })
+})
+
+describe('écrire dans les dépôts', () => {
+  let racine: string
+
+  beforeAll(async () => {
+    racine = await mkdtemp(join(tmpdir(), 'claudex-git-ecrit-'))
+  })
+
+  afterAll(async () => {
+    await rm(racine, { recursive: true, force: true })
+  })
+
+  /** Le journal d'un dépôt, en une ligne par commit. */
+  async function journal(chemin: string): Promise<string[]> {
+    const { stdout } = await run('git', ['-C', chemin, 'log', '--format=%s'])
+    return stdout.split('\n').filter(Boolean)
+  }
+
+  it('indexe et commite les seuls fichiers demandés', async () => {
+    const projet = join(racine, 'choix')
+    await depot(projet)
+    await writeFile(join(projet, 'pris.txt'), 'oui\n')
+    await writeFile(join(projet, 'laisse.txt'), 'non\n')
+
+    const compte = await commiter(projet, ['pris.txt'], 'feat: le fichier choisi')
+    expect(compte.fait).toBe(true)
+    expect(await journal(projet)).toEqual(['feat: le fichier choisi', 'base'])
+
+    // Ce qui n'était pas coché est resté sur le côté.
+    const reste = await etat(projet)
+    expect(reste?.depots[0]?.fichiers.map((f) => f.chemin)).toEqual(['laisse.txt'])
+  })
+
+  it('refuse de commiter par-dessus une fusion en cours', async () => {
+    // Commiter au milieu d'une fusion non résolue la clôt avec les marqueurs de
+    // conflit dans le code. Git ne le dit qu'au moment où il refuse.
+    const projet = join(racine, 'fusion')
+    await depot(projet, 'principale')
+    await run('git', ['-C', projet, 'checkout', '-q', '-b', 'autre'])
+    await writeFile(join(projet, 'base.txt'), 'autre\n')
+    await run('git', ['-C', projet, 'commit', '-qam', 'côté autre'])
+    await run('git', ['-C', projet, 'checkout', '-q', 'principale'])
+    await writeFile(join(projet, 'base.txt'), 'principale\n')
+    await run('git', ['-C', projet, 'commit', '-qam', 'côté principale'])
+    await run('git', ['-C', projet, 'merge', 'autre']).catch(() => undefined)
+
+    expect(await chantier(projet)).toBe('fusion')
+    const compte = await commiter(projet, ['base.txt'], 'quand même')
+    expect(compte.fait).toBe(false)
+    expect(compte.message).toContain('fusion')
+    expect(await journal(projet)).not.toContain('quand même')
+  })
+
+  it('rapporte ce que dit un hook qui refuse', async () => {
+    // Un `pre-commit` explique son refus dans sa propre sortie. C'est cette
+    // explication qui sert à corriger : la réduire à « échec » la perdrait.
+    const projet = join(racine, 'hook')
+    await depot(projet)
+    const hooks = join(projet, '.git', 'hooks')
+    await mkdir(hooks, { recursive: true })
+    await writeFile(join(hooks, 'pre-commit'), '#!/bin/sh\necho "la mise en forme cloche"\nexit 1\n', {
+      mode: 0o755
+    })
+    await writeFile(join(projet, 'base.txt'), 'deux\n')
+
+    const compte = await commiter(projet, ['base.txt'], 'refusé')
+    expect(compte.fait).toBe(false)
+    expect(compte.message).toContain('la mise en forme cloche')
+  })
+
+  it('ne pousse pas une branche sans amont, et le dit', async () => {
+    // Le cas de `deploy`. Sans amont, git demanderait où pousser ; inventer une
+    // destination serait pire que de le dire.
+    const projet = join(racine, 'sans-amont')
+    await depot(projet, 'master')
+
+    const compte = await pousser(projet)
+    expect(compte.fait).toBe(false)
+    expect(compte.message).toContain('amont')
+  })
+
+  it('ne commite rien quand aucun fichier n’est choisi', async () => {
+    const projet = join(racine, 'vide')
+    await depot(projet)
+    await writeFile(join(projet, 'base.txt'), 'deux\n')
+
+    expect((await commiter(projet, [], 'sans rien')).fait).toBe(false)
+    expect(await journal(projet)).toEqual(['base'])
   })
 })

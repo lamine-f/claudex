@@ -5,6 +5,7 @@ import { vueJournal } from '@renderer/state/vues'
 import { raccourci } from '@renderer/systeme'
 import { FileTree } from '../files/FileTree'
 import { ListeChangements } from '../git/ListeChangements'
+import { PanneauCommit } from '../git/PanneauCommit'
 import { ListeServices } from '../services/ListeServices'
 import {
   IconeArborescence,
@@ -190,9 +191,14 @@ export function ColonneLaterale(): React.JSX.Element {
       ) : panneau === 'fichiers' ? (
         <FileTree />
       ) : panneau === 'git' ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <ListeChangements workspaceId={courant.id} />
-        </div>
+        // La liste défile, le panneau de commit reste sous la main : on écrit
+        // son message sans avoir à redescendre au bas de trente fichiers.
+        <>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ListeChangements workspaceId={courant.id} />
+          </div>
+          <PanneauCommit workspaceId={courant.id} />
+        </>
       ) : panneau === 'services' ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <ListeServices workspaceId={courant.id} onVoirJournal={(service) => ouvrirVue(courant.id, vueJournal(service))} />

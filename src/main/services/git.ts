@@ -111,6 +111,119 @@ export async function etat(chemin: string): Promise<EtatGit | null> {
   }
 }
 
+/** Ce qu'un dépôt est en train de faire, et qui interdit d'y commiter par-dessus. */
+export type Chantier = 'fusion' | 'rebasage' | 'picorage' | 'annulation'
+
+const MARQUEURS: [string, Chantier][] = [
+  ['MERGE_HEAD', 'fusion'],
+  ['rebase-merge', 'rebasage'],
+  ['rebase-apply', 'rebasage'],
+  ['CHERRY_PICK_HEAD', 'picorage'],
+  ['REVERT_HEAD', 'annulation']
+]
+
+/**
+ * Ce qu'un dépôt a laissé en plan, s'il a laissé quelque chose.
+ *
+ * Commiter au milieu d'une fusion non résolue clôt la fusion avec des marqueurs
+ * de conflit dans le code. Le savoir avant vaut mieux que d'échouer après, et
+ * git ne le dit qu'au moment où il refuse.
+ *
+ * Le dossier est demandé à git plutôt que déduit : `.git` est un fichier dans
+ * un sous-module ou un arbre de travail lié.
+ */
+export async function chantier(depot: string): Promise<Chantier | undefined> {
+  try {
+    const { stdout } = await run('git', ['-C', depot, 'rev-parse', '--absolute-git-dir'], {
+      timeout: 4000
+    })
+    const dossier = stdout.trim()
+    for (const [marqueur, nom] of MARQUEURS) {
+      if (await existe(join(dossier, marqueur))) return nom
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
+/** Ce qu'un geste d'écriture a donné, dépôt par dépôt. */
+export interface Compte {
+  depot: string
+  nom: string
+  fait: boolean
+  /** Ce que git a dit quand il a refusé, tel quel. */
+  message?: string
+}
+
+/**
+ * Indexe des fichiers puis commite, dans un seul dépôt.
+ *
+ * Le message d'échec est celui de git, sans réécriture. Un `pre-commit` qui
+ * refuse explique pourquoi dans sa propre sortie, et c'est cette explication
+ * qui sert à corriger. La résumer en « échec » la perdrait.
+ */
+export async function commiter(
+  depot: string,
+  fichiers: string[],
+  message: string
+): Promise<Compte> {
+  const nom = basename(depot)
+  if (fichiers.length === 0) return { depot, nom, fait: false, message: 'Aucun fichier choisi.' }
+
+  const enPlan = await chantier(depot)
+  if (enPlan) {
+    return { depot, nom, fait: false, message: `Ce dépôt est en cours de ${enPlan}.` }
+  }
+
+  try {
+    // `--` sépare les chemins des options : un fichier nommé `-f` serait sinon
+    // lu comme un drapeau.
+    await run('git', ['-C', depot, 'add', '--', ...fichiers], { timeout: 30_000 })
+    await run('git', ['-C', depot, 'commit', '-m', message], {
+      timeout: 120_000,
+      maxBuffer: 4 * 1024 * 1024
+    })
+    return { depot, nom, fait: true }
+  } catch (erreur) {
+    return { depot, nom, fait: false, message: ditGit(erreur) }
+  }
+}
+
+/**
+ * Pousse un dépôt vers son amont.
+ *
+ * Une branche sans amont ne peut pas être poussée sans qu'on dise où : plutôt
+ * que d'inventer une destination, on le dit. C'est le cas de `deploy`.
+ */
+export async function pousser(depot: string): Promise<Compte> {
+  const nom = basename(depot)
+  const lu = await etatDepot(depot)
+  if (lu && !lu.amont) {
+    return { depot, nom, fait: false, message: 'Cette branche n’a pas d’amont où pousser.' }
+  }
+
+  try {
+    await run('git', ['-C', depot, 'push'], { timeout: 300_000, maxBuffer: 4 * 1024 * 1024 })
+    return { depot, nom, fait: true }
+  } catch (erreur) {
+    return { depot, nom, fait: false, message: ditGit(erreur) }
+  }
+}
+
+/**
+ * Ce que git a dit, réduit à ce qui se lit.
+ *
+ * Git écrit ses refus sur la sortie d'erreur, souvent en plusieurs lignes dont
+ * les premières portent l'essentiel. Les hooks, eux, écrivent où ils veulent.
+ */
+function ditGit(erreur: unknown): string {
+  const echec = erreur as { stderr?: string; stdout?: string; message?: string }
+  const texte = [echec.stderr, echec.stdout].filter(Boolean).join('\n').trim()
+  if (!texte) return echec.message ?? 'Échec, sans message.'
+  return texte.split('\n').slice(0, 12).join('\n')
+}
+
 /** Au-delà, le diff n'est plus lisible et son affichage coûterait plus qu'il ne montre. */
 const DIFF_MAX = 2 * 1024 * 1024
 

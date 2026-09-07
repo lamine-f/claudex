@@ -272,3 +272,79 @@ test.describe('vue de diff', () => {
     ).toBeVisible()
   })
 })
+
+/**
+ * Le commit, sur plusieurs dépôts à la fois. C'est le geste que la page vise :
+ * cocher dans trois dépôts et commiter écrit trois commits.
+ */
+test.describe('commiter depuis la page Git', () => {
+  let ctx: Contexte
+  let projet: string
+
+  /** Les sujets des commits d'un dépôt, du plus récent au plus ancien. */
+  const journal = async (nom: string): Promise<string[]> => {
+    const { stdout } = await run('git', ['-C', join(projet, nom), 'log', '--format=%s'])
+    return stdout.split('\n').filter(Boolean)
+  }
+
+  test.beforeAll(async () => {
+    projet = await mkdtemp(join(tmpdir(), 'claudex-commit-'))
+    await depot(join(projet, 'coeur'), 'local')
+    await depot(join(projet, 'passerelle'), 'local')
+    await depot(join(projet, 'rebelle'), 'local')
+
+    await writeFile(join(projet, 'coeur', 'base.txt'), 'deux\n')
+    await writeFile(join(projet, 'passerelle', 'base.txt'), 'trois\n')
+    await writeFile(join(projet, 'rebelle', 'base.txt'), 'quatre\n')
+
+    // Un dépôt dont le hook refuse : l'échec est partiel par nature, et c'est
+    // le cas qu'il faut voir rendu.
+    const hooks = join(projet, 'rebelle', '.git', 'hooks')
+    await mkdir(hooks, { recursive: true })
+    await writeFile(join(hooks, 'pre-commit'), '#!/bin/sh\necho "je refuse"\nexit 1\n', {
+      mode: 0o755
+    })
+
+    ctx = await lancer({ projet })
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('écrit un commit par dépôt, et rend compte de celui qui refuse', async () => {
+    for (const nom of ['coeur', 'passerelle', 'rebelle']) {
+      await ctx.page.getByRole('checkbox', { name: `Tout cocher dans ${nom}` }).click()
+    }
+    await expect(ctx.page.getByText('3 fichiers · 3 dépôts')).toBeVisible()
+
+    await ctx.page.getByLabel('Message du commit').fill('feat: le même message partout')
+    await ctx.page.getByRole('button', { name: 'Commiter', exact: true }).click()
+
+    const rendu = ctx.page.getByLabel('Compte rendu du commit')
+    await expect(rendu).toContainText('je refuse')
+
+    // Deux dépôts ont commité, le troisième non. Le journal fait foi.
+    expect(await journal('coeur')).toEqual(['feat: le même message partout', 'base'])
+    expect(await journal('passerelle')).toEqual(['feat: le même message partout', 'base'])
+    expect(await journal('rebelle')).toEqual(['base'])
+  })
+
+  test('laisse coché ce qui a échoué, et décoche ce qui est parti', async () => {
+    // On recommence sans avoir à retrouver ses fichiers.
+    await expect(ctx.page.getByRole('checkbox', { name: 'Tout cocher dans rebelle' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+    await expect(ctx.page.getByText('1 fichier · 1 dépôt')).toBeVisible()
+
+    // Les deux dépôts commités ont disparu de la liste : ils n'ont plus rien.
+    await expect(ctx.page.getByRole('button', { name: /^coeur/ })).toHaveCount(0)
+  })
+
+  test('ne commite pas sans message', async () => {
+    await ctx.page.getByLabel('Message du commit').fill('')
+    await expect(ctx.page.getByRole('button', { name: 'Commiter', exact: true })).toBeDisabled()
+  })
+})
