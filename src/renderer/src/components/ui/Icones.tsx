@@ -11,6 +11,7 @@ import {
   PanelLeft,
   GitBranch,
   GitFork,
+  Boxes,
   Plus,
   Ban,
   FileCode2,
@@ -50,6 +51,9 @@ const reglages = ({ taille = TAILLE, className }: Props): Record<string, unknown
 
 /** Branche git courante. */
 export const IconeBranche = (p: Props): React.JSX.Element => <GitBranch {...reglages(p)} />
+
+/** Les dépôts d'un projet, quand il en porte plusieurs. */
+export const IconeDepots = (p: Props): React.JSX.Element => <Boxes {...reglages(p)} />
 
 /** Fichier suivi et modifié. */
 export const IconeModifie = (p: Props): React.JSX.Element => <FilePen {...reglages(p)} />

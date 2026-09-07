@@ -3,6 +3,7 @@ import { useStore } from '@renderer/state/store'
 import { SUR_MAC } from '@renderer/systeme'
 import {
   IconeBranche,
+  IconeDepots,
   IconeEtincelle,
   IconeModifie,
   IconeServices,
@@ -174,8 +175,26 @@ export function FilAriane(): React.JSX.Element {
             teinte={services.some((s) => s.reproche) ? 'text-attention' : undefined}
           />
         )}
+        {/* Un projet peut porter seize dépôts sur trois branches. Le compte de
+            ceux qui ont des changements se lit d'un coup d'œil, là où seize
+            pastilles ne diraient rien. */}
+        {git && git.depots.length > 1 && (
+          <Mesure
+            icone={<IconeDepots />}
+            valeur={`${git.depots.filter((d) => d.fichiers.length > 0).length}/${git.depots.length}`}
+            titre={`${git.depots.filter((d) => d.fichiers.length > 0).length} dépôt(s) avec des changements, sur ${git.depots.length}`}
+          />
+        )}
         {git?.branche && (
-          <Mesure icone={<IconeBranche />} valeur={git.branche} titre="Branche courante" />
+          <Mesure
+            icone={<IconeBranche />}
+            valeur={git.branche}
+            titre={
+              git.depots.length > 1
+                ? 'Branche commune aux dépôts du projet'
+                : 'Branche courante'
+            }
+          />
         )}
         {git && git.modifies > 0 && (
           <Mesure

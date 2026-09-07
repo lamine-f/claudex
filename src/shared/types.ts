@@ -1,7 +1,10 @@
 /** Types partagés entre le processus main, le preload et le renderer. */
 
+import type { FichierGit } from './git'
 import type { GenreMedia } from './media'
 import type { Rangement } from './rangement'
+
+export type { FichierGit } from './git'
 
 export interface Workspace {
   id: string
@@ -199,8 +202,36 @@ export interface ServiceVu {
 }
 
 /** État git d'un projet, réduit à ce que la barre de statut affiche. */
-export interface EtatGit {
+/**
+ * Un dépôt git sous un projet.
+ *
+ * Le projet de travail principal, `olive_services`, n'est pas un dépôt : il en
+ * contient seize, sur trois branches différentes. Le multi-dépôts n'est donc
+ * pas une extension à prévoir, c'est le cas nominal, et un projet qui est
+ * lui-même un dépôt en est le cas à un seul élément.
+ */
+export interface DepotGit {
+  /** Le nom du dossier, qui est ce qu'on lit dans la liste. */
+  nom: string
+  /** Racine du dépôt, en absolu. */
+  chemin: string
+  /** Vide sur une tête détachée. */
   branche: string
+  /** Absent tant que la branche n'a pas d'amont, ce qui arrive et n'est pas une erreur. */
+  amont?: string
+  avance: number
+  retard: number
+  fichiers: FichierGit[]
+}
+
+export interface EtatGit {
+  depots: DepotGit[]
+  /**
+   * La branche, quand tous les dépôts s'accordent sur la même. Absente sinon :
+   * en afficher une parmi trois ferait croire que le projet y est tout entier.
+   */
+  branche?: string
+  /** Fichiers suivis dont quelque chose a bougé, tous dépôts confondus. */
   modifies: number
   nonSuivis: number
 }
