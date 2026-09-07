@@ -84,10 +84,17 @@ label[for] {
   cursor: pointer;
 }
 
-/* Le focus clavier doit rester lisible sur un fond noir sans alourdir le survol. */
-:focus-visible {
-  outline: 1px solid var(--color-accent);
-  outline-offset: 1px;
+/* Le focus clavier doit rester lisible sur un fond noir sans alourdir le survol.
+   Dans la couche de base, et non hors couche : hors couche, la règle battait
+   les utilitaires, et le `focus:outline-none` que chaque champ portait déjà
+   restait lettre morte — on écrivait dans un cadre orange plus voyant que le
+   texte saisi. Un champ dit son focus autrement, par sa bordure et par son
+   curseur. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 1px;
+  }
 }
 
 ::-webkit-scrollbar {

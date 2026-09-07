@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { fermer, lancer, type Contexte } from './fixtures'
 
 /**
@@ -197,5 +197,44 @@ test.describe('sélection de texte', () => {
     expect(teinte).toContain('rgb(46, 42, 38)')
     // La même que celle du terminal, qui la tient de son côté depuis toujours.
     expect(teinte).toContain('var(--color-texte)')
+  })
+})
+
+/**
+ * L'anneau de focus se voit là où rien d'autre ne dit où l'on est, et nulle
+ * part ailleurs.
+ */
+test.describe('anneau de focus', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  const contour = (cible: Locator): Promise<string> =>
+    cible.evaluate((el) => getComputedStyle(el).outlineStyle)
+
+  test('épargne les champs, qui disent leur focus autrement', async () => {
+    // La règle vivait hors couche et battait les utilitaires : le
+    // `focus:outline-none` de chaque champ restait lettre morte, et l'on
+    // écrivait dans un cadre orange.
+    const champ = ctx.page.getByLabel('Rechercher un projet')
+    await champ.focus()
+    expect(await contour(champ)).toBe('none')
+  })
+
+  test('reste sur ce qui n’a pas d’autre marque', async () => {
+    await ctx.page.getByLabel('Rechercher un projet').focus()
+    await ctx.page.keyboard.press('Tab')
+
+    // Le geste suivant sort du champ pour un bouton du rail, quel qu'il soit :
+    // là, l'anneau est la seule chose qui dise où l'on est.
+    const suivant = ctx.page.locator(':focus')
+    await expect(suivant).toHaveRole('button')
+    expect(await contour(suivant)).toBe('solid')
   })
 })
