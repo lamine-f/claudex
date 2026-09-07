@@ -1,5 +1,6 @@
 import { useStore } from '@renderer/state/store'
 import type { Vue } from '@renderer/state/vues'
+import { VueDiff } from '../git/VueDiff'
 import { SuiviJournal } from '../services/FenetreJournal'
 import { TerminalInstance } from './TerminalInstance'
 import { TerminalTabs } from './TerminalTabs'
@@ -59,6 +60,7 @@ export function TerminalPane(): React.JSX.Element {
           <VueOuverte
             key={regarde.id}
             vue={regarde}
+            workspaceId={courant.id}
             onFermer={() => fermerVue(courant.id, regarde.id)}
           />
         ) : tabs.length === 0 ? (
@@ -89,9 +91,29 @@ export function TerminalPane(): React.JSX.Element {
  * Le point unique où le genre se lit. Ailleurs, une vue est une vue : elle
  * s'ouvre, elle se ferme, elle occupe l'écran.
  */
-function VueOuverte({ vue, onFermer }: { vue: Vue; onFermer: () => void }): React.JSX.Element {
+function VueOuverte({
+  vue,
+  workspaceId,
+  onFermer
+}: {
+  vue: Vue
+  workspaceId: string
+  onFermer: () => void
+}): React.JSX.Element {
   switch (vue.genre) {
     case 'journal':
       return <SuiviJournal chemin={vue.chemin} titre={vue.titre} onFermer={onFermer} />
+    case 'diff':
+      return (
+        <VueDiff
+          workspaceId={workspaceId}
+          depot={vue.depot}
+          nomDepot={vue.nomDepot}
+          fichier={vue.fichier}
+          indexe={vue.indexe}
+          nonSuivi={vue.nonSuivi}
+          onFermer={onFermer}
+        />
+      )
   }
 }

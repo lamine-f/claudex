@@ -111,6 +111,56 @@ export async function etat(chemin: string): Promise<EtatGit | null> {
   }
 }
 
+/** Au-delà, le diff n'est plus lisible et son affichage coûterait plus qu'il ne montre. */
+const DIFF_MAX = 2 * 1024 * 1024
+
+export interface DiffLu {
+  /** La sortie brute de git, vide quand il n'y a rien à montrer. */
+  sortie: string
+  /** Taille en octets quand elle dépasse le seuil, et que rien n'est rendu. */
+  trop?: number
+}
+
+/**
+ * Le diff d'un fichier, d'un côté ou de l'autre de l'index.
+ *
+ * Deux diffs distincts pour un même fichier : ce que l'index porte face à HEAD,
+ * et ce que la copie de travail porte face à l'index. Les confondre en cacherait
+ * un.
+ *
+ * Un fichier que git ne suit pas encore n'a pas d'ancien côté, et `git diff`
+ * n'en dirait rien. `--no-index` contre `/dev/null` le montre entier comme
+ * ajouté, ce qui est exactement ce qu'il est.
+ */
+export async function diff(
+  depot: string,
+  fichier: string,
+  options: { indexe?: boolean; nonSuivi?: boolean } = {}
+): Promise<DiffLu> {
+  const commun = ['-c', 'core.quotepath=false', '-C', depot, 'diff', '--no-color', '-U3']
+  const arguments_ = options.nonSuivi
+    ? [...commun, '--no-index', '--', '/dev/null', fichier]
+    : [...commun, ...(options.indexe ? ['--cached'] : []), '--', fichier]
+
+  try {
+    const { stdout } = await run('git', arguments_, {
+      timeout: 15_000,
+      maxBuffer: DIFF_MAX + 1024
+    })
+    return { sortie: stdout }
+  } catch (erreur) {
+    // `--no-index` sort en 1 dès qu'il trouve une différence, ce qui est le cas
+    // nominal ici : la sortie est bonne, seul le code de retour trompe.
+    const echec = erreur as { code?: number; stdout?: string; message?: string }
+    if (echec.code === 1 && typeof echec.stdout === 'string') return { sortie: echec.stdout }
+
+    // Au-delà du tampon, node coupe et lève. C'est le signe qu'il ne faut pas
+    // afficher, plutôt qu'une panne.
+    if (echec.message?.includes('maxBuffer')) return { sortie: '', trop: DIFF_MAX }
+    return { sortie: '' }
+  }
+}
+
 /**
  * Parmi des noms d'un même dossier, ceux que git ignore.
  *

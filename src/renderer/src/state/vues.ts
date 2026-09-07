@@ -14,7 +14,10 @@ import type { ServiceVu } from '@shared/types'
  * `journaux` et `journalActif` en clair. Ajouter le diff par-dessus aurait
  * demandé une seconde paire, puis une troisième pour la vue suivante.
  */
-export type Vue = { id: string; titre: string } & { genre: 'journal'; chemin: string }
+export type Vue = { id: string; titre: string } & (
+  | { genre: 'journal'; chemin: string }
+  | { genre: 'diff'; depot: string; nomDepot: string; fichier: string; indexe: boolean; nonSuivi: boolean }
+)
 
 /**
  * La vue du journal d'un service.
@@ -27,4 +30,27 @@ export const vueJournal = (service: ServiceVu): Vue => ({
   titre: service.nom,
   genre: 'journal',
   chemin: service.journal
+})
+
+/**
+ * La vue du diff d'un fichier.
+ *
+ * Deux vues distinctes pour le même fichier selon le côté regardé : ce que
+ * l'index porte face à HEAD, ou ce que la copie de travail porte face à
+ * l'index. Ce sont deux diffs différents, et les confondre en cacherait un.
+ */
+export const vueDiff = (
+  depot: string,
+  nomDepot: string,
+  fichier: string,
+  options: { indexe: boolean; nonSuivi: boolean }
+): Vue => ({
+  id: `diff:${options.indexe ? 'index' : 'travail'}:${depot}:${fichier}`,
+  titre: fichier.split('/').pop() ?? fichier,
+  genre: 'diff',
+  depot,
+  nomDepot,
+  fichier,
+  indexe: options.indexe,
+  nonSuivi: options.nonSuivi
 })

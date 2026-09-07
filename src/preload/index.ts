@@ -162,7 +162,14 @@ const api = {
 
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>
-      ipcRenderer.invoke('git:etat', workspaceId)
+      ipcRenderer.invoke('git:etat', workspaceId),
+    diff: (
+      workspaceId: string,
+      depot: string,
+      fichier: string,
+      options: { indexe?: boolean; nonSuivi?: boolean } = {}
+    ): Promise<{ sortie: string; trop?: number }> =>
+      ipcRenderer.invoke('git:diff', workspaceId, depot, fichier, options)
   },
   systeme: {
     /**

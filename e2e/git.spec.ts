@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { fermer, lancer, type Contexte } from './fixtures'
+import { fermer, lancer, nouveauTerminal, type Contexte } from './fixtures'
 
 const run = promisify(execFile)
 
@@ -122,7 +122,9 @@ test.describe('page Git', () => {
 
   test('montre le dossier d’un fichier autant que son nom', async () => {
     // Dix `index.ts` dans un même dépôt ne se distinguent que par leur dossier.
-    await expect(ctx.page.getByTitle('src/Lien.java')).toBeVisible()
+    const ligne = ctx.page.getByTitle('Voir le diff de src/Lien.java')
+    await expect(ligne).toContainText('Lien.java')
+    await expect(ligne).toContainText('src')
   })
 
   test('un dépôt se replie et cache ses fichiers sans les décocher', async () => {
@@ -184,5 +186,89 @@ test.describe('page Git sans dépôt', () => {
 
   test('le dit en une phrase, sans afficher d’erreur', async () => {
     await expect(ctx.page.getByText('Ce projet ne contient aucun dépôt git.')).toBeVisible()
+  })
+})
+
+/**
+ * La vue de diff, ouverte depuis la page Git. C'est la seconde sorte de vue :
+ * la première, le journal d'un service, passe par le même mécanisme.
+ */
+test.describe('vue de diff', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const projet = await mkdtemp(join(tmpdir(), 'claudex-diff-'))
+    await depot(projet, 'local')
+    await writeFile(
+      join(projet, 'base.txt'),
+      'un\ndeux\ntrois\nquatre\ncinq\nsix\nsept\n'
+    )
+    await run('git', ['-C', projet, 'add', '-A'])
+    await run('git', ['-C', projet, 'commit', '-qm', 'sept lignes'])
+
+    await writeFile(
+      join(projet, 'base.txt'),
+      'un\ndeux MODIFIE\ntrois\nquatre\ncinq\nsix\nsept\n'
+    )
+    await writeFile(join(projet, 'neuf.txt'), 'tout neuf\n')
+    // Un binaire, que git renonce à comparer ligne à ligne.
+    await writeFile(join(projet, 'image.bin'), Buffer.from([0, 1, 2, 0, 255, 0, 3]))
+    await run('git', ['-C', projet, 'add', 'image.bin'])
+    await run('git', ['-C', projet, 'commit', '-qm', 'binaire'])
+    await writeFile(join(projet, 'image.bin'), Buffer.from([0, 9, 9, 0, 128, 0, 7]))
+
+    ctx = await lancer({ projet })
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('un clic sur un fichier montre son diff à la place du terminal', async () => {
+    await nouveauTerminal(ctx.page)
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+    await ctx.page.getByTitle('Voir le diff de base.txt').click()
+
+    // La ligne d'avant et celle d'après, chacune de son côté.
+    await expect(ctx.page.getByText('deux', { exact: true })).toBeVisible()
+    await expect(ctx.page.getByText('deux MODIFIE', { exact: true })).toBeVisible()
+    await expect(ctx.page.getByText('+1 −1')).toBeVisible()
+    await expect(ctx.page.getByText('travail → index')).toBeVisible()
+
+    // La vue se ferme et rend l'écran au terminal, qui n'a pas bougé.
+    await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+  })
+
+  test('la forme se bascule et se retient d’un fichier à l’autre', async () => {
+    await ctx.page.getByTitle('Voir le diff de base.txt').click()
+    const forme = ctx.page.getByRole('button', { name: /côte à côte|unifié/ })
+    await expect(forme).toHaveText('côte à côte')
+
+    await forme.click()
+    await expect(forme).toHaveText('unifié')
+
+    // Un autre fichier garde la forme choisie : on ne la rechoisit pas à chaque
+    // ouverture.
+    await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
+    await ctx.page.getByTitle('Voir le diff de neuf.txt').click()
+    await expect(ctx.page.getByRole('button', { name: /côte à côte|unifié/ })).toHaveText('unifié')
+  })
+
+  test('un fichier que git ne suit pas encore se montre entier', async () => {
+    await ctx.page.getByTitle('Voir le diff de neuf.txt').click()
+    // `git diff` seul n'en dirait rien : il n'a pas d'ancien côté.
+    await expect(ctx.page.getByText('fichier neuf')).toBeVisible()
+    await expect(ctx.page.getByText('tout neuf', { exact: true })).toBeVisible()
+  })
+
+  test('un binaire le dit, plutôt que de rester vide', async () => {
+    await ctx.page.getByTitle('Voir le diff de image.bin').click()
+    await expect(
+      ctx.page.getByText('Fichier binaire. Git ne le compare pas ligne à ligne.')
+    ).toBeVisible()
   })
 })

@@ -153,6 +153,9 @@ interface EtatUi {
    */
   coches: string[]
   cocher: (cles: string[], coche: boolean) => void
+  /** Forme du diff, retenue d'un fichier à l'autre. */
+  diffCoteACote: boolean
+  basculerDiffCoteACote: () => void
 
   /** Conversation dont on s'apprête à bifurquer, le temps de la nommer. */
   bifurcationEnCours?: { workspaceId: string; uuid: string; titre: string }
@@ -291,6 +294,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   vues: {},
   depotsReplies: {},
   coches: [],
+  diffCoteACote: true,
   groupesReplies: {},
   sessions: {},
   rangements: {},
@@ -485,6 +489,8 @@ export const useStore = create<EtatUi>((set, get) => ({
       }
     })
   },
+
+  basculerDiffCoteACote: () => set({ diffCoteACote: !get().diffCoteACote }),
 
   cocher: (cles, coche) => {
     const restantes = get().coches.filter((c) => !cles.includes(c))
