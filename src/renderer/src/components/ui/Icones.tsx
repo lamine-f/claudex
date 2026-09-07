@@ -12,8 +12,13 @@ import {
   GitBranch,
   GitFork,
   Plus,
+  Ban,
+  FileCode2,
+  Play,
   RefreshCw,
+  RotateCcw,
   Server,
+  Square,
   Sparkles,
   SquareTerminal,
   Star,
@@ -89,6 +94,13 @@ export const IconeConversations = (p: Props): React.JSX.Element => (
 /** L'arborescence des fichiers. */
 /** Les services d'un projet : ce qui tourne, par opposition à qui l'on parle. */
 export const IconeServices = (p: Props): React.JSX.Element => <Server {...reglages(p)} />
+
+/** Les gestes d'un service : lancer, arrêter, relancer, libérer son port. */
+export const IconeDemarrer = (p: Props): React.JSX.Element => <Play {...reglages(p)} />
+export const IconeArreter = (p: Props): React.JSX.Element => <Square {...reglages(p)} />
+export const IconeRelancer = (p: Props): React.JSX.Element => <RotateCcw {...reglages(p)} />
+export const IconeLiberer = (p: Props): React.JSX.Element => <Ban {...reglages(p)} />
+export const IconeSkill = (p: Props): React.JSX.Element => <FileCode2 {...reglages(p)} />
 
 export const IconeArborescence = (p: Props): React.JSX.Element => <FolderTree {...reglages(p)} />
 

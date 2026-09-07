@@ -279,7 +279,7 @@ services:
     const ligne = ctx.page.locator('li', { hasText: 'egare' }).last()
     // Le reproche porte le chemin cherché : sans lui, la commande partirait
     // depuis le dossier personnel et son message parlerait d'autre chose.
-    await expect(ligne.getByTitle(/dossier est introuvable/)).toBeVisible({ timeout: 20_000 })
+    await expect(ligne.getByText(/dossier est introuvable/)).toBeVisible({ timeout: 20_000 })
 
     await ligne.getByRole('button', { name: 'démarrer' }).click()
     await ctx.page.waitForTimeout(2500)

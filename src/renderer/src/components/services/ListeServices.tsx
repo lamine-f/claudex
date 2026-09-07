@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import type { EtatService, ServiceVu } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { MenuContextuel, type Action } from '../ui/MenuContextuel'
+import {
+  IconeArreter,
+  IconeDemarrer,
+  IconeLiberer,
+  IconeRelancer,
+  IconeSkill
+} from '../ui/Icones'
 
 /**
  * Les services d'un projet, groupés.
@@ -83,28 +90,90 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
     }
   }
 
-  const TITRES: Record<string, string> = {
-    reprendre: 'Tuer ce qui tient le port, puis démarrer le service sous Claudex',
-    libérer: 'Tuer ce qui tient le port, sans rien lancer',
-    relancer: 'Arrêter puis redémarrer, pour reprendre un code qui a changé',
-    arrêter: 'Détruire la session du service',
-    démarrer: 'Lancer le service et journaliser sa sortie'
-  }
-
-  const bouton = (libelle: string, onClic: () => void, accent = false): React.JSX.Element => (
+  /**
+   * Un geste, dit par son icône.
+   *
+   * Onze lignes portant chacune « démarrer » en toutes lettres pesaient plus que
+   * ce qu'elles désignaient. L'intitulé reste, en infobulle et pour
+   * l'accessibilité : ce qui disparaît est l'encombrement, pas le sens.
+   */
+  const geste = (
+    libelle: string,
+    titre: string,
+    icone: React.ReactNode,
+    onClic: () => void,
+    accent = false
+  ): React.JSX.Element => (
     <button
       type="button"
-      title={TITRES[libelle]}
+      title={titre}
+      aria-label={libelle}
       onClick={onClic}
-      className={`rounded px-2 py-0.5 font-mono text-[10.5px] transition-colors ${
+      className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
         accent
-          ? 'text-texte-faible hover:bg-fond-survol hover:text-accent'
+          ? 'text-texte-tenu hover:bg-fond-survol hover:text-accent'
           : 'text-texte-tenu hover:bg-fond-survol hover:text-texte'
       }`}
     >
-      {libelle}
+      {icone}
     </button>
   )
+
+  const bouton = (libelle: string, onClic: () => void, accent = false): React.JSX.Element =>
+    ({
+      démarrer: geste(
+        'démarrer',
+        'Lancer le service et journaliser sa sortie',
+        <IconeDemarrer taille={12} />,
+        onClic,
+        true
+      ),
+      arrêter: geste(
+        'arrêter',
+        'Détruire la session du service',
+        <IconeArreter taille={11} />,
+        onClic
+      ),
+      relancer: geste(
+        'relancer',
+        'Arrêter puis redémarrer, pour reprendre un code qui a changé',
+        <IconeRelancer taille={12} />,
+        onClic,
+        true
+      ),
+      libérer: geste(
+        'libérer',
+        'Tuer ce qui tient le port, sans rien lancer',
+        <IconeLiberer taille={12} />,
+        onClic
+      ),
+      reprendre: geste(
+        'reprendre',
+        'Tuer ce qui tient le port, puis démarrer le service sous Claudex',
+        <IconeDemarrer taille={12} />,
+        onClic,
+        true
+      ),
+      'tout démarrer': geste(
+        'tout démarrer',
+        'Lancer tout le groupe, dans l’ordre de ses dépendances',
+        <IconeDemarrer taille={12} />,
+        onClic,
+        true
+      ),
+      'tout arrêter': geste(
+        'tout arrêter',
+        'Arrêter tout le groupe',
+        <IconeArreter taille={11} />,
+        onClic
+      ),
+      'écrire le skill': geste(
+        'écrire le skill',
+        'Écrire le skill qui dit aux agents où sont les journaux',
+        <IconeSkill taille={13} />,
+        onClic
+      )
+    })[libelle] ?? <span />
 
   if (services === undefined) {
     return <p className="px-3 py-2 text-[12.5px] text-texte-faible">Lecture…</p>
@@ -212,62 +281,57 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                       e.preventDefault()
                       setMenu({ x: e.clientX, y: e.clientY, actions: actionsDe(service) })
                     }}
-                    className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-fond-survol"
+                    // Deux lignes, comme une conversation : le nom, puis ce
+                    // qu'on veut savoir de lui. La colonne garde ainsi le même
+                    // rythme d'un panneau à l'autre.
+                    className="group flex flex-col gap-1 border-l-2 border-l-separateur py-2.5 pr-2 pl-3.5 transition-colors hover:border-l-bordure hover:bg-fond-survol"
                   >
-                    <span
-                      aria-label={etat.mot}
-                      title={etat.titre}
-                      className={`h-[7px] w-[7px] shrink-0 rounded-full ${etat.teinte} ${
-                        occupe ? 'animate-pulse' : ''
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onVoirJournal(service)}
-                      title="Voir son journal"
-                      className="min-w-0 flex-1 truncate text-left text-[13.5px] text-texte-doux hover:text-texte"
-                    >
-                      {service.nom}
-                    </button>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        aria-label={etat.mot}
+                        title={etat.titre}
+                        className={`h-[7px] w-[7px] shrink-0 rounded-full ${etat.teinte} ${
+                          occupe ? 'animate-pulse' : ''
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onVoirJournal(service)}
+                        title="Voir son journal"
+                        className="min-w-0 flex-1 truncate text-left text-[14px] text-texte-doux hover:text-texte"
+                      >
+                        {service.nom}
+                      </button>
 
-                    {service.port !== undefined && (
-                      <span className="shrink-0 font-mono text-[10.5px] text-texte-tenu">
-                        {service.port}
+                      <span className="flex shrink-0 items-center gap-0.5">
+                        {service.etat === 'dehors' && (
+                          <>
+                            {bouton('reprendre', () => void agir('reprendre', [service.nom]), true)}
+                            {bouton('libérer', () => void agir('liberer', [service.nom]))}
+                          </>
+                        )}
+                        {service.etat === 'arrete' &&
+                          bouton('démarrer', () => void agir('demarrer', [service.nom]), true)}
+                        {(service.etat === 'vivant' || service.etat === 'demarrage') && (
+                          <>
+                            {bouton('relancer', () => void agir('relancer', [service.nom]), true)}
+                            {bouton('arrêter', () => void agir('arreter', [service.nom]))}
+                          </>
+                        )}
                       </span>
-                    )}
-
-                    {/* Toujours visible, jamais au survol : dans un panneau de
-                        pilotage, démarrer et arrêter sont ce qu'on vient y faire,
-                        et les cacher oblige à les chercher. */}
-                    <span className="flex shrink-0 items-center gap-0.5">
-                      {/* Le port est tenu par quelqu'un d'autre : « arrêter » ne
-                          peut rien, n'ayant aucune session à détruire. Le
-                          libérer est le seul geste qui vaille. */}
-                      {service.etat === 'dehors' && (
-                        <>
-                          {bouton('reprendre', () => void agir('reprendre', [service.nom]), true)}
-                          {bouton('libérer', () => void agir('liberer', [service.nom]))}
-                        </>
-                      )}
-                      {service.etat === 'arrete' &&
-                        bouton('démarrer', () => void agir('demarrer', [service.nom]), true)}
-                      {(service.etat === 'vivant' || service.etat === 'demarrage') && (
-                        <>
-                          {bouton('relancer', () => void agir('relancer', [service.nom]), true)}
-                          {bouton('arrêter', () => void agir('arreter', [service.nom]))}
-                        </>
-                      )}
                     </span>
 
-                    {service.reproche && (
-                      <span
-                        aria-label="Déclaration incomplète"
-                        title={service.reproche}
-                        className="shrink-0 font-mono text-[11px] text-attention"
-                      >
-                        !
-                      </span>
-                    )}
+                    {/* Ce qu'on veut savoir sans ouvrir le journal : où il en
+                        est, sur quel port, et ce qui cloche s'il y a lieu. */}
+                    <span className="flex items-center gap-1.5 overflow-hidden pl-[17px] font-mono text-[11.5px] whitespace-nowrap text-texte-tenu">
+                      <span>{etat.mot}</span>
+                      {service.port !== undefined && <span>· {service.port}</span>}
+                      {service.reproche && (
+                        <span title={service.reproche} className="truncate text-attention">
+                          · {service.reproche}
+                        </span>
+                      )}
+                    </span>
                   </li>
                 )
               })}
