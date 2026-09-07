@@ -183,7 +183,7 @@ sudo apt install xdg-utils
 |---|---|---|
 | `⌘T` | `Ctrl+Maj+T` | nouveau terminal |
 | `⌘W` | `Ctrl+Maj+W` | fermer l'onglet, et sa session avec lui |
-| `⌘E` | `Ctrl+Maj+E` | basculer entre les conversations et les fichiers |
+| `⌘E` | `Ctrl+Maj+E` | passer d'une page de la colonne à la suivante : conversations, fichiers, services |
 | `⌘1`…`⌘9` | `Ctrl+1`…`Ctrl+9` | passer d'un projet à l'autre |
 | `Ctrl+Tab` | `Ctrl+Tab` | passer à l'onglet suivant, `Maj` pour le précédent |
 

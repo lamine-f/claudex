@@ -54,10 +54,13 @@ export function useShortcuts(): void {
         return
       }
 
-      // ⌘E / Ctrl+Maj+E : basculer entre les conversations et les fichiers.
+      // ⌘E / Ctrl+Maj+E : faire tourner les pages de la colonne, dans l'ordre
+      // où leurs onglets se présentent. La bascule n'en connaissait que deux,
+      // et les services, arrivés après elle, restaient hors d'atteinte.
       if (touche === 'e') {
         evenement.preventDefault()
-        etat.choisirPanneau(etat.panneau === 'sessions' ? 'fichiers' : 'sessions')
+        const suivant = { sessions: 'fichiers', fichiers: 'services', services: 'sessions' } as const
+        etat.choisirPanneau(suivant[etat.panneau])
         return
       }
 

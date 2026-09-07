@@ -16,7 +16,7 @@ import {
 import { ListeSessions } from '../workspaces/ListeSessions'
 
 /**
- * Colonne unique portant les conversations et les fichiers.
+ * Colonne unique portant les conversations, les fichiers et les services.
  *
  * Les deux ne se regardent jamais en même temps : les réunir sous deux onglets
  * rend à l'agent la largeur qu'une troisième colonne lui prenait en permanence.

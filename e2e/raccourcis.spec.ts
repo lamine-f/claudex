@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { attendreInvite, fermer, lancer, NOUVEAU_TERMINAL, type Contexte } from './fixtures'
 
 /**
@@ -58,13 +58,18 @@ test.describe('raccourcis clavier', () => {
     await expect(onglets.nth(0)).toHaveAttribute('aria-current', 'true')
   })
 
-  test('la combinaison bascule entre conversations et fichiers', async () => {
-    const fichiers = ctx.page.getByRole('button', { name: 'Fichiers', exact: true })
+  test('la combinaison fait tourner les trois pages de la colonne', async () => {
+    const onglet = (nom: string): Locator =>
+      ctx.page.getByRole('button', { name: nom, exact: true })
 
+    // Les services, arrivés après la bascule, restaient hors de sa portée :
+    // elle ne connaissait que les deux premières pages.
     await ctx.page.keyboard.press(`${COMMANDE}+E`)
-    await expect(fichiers).toHaveAttribute('aria-pressed', 'true')
+    await expect(onglet('Fichiers')).toHaveAttribute('aria-pressed', 'true')
     await ctx.page.keyboard.press(`${COMMANDE}+E`)
-    await expect(fichiers).toHaveAttribute('aria-pressed', 'false')
+    await expect(onglet('Services')).toHaveAttribute('aria-pressed', 'true')
+    await ctx.page.keyboard.press(`${COMMANDE}+E`)
+    await expect(onglet('Conversations')).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('hors macOS, Contrôle seul reste au terminal', async () => {
