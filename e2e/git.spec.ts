@@ -110,13 +110,30 @@ test.describe('page Git', () => {
     await fermer(ctx)
   })
 
-  test('range les fichiers sous leur dépôt, avec sa branche', async () => {
-    const coeur = ctx.page.getByRole('button', { name: /^coeur/ })
-    await expect(coeur).toContainText('local')
-    await expect(coeur).toContainText('2')
+  test('sépare ce qui est suivi de ce que git n’a jamais vu', async () => {
+    // Un fichier suivi qu'on a modifié et un fichier neuf n'engagent pas au
+    // même geste : on commite le premier sans y penser, le second demande
+    // qu'on ait décidé qu'il entre dans le dépôt.
+    const changements = ctx.page.getByLabel('Changements')
+    const neufs = ctx.page.getByLabel('Fichiers non versionnés')
 
-    await expect(ctx.page.getByRole('button', { name: /^passerelle/ })).toContainText('master')
-    // Un dépôt sans changement n'encombre pas la liste.
+    await expect(changements.getByRole('button', { name: /^coeur/ })).toBeVisible()
+    await expect(changements.getByRole('button', { name: /^passerelle/ })).toHaveCount(0)
+
+    // Le même dépôt paraît dans les deux quand il porte des deux sortes.
+    await expect(neufs.getByRole('button', { name: /^coeur/ })).toBeVisible()
+    await expect(neufs.getByRole('button', { name: /^passerelle/ })).toBeVisible()
+  })
+
+  test('range les fichiers sous leur dépôt, avec sa branche', async () => {
+    const coeur = ctx.page.getByLabel('Changements').getByRole('button', { name: /^coeur/ })
+    await expect(coeur).toContainText('local')
+    await expect(coeur).toContainText('1')
+
+    await expect(
+      ctx.page.getByLabel('Fichiers non versionnés').getByRole('button', { name: /^passerelle/ })
+    ).toContainText('master')
+    // Un dépôt sans rien n'encombre aucune des deux sections.
     await expect(ctx.page.getByRole('button', { name: /^repos/ })).toHaveCount(0)
   })
 
@@ -128,7 +145,7 @@ test.describe('page Git', () => {
   })
 
   test('un dépôt se replie et cache ses fichiers sans les décocher', async () => {
-    const coeur = ctx.page.getByRole('button', { name: /^coeur/ })
+    const coeur = ctx.page.getByLabel('Changements').getByRole('button', { name: /^coeur/ })
     const fichier = ctx.page.getByRole('checkbox', { name: 'base.txt' })
 
     await fichier.click()
@@ -142,24 +159,27 @@ test.describe('page Git', () => {
     await expect(fichier).toHaveAttribute('aria-checked', 'true')
   })
 
-  test('la case du dépôt coche et décoche tout ce qu’il porte', async () => {
-    const tout = ctx.page.getByRole('checkbox', { name: 'Tout cocher dans coeur' })
-    const base = ctx.page.getByRole('checkbox', { name: 'base.txt' })
-    const lien = ctx.page.getByRole('checkbox', { name: 'src/Lien.java' })
+  test('la case d’une section coche et décoche tout ce qu’elle porte', async () => {
+    const neufs = ctx.page.getByLabel('Fichiers non versionnés')
+    const tout = ctx.page.getByRole('checkbox', {
+      name: 'Tout cocher dans Fichiers non versionnés'
+    })
+    const lien = neufs.getByRole('checkbox', { name: 'src/Lien.java' })
+    const nouveau = neufs.getByRole('checkbox', { name: 'neuf.txt' })
 
     await tout.click()
-    await expect(base).toHaveAttribute('aria-checked', 'true')
     await expect(lien).toHaveAttribute('aria-checked', 'true')
+    await expect(nouveau).toHaveAttribute('aria-checked', 'true')
     await expect(tout).toHaveAttribute('aria-checked', 'true')
 
-    // Décocher un seul fichier laisse le dépôt dans l'entre-deux.
+    // Décocher un seul fichier laisse la section dans l'entre-deux.
     await lien.click()
     await expect(tout).toHaveAttribute('aria-checked', 'mixed')
 
     await tout.click()
-    await expect(base).toHaveAttribute('aria-checked', 'true')
+    await expect(lien).toHaveAttribute('aria-checked', 'true')
     await tout.click()
-    await expect(base).toHaveAttribute('aria-checked', 'false')
+    await expect(lien).toHaveAttribute('aria-checked', 'false')
   })
 
   test('le filtre porte sur le chemin, et écarte les dépôts vides', async () => {
