@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { apparier, compter, lireDiff, type LigneDiff, type Section } from '@shared/diff'
+import { apparier, compter, lireDiff, type LigneDiff, type Paire, type Section } from '@shared/diff'
+import { estNonSuivi } from '@shared/git'
 import { useStore } from '@renderer/state/store'
-import { IconeChevron } from '../ui/Icones'
+import { vueDiff } from '@renderer/state/vues'
+import {
+  IconeChevron,
+  IconeCoteACote,
+  IconeDeplier,
+  IconeFermer,
+  IconeReplier,
+  IconeUnifie
+} from '../ui/Icones'
 
 /** Ce qui a été lu, ou la raison pour laquelle rien ne s'affiche. */
 type Etat =
@@ -55,6 +64,10 @@ export function VueDiff({
   const entier = useStore((e) => e.diffEntier)
   const basculerEntier = useStore((e) => e.basculerDiffEntier)
 
+  const depots = useStore((e) => e.git?.depots)
+  const ouvrirVue = useStore((e) => e.ouvrirVue)
+  const fermerVue = useStore((e) => e.fermerVue)
+
   const [etat, setEtat] = useState<Etat>({ phase: 'lecture' })
   const zone = useRef<HTMLDivElement | null>(null)
 
@@ -82,6 +95,43 @@ export function VueDiff({
       : undefined
 
   /**
+   * Les fichiers voisins dans la page Git, et de quoi passer de l'un à l'autre.
+   *
+   * Le geste d'IntelliJ, qui annonce « 29/34 files » entre deux flèches. Sans
+   * lui, relire trente fichiers demande de revenir à la liste après chacun.
+   *
+   * L'ordre est celui de la page : les suivis d'abord, les neufs ensuite, et
+   * dans chaque section les dépôts puis leurs fichiers.
+   */
+  const voisins = ((): { rang: number; total: number; aller: (sens: 1 | -1) => void } => {
+    const tous = (depots ?? []).flatMap((d) =>
+      [...d.fichiers]
+        .sort((a, b) => Number(estNonSuivi(a)) - Number(estNonSuivi(b)) || a.chemin.localeCompare(b.chemin))
+        .map((f) => ({ depot: d, fichier: f }))
+    )
+    const rang = tous.findIndex((e) => e.depot.chemin === depot && e.fichier.chemin === fichier)
+
+    return {
+      rang: Math.max(0, rang),
+      total: tous.length,
+      aller: (sens) => {
+        const cible = tous[rang + sens]
+        if (!cible || rang < 0) return
+        // La vue en cours cède la place : ouvrir sans fermer empilerait un
+        // onglet par fichier parcouru.
+        fermerVue(workspaceId, vueDiff(depot, nomDepot, fichier, { indexe, nonSuivi }).id)
+        ouvrirVue(
+          workspaceId,
+          vueDiff(cible.depot.chemin, cible.depot.nom, cible.fichier.chemin, {
+            indexe: cible.fichier.travail === 'inchange',
+            nonSuivi: estNonSuivi(cible.fichier)
+          })
+        )
+      }
+    }
+  })()
+
+  /**
    * Amène au changement suivant, ou au précédent.
    *
    * Le geste d'IntelliJ, qui le met sur F7. Il prend tout son sens le fichier
@@ -105,12 +155,15 @@ export function VueDiff({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-fond">
-      <div className="flex shrink-0 items-center gap-3 border-b border-separateur px-3 py-2">
+      {/* Des icônes rangées par famille, séparées par des filets, sur le modèle
+          de la barre du diff d'IntelliJ. Quatre mots posés à la file disaient
+          la même chose en pesant plus lourd que le nom du fichier. */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-separateur px-3 py-1.5">
         <span className="truncate text-[13px] text-texte">{fichier.split('/').pop()}</span>
         <span className="truncate font-mono text-[11px] text-texte-tenu">
           {nomDepot} · {fichier}
         </span>
-        <div className="flex-1" />
+        <div className="min-w-2 flex-1" />
 
         {mesure && (
           <span className="shrink-0 font-mono text-[11px] text-texte-faible">{mesure}</span>
@@ -123,59 +176,91 @@ export function VueDiff({
         </span>
 
         {etat.phase === 'lu' && (
-          <span className="flex shrink-0 items-center">
-            <Geste titre="Changement précédent" onClic={() => allerAuChangement(-1)} sens="haut" />
-            <Geste titre="Changement suivant" onClic={() => allerAuChangement(1)} sens="bas" />
-          </span>
+          <>
+            <Filet />
+            <Geste titre="Changement précédent" onClic={() => allerAuChangement(-1)}>
+              <span className="-rotate-90">
+                <IconeChevron taille={13} />
+              </span>
+            </Geste>
+            <Geste titre="Changement suivant" onClic={() => allerAuChangement(1)}>
+              <span className="rotate-90">
+                <IconeChevron taille={13} />
+              </span>
+            </Geste>
+          </>
         )}
 
-        <Bascule
-          actif={entier}
+        {voisins.total > 1 && (
+          <>
+            <Filet />
+            <Geste
+              titre="Fichier précédent"
+              onClic={() => voisins.aller(-1)}
+              inactif={voisins.rang === 0}
+            >
+              <span className="rotate-180">
+                <IconeChevron taille={13} />
+              </span>
+            </Geste>
+            <span className="shrink-0 font-mono text-[11px] whitespace-nowrap text-texte-faible">
+              {voisins.rang + 1}/{voisins.total}
+            </span>
+            <Geste
+              titre="Fichier suivant"
+              onClic={() => voisins.aller(1)}
+              inactif={voisins.rang === voisins.total - 1}
+            >
+              <IconeChevron taille={13} />
+            </Geste>
+          </>
+        )}
+
+        <Filet />
+        <Geste
           titre={entier ? 'Ne montrer que les changements' : 'Montrer le fichier entier'}
-          onBasculer={basculerEntier}
+          onClic={basculerEntier}
+          enfonce={entier}
         >
-          {entier ? 'fichier entier' : 'changements'}
-        </Bascule>
-
-        <Bascule
-          actif={cote}
+          {entier ? <IconeReplier taille={14} /> : <IconeDeplier taille={14} />}
+        </Geste>
+        <Geste
           titre={cote ? 'Passer au diff d’un seul tenant' : 'Passer au diff côte à côte'}
-          onBasculer={basculerCote}
+          onClic={basculerCote}
+          enfonce={cote}
         >
-          {cote ? 'côte à côte' : 'unifié'}
-        </Bascule>
+          {cote ? <IconeCoteACote taille={14} /> : <IconeUnifie taille={14} />}
+        </Geste>
 
-        <button
-          type="button"
-          onClick={onFermer}
-          title="Fermer la vue. Le fichier reste sur le disque."
-          className="shrink-0 rounded px-1.5 text-texte-tenu transition-colors hover:text-texte"
-        >
-          ✕
-        </button>
+        <Filet />
+        <Geste titre="Fermer la vue. Le fichier reste sur le disque." onClic={onFermer}>
+          <IconeFermer taille={13} />
+        </Geste>
       </div>
 
-      <div ref={zone} aria-label="Contenu du diff" className="min-h-0 flex-1 overflow-auto">
-        {etat.phase === 'lecture' && <Mot>Lecture…</Mot>}
-        {etat.phase === 'binaire' && (
-          <Mot>Fichier binaire. Git ne le compare pas ligne à ligne.</Mot>
-        )}
-        {etat.phase === 'trop' && (
-          <Mot>
-            Diff de plus de {(etat.octets / 1024 / 1024).toFixed(0)} Mo. Trop volumineux pour être
-            affiché ici.
-          </Mot>
-        )}
-        {etat.phase === 'vide' && <Mot>Aucune différence de ce côté.</Mot>}
-        {etat.phase === 'lu' &&
-          etat.diff.sections.map((section, rang) =>
-            cote ? (
-              <SectionCote key={rang} section={section} coupure={!entier} />
-            ) : (
-              <SectionUnifiee key={rang} section={section} coupure={!entier} />
-            )
+      {etat.phase !== 'lu' ? (
+        <div aria-label="État du diff" className="min-h-0 flex-1 overflow-auto">
+          {etat.phase === 'lecture' && <Mot>Lecture…</Mot>}
+          {etat.phase === 'binaire' && (
+            <Mot>Fichier binaire. Git ne le compare pas ligne à ligne.</Mot>
           )}
-      </div>
+          {etat.phase === 'trop' && (
+            <Mot>
+              Diff de plus de {(etat.octets / 1024 / 1024).toFixed(0)} Mo. Trop volumineux pour être
+              affiché ici.
+            </Mot>
+          )}
+          {etat.phase === 'vide' && <Mot>Aucune différence de ce côté.</Mot>}
+        </div>
+      ) : cote ? (
+        <DeuxVolets sections={etat.diff.sections} coupures={!entier} zone={zone} />
+      ) : (
+        <div ref={zone} aria-label="Diff unifié" className="min-h-0 flex-1 overflow-auto">
+          {etat.diff.sections.map((section, rang) => (
+            <SectionUnifiee key={rang} section={section} coupure={!entier} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -184,47 +269,45 @@ const Mot = ({ children }: { children: React.ReactNode }): React.JSX.Element => 
   <p className="px-3 py-2 text-[12.5px] text-texte-faible">{children}</p>
 )
 
-const Bascule = ({
-  actif,
-  titre,
-  onBasculer,
-  children
-}: {
-  actif: boolean
-  titre: string
-  onBasculer: () => void
-  children: React.ReactNode
-}): React.JSX.Element => (
-  <button
-    type="button"
-    onClick={onBasculer}
-    title={titre}
-    aria-pressed={actif}
-    className="shrink-0 rounded px-2 py-0.5 font-mono text-[11px] text-texte-tenu transition-colors hover:text-texte"
-  >
-    {children}
-  </button>
+/** Le filet qui sépare deux familles de gestes. */
+const Filet = (): React.JSX.Element => (
+  <span aria-hidden className="mx-0.5 h-4 w-px shrink-0 bg-separateur" />
 )
 
+/**
+ * Un geste de la barre, dit par son icône.
+ *
+ * L'intitulé reste en infobulle et pour l'accessibilité : ce qui disparaît est
+ * l'encombrement, pas le sens.
+ */
 const Geste = ({
   titre,
   onClic,
-  sens
+  children,
+  enfonce,
+  inactif
 }: {
   titre: string
   onClic: () => void
-  sens: 'haut' | 'bas'
+  children: React.ReactNode
+  /** Vrai quand le geste dit un état en cours, non une action à faire. */
+  enfonce?: boolean
+  inactif?: boolean
 }): React.JSX.Element => (
   <button
     type="button"
     onClick={onClic}
+    disabled={inactif}
     title={titre}
     aria-label={titre}
-    className="flex h-6 w-6 items-center justify-center rounded text-texte-tenu transition-colors hover:bg-fond-survol hover:text-texte"
+    {...(enfonce === undefined ? {} : { 'aria-pressed': enfonce })}
+    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors ${
+      inactif
+        ? 'text-texte-tenu opacity-30'
+        : 'text-texte-faible hover:bg-fond-survol hover:text-texte'
+    }`}
   >
-    <span className={sens === 'haut' ? '-rotate-90' : 'rotate-90'}>
-      <IconeChevron taille={13} />
-    </span>
+    {children}
   </button>
 )
 
@@ -295,57 +378,154 @@ function SectionUnifiee({
   )
 }
 
-function SectionCote({
-  section,
-  coupure
+/**
+ * Les deux volets du diff côte à côte, et la gouttière des numéros entre eux.
+ *
+ * Trois zones plutôt qu'un tableau à quatre colonnes. C'est la forme
+ * d'IntelliJ, et elle tient à une raison : chaque volet a son propre
+ * défilement horizontal. Une ligne longue à gauche ne pousse pas le code de
+ * droite hors de vue, et l'on va voir la fin de l'une sans perdre l'autre.
+ *
+ * Seul le défilement vertical est partagé, sans quoi les deux côtés cesseraient
+ * de se faire face. La gouttière suit, mais ne défile jamais de côté : les
+ * numéros restent en place quand le code glisse dessous.
+ */
+function DeuxVolets({
+  sections,
+  coupures,
+  zone
 }: {
-  section: Section
-  coupure: boolean
+  sections: Section[]
+  coupures: boolean
+  zone: React.MutableRefObject<HTMLDivElement | null>
 }): React.JSX.Element {
-  const paires = apparier(section)
+  const droite = useRef<HTMLDivElement | null>(null)
+  const gouttiere = useRef<HTMLDivElement | null>(null)
+  // Recopier un défilement en déclenche un autre : sans ce garde, les deux
+  // volets se renverraient la balle jusqu'à figer la fenêtre.
+  const enCours = useRef(false)
+
+  const suivre = (source: HTMLDivElement | null): void => {
+    if (enCours.current || !source) return
+    enCours.current = true
+    for (const autre of [zone.current, droite.current, gouttiere.current]) {
+      if (autre && autre !== source) autre.scrollTop = source.scrollTop
+    }
+    // Rendu à la boucle suivante : les événements de défilement des voisins
+    // arrivent après le retour de celui-ci.
+    requestAnimationFrame(() => {
+      enCours.current = false
+    })
+  }
+
+  // La coupure est une rangée de plus, non une rangée à la place. Posée à la
+  // place, elle emportait la première ligne de chaque section : un diff d'une
+  // seule ligne ne montrait que son en-tête.
+  const rangees: Rangee[] = sections.flatMap((section) => {
+    const paires = apparier(section)
+    const lignes: Rangee[] = paires.map((paire, rang) => ({
+      genre: 'ligne',
+      paire,
+      // Le repère que suit la navigation ne marque que la première ligne d'un
+      // bloc : sinon vingt lignes remplacées vaudraient vingt arrêts.
+      debut:
+        (paire.gauche?.genre !== 'contexte' || paire.droite?.genre !== 'contexte') &&
+        (rang === 0 || paires[rang - 1]?.gauche?.genre === 'contexte')
+    }))
+    return coupures ? [{ genre: 'coupure', section } as Rangee, ...lignes] : lignes
+  })
+
   return (
-    <>
-      {coupure && <Coupure section={section} />}
-      {/* Sans `table-fixed`, la table s'élargit pour ce qui dépasse et le
-          conteneur la fait défiler. Fixée, elle écrêtait : une ligne minifiée
-          ou un long littéral se perdait au-delà du bord, sans rien pour aller
-          le voir. Les deux colonnes défilent ensemble, étant d'une même table. */}
-      <table className="w-full border-collapse font-mono text-[12px] leading-[1.5]">
+    <div className="flex min-h-0 flex-1">
+      <Volet cote="gauche" rangees={rangees} conteneur={zone} onDefiler={suivre} />
+
+      {/* Les numéros ne défilent qu'en hauteur. Emportés par le glissement
+          latéral d'un volet, ils quitteraient l'écran juste quand on cherche à
+          savoir où l'on est. */}
+      <div
+        ref={gouttiere}
+        aria-hidden
+        className="shrink-0 overflow-hidden border-x border-separateur bg-fond-creux"
+      >
+        <table className="border-collapse font-mono text-[12px] leading-[1.5]">
+          <tbody>
+            {rangees.map((r, rang) =>
+              r.genre === 'coupure' ? (
+                <tr key={rang}>
+                  <td className="h-[22px]" colSpan={2} />
+                </tr>
+              ) : (
+                <tr key={rang}>
+                  <Numero valeur={numeroGauche(r.paire.gauche)} />
+                  <Numero valeur={numeroDroite(r.paire.droite)} />
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Volet cote="droite" rangees={rangees} conteneur={droite} onDefiler={suivre} />
+    </div>
+  )
+}
+
+/** Une rangée du diff côte à côte, telle que les trois zones la voient. */
+type Rangee =
+  | { genre: 'coupure'; section: Section }
+  | { genre: 'ligne'; paire: Paire; debut: boolean }
+
+/** Un des deux volets, avec son propre défilement latéral. */
+function Volet({
+  cote,
+  rangees,
+  conteneur,
+  onDefiler
+}: {
+  cote: 'gauche' | 'droite'
+  rangees: Rangee[]
+  conteneur: React.MutableRefObject<HTMLDivElement | null>
+  onDefiler: (source: HTMLDivElement | null) => void
+}): React.JSX.Element {
+  return (
+    <div
+      ref={conteneur}
+      aria-label={cote === 'gauche' ? 'Volet gauche' : 'Volet droit'}
+      onScroll={(e) => onDefiler(e.currentTarget)}
+      className="min-w-0 flex-1 overflow-auto"
+    >
+      {/* `min-w-full` et non `w-full` : la table remplit le volet quand le code
+          est court, et s'élargit pour ce qui dépasse. Contrainte à la largeur
+          du volet, elle écrêtait, et rien ne permettait d'aller voir la fin
+          d'une ligne minifiée. */}
+      <table className="min-w-full border-collapse font-mono text-[12px] leading-[1.5]">
         <tbody>
-          {paires.map((paire, rang) => {
-            const change = paire.gauche?.genre !== 'contexte' || paire.droite?.genre !== 'contexte'
-            const avant = paires[rang - 1]
+          {rangees.map((r, rang) => {
+            if (r.genre === 'coupure') {
+              return (
+                <tr key={rang}>
+                  <td className="h-[22px] p-0">
+                    <Coupure section={r.section} />
+                  </td>
+                </tr>
+              )
+            }
+            const ligne = cote === 'gauche' ? r.paire.gauche : r.paire.droite
             return (
-              <tr
-                key={rang}
-                {...repere(change && (avant === undefined || avant.gauche?.genre === 'contexte'))}
-              >
-                <Cote ligne={paire.gauche} />
-                {/* Les numéros au centre, comme dans le diff d'IntelliJ. Aux
-                    extrémités, ils écartent les deux colonnes de code que l'œil
-                    cherche justement à comparer. */}
-                <Numero valeur={numeroGauche(paire.gauche)} bord="droite" />
-                <Numero valeur={numeroDroite(paire.droite)} bord="gauche" />
-                <Cote ligne={paire.droite} />
+              <tr key={rang} {...repere(r.debut)}>
+                <td
+                  className={`px-3 whitespace-pre text-texte-doux ${
+                    ligne ? FONDS[ligne.genre] : 'bg-fond-creux'
+                  }`}
+                >
+                  {ligne ? ligne.texte || ' ' : ' '}
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
-    </>
-  )
-}
-
-/** Une des deux colonnes. Vide quand la ligne n'a pas de vis-à-vis. */
-function Cote({ ligne }: { ligne?: LigneDiff }): React.JSX.Element {
-  return (
-    <td
-      className={`w-1/2 px-3 whitespace-pre text-texte-doux ${
-        ligne ? FONDS[ligne.genre] : 'bg-fond-creux'
-      }`}
-    >
-      {ligne ? ligne.texte || ' ' : ''}
-    </td>
+    </div>
   )
 }
 
@@ -356,20 +536,8 @@ function Cote({ ligne }: { ligne?: LigneDiff }): React.JSX.Element {
  * diff rapporte trois numéros collés devant le code, et le collage est à
  * refaire à la main.
  */
-const Numero = ({
-  valeur,
-  bord
-}: {
-  valeur?: number
-  bord?: 'gauche' | 'droite'
-}): React.JSX.Element => (
-  <td
-    className={`w-11 bg-fond-creux px-2 text-right align-top text-texte-tenu select-none ${
-      bord === 'droite' ? 'border-l border-separateur' : ''
-    } ${bord === 'gauche' ? 'border-r border-separateur' : ''}`}
-  >
-    {valeur ?? ''}
-  </td>
+const Numero = ({ valeur }: { valeur?: number }): React.JSX.Element => (
+  <td className="w-11 px-2 text-right align-top text-texte-tenu select-none">{valeur ?? ''}</td>
 )
 
 /** Le numéro d'une ligne du côté où elle en a un. Une ligne ajoutée n'en a pas à gauche. */

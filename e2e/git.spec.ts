@@ -299,17 +299,17 @@ test.describe('vue de diff', () => {
 
   test('la forme se bascule et se retient d’un fichier à l’autre', async () => {
     await ctx.page.getByTitle('Voir le diff de base.txt').click()
-    const forme = ctx.page.getByRole('button', { name: /côte à côte|unifié/ })
-    await expect(forme).toHaveText('côte à côte')
+    await montrerCoteACote()
 
-    await forme.click()
-    await expect(forme).toHaveText('unifié')
+    await ctx.page.getByRole('button', { name: 'Passer au diff d’un seul tenant' }).click()
+    await expect(ctx.page.getByLabel('Diff unifié')).toBeVisible()
+    await expect(ctx.page.getByLabel('Volet gauche')).toHaveCount(0)
 
     // Un autre fichier garde la forme choisie : on ne la rechoisit pas à chaque
     // ouverture.
     await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
     await ctx.page.getByTitle('Voir le diff de neuf.txt').click()
-    await expect(ctx.page.getByRole('button', { name: /côte à côte|unifié/ })).toHaveText('unifié')
+    await expect(ctx.page.getByLabel('Diff unifié')).toBeVisible()
   })
 
   test('un fichier que git ne suit pas encore se montre entier', async () => {
@@ -324,12 +324,21 @@ test.describe('vue de diff', () => {
    * là. Basculer relit le diff : mesurer aussitôt attrape l'état d'avant.
    */
   const montrerTout = async (): Promise<void> => {
-    const bascule = ctx.page.getByRole('button', { name: /^(changements|fichier entier)$/ })
-    if ((await bascule.textContent()) === 'changements') await bascule.click()
-    await expect(ctx.page.getByRole('button', { name: 'fichier entier' })).toBeVisible()
+    const deplier = ctx.page.getByRole('button', { name: 'Montrer le fichier entier' })
+    if (await deplier.isVisible()) await deplier.click()
+    await expect(
+      ctx.page.getByRole('button', { name: 'Ne montrer que les changements' })
+    ).toBeVisible()
     await expect
-      .poll(async () => ctx.page.getByLabel('Contenu du diff').locator('tr').count())
+      .poll(async () => ctx.page.getByLabel('Volet gauche').locator('tr').count())
       .toBeGreaterThan(150)
+  }
+
+  /** Remet la vue en deux volets, d'où qu'elle parte. */
+  const montrerCoteACote = async (): Promise<void> => {
+    const bouton = ctx.page.getByRole('button', { name: 'Passer au diff côte à côte' })
+    if (await bouton.isVisible()) await bouton.click()
+    await expect(ctx.page.getByLabel('Volet gauche')).toBeVisible()
   }
 
   test('un long diff défile', async () => {
@@ -337,8 +346,9 @@ test.describe('vue de diff', () => {
     // bornée quelque part dans la chaîne, la vue pousse la fenêtre au lieu de
     // défiler, et le bas devient inatteignable.
     await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await montrerCoteACote()
 
-    const zone = ctx.page.getByLabel('Contenu du diff')
+    const zone = ctx.page.getByLabel('Volet gauche')
     // Le diff se lit derrière : mesurer avant qu'il n'arrive ne dirait rien.
     await expect(zone.locator('tr').first()).toBeVisible()
     await montrerTout()
@@ -354,29 +364,48 @@ test.describe('vue de diff', () => {
     expect(await zone.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
   })
 
-  test('une ligne trop longue reste atteignable', async () => {
-    // En côte à côte, les cellules coupaient ce qui dépassait, sans que rien ne
-    // permette d'aller le voir. Une ligne minifiée ou un long littéral se
-    // perdait au-delà du bord.
+  test('chaque volet glisse de côté pour son compte', async () => {
+    // C'est la forme d'IntelliJ : deux éditeurs, non deux colonnes d'un même
+    // tableau. Une ligne longue d'un côté ne pousse pas le code de l'autre hors
+    // de vue, et l'on va voir la fin de l'une sans perdre l'autre.
     await ctx.page.getByTitle(/voir le diff de large\.txt/).click()
-    const zone = ctx.page.getByLabel('Contenu du diff')
-    await expect(zone.locator('tr').first()).toBeVisible()
+    await montrerCoteACote()
+    const gauche = ctx.page.getByLabel('Volet gauche')
+    const droit = ctx.page.getByLabel('Volet droit')
+    await expect(droit.locator('tr').first()).toBeVisible()
 
-    const mesures = await zone.evaluate((el) => ({
-      contenu: el.scrollWidth,
-      visible: el.clientWidth
-    }))
-    expect(mesures.contenu).toBeGreaterThan(mesures.visible)
+    const largeur = (cible: Locator): Promise<{ contenu: number; visible: number }> =>
+      cible.evaluate((el) => ({ contenu: el.scrollWidth, visible: el.clientWidth }))
 
-    // Le même défaut valait pour le mode d'un seul tenant : la mesure vaut donc
-    // pour les deux formes.
-    await ctx.page.getByRole('button', { name: /côte à côte|unifié/ }).click()
-    const unifie = await zone.evaluate((el) => ({
-      contenu: el.scrollWidth,
-      visible: el.clientWidth
-    }))
-    expect(unifie.contenu).toBeGreaterThan(unifie.visible)
-    await ctx.page.getByRole('button', { name: /côte à côte|unifié/ }).click()
+    // La ligne de six cents caractères est du côté ajouté : seul ce volet-là a
+    // de quoi glisser. Coupé, il n'aurait rien à faire défiler du tout.
+    const aDroite = await largeur(droit)
+    expect(aDroite.contenu).toBeGreaterThan(aDroite.visible)
+    const aGauche = await largeur(gauche)
+    expect(aGauche.contenu).toBe(aGauche.visible)
+
+    // Le glissement de l'un laisse l'autre où il est.
+    await droit.evaluate((el) => el.scrollTo(400, 0))
+    await expect.poll(async () => droit.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+    expect(await gauche.evaluate((el) => el.scrollLeft)).toBe(0)
+  })
+
+  test('le défilement en hauteur reste partagé', async () => {
+    // Le vertical, lui, est commun : sans quoi les deux côtés cesseraient de se
+    // faire face, et la comparaison n'aurait plus de sens.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await montrerCoteACote()
+    const gauche = ctx.page.getByLabel('Volet gauche')
+    const droit = ctx.page.getByLabel('Volet droit')
+    await expect(gauche.locator('tr').first()).toBeVisible()
+    await montrerTout()
+
+    await gauche.evaluate((el) => el.scrollTo(0, 500))
+    await expect.poll(async () => droit.evaluate((el) => el.scrollTop)).toBe(500)
+
+    // Et dans l'autre sens, sans que les deux se renvoient la balle.
+    await droit.evaluate((el) => el.scrollTo(0, 900))
+    await expect.poll(async () => gauche.evaluate((el) => el.scrollTop)).toBe(900)
   })
 
   test('montre le fichier entier, ou les seuls changements', async () => {
@@ -385,15 +414,17 @@ test.describe('vue de diff', () => {
     // comprendre ce qu'un changement touche. C'est la vue d'IntelliJ, qui
     // montre tout et propose de replier.
     await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
-    const zone = ctx.page.getByLabel('Contenu du diff')
-    const bascule = ctx.page.getByRole('button', { name: /^(changements|fichier entier)$/ })
+    await montrerCoteACote()
+    const zone = ctx.page.getByLabel('Volet gauche')
+    const replier = ctx.page.getByRole('button', { name: 'Ne montrer que les changements' })
+    const deplier = ctx.page.getByRole('button', { name: 'Montrer le fichier entier' })
     const coupures = zone.getByText(/^@@ /)
 
     // Le test d'avant a pu laisser la vue sur le fichier entier. On la ramène
     // sur les changements seuls, et l'on attend qu'elle y soit : basculer relit
     // le diff, et compter entre-temps compterait celui d'avant.
-    if ((await bascule.textContent()) === 'fichier entier') await bascule.click()
-    await expect(bascule).toHaveText('changements')
+    if (await replier.isVisible()) await replier.click()
+    await expect(deplier).toBeVisible()
     await expect(coupures.first()).toBeVisible()
 
     // Trois lignes de contexte font des îlots séparés par des coupures.
@@ -404,22 +435,23 @@ test.describe('vue de diff', () => {
 
     // Tout le fichier : les deux cents lignes, et plus une seule coupure. C'est
     // la vue d'IntelliJ, qui montre tout et propose de replier.
-    await bascule.click()
-    await expect(bascule).toHaveText('fichier entier')
+    await deplier.click()
+    await expect(replier).toBeVisible()
     await expect(coupures).toHaveCount(0)
     await expect.poll(async () => zone.locator('tr').count()).toBeGreaterThan(150)
 
     // Le choix se retient d'un fichier à l'autre, comme la forme.
     await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
     await ctx.page.getByTitle(/voir le diff de base\.txt/).click()
-    await expect(ctx.page.getByRole('button', { name: 'fichier entier' })).toBeVisible()
+    await expect(replier).toBeVisible()
   })
 
   test('mène d’un changement au suivant', async () => {
     // Le geste de F7 dans IntelliJ. Il prend tout son sens le fichier entier
     // affiché, où deux lignes changées se perdent dans quatre mille.
     await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
-    const zone = ctx.page.getByLabel('Contenu du diff')
+    await montrerCoteACote()
+    const zone = ctx.page.getByLabel('Volet gauche')
     await expect(zone.locator('tr').first()).toBeVisible()
     await montrerTout()
 
@@ -446,6 +478,24 @@ test.describe('vue de diff', () => {
     const debut = await haut()
     await precedent.click()
     expect(await haut()).toBe(debut)
+  })
+
+  test('mène d’un fichier au suivant sans repasser par la liste', async () => {
+    // Le geste d'IntelliJ, qui annonce « 29/34 files » entre deux flèches.
+    // Relire trente fichiers demandait de revenir à la liste après chacun.
+    await ctx.page.getByTitle('Voir le diff de base.txt').click()
+    const compteur = ctx.page.getByText(/^\d+\/\d+$/)
+    await expect(compteur).toHaveText('1/5')
+
+    await ctx.page.getByRole('button', { name: 'Fichier suivant' }).click()
+    await expect(compteur).toHaveText('2/5')
+    // La vue a changé de fichier, elle ne s'est pas dédoublée.
+    await expect(ctx.page.getByRole('button', { name: 'Fichier suivant' })).toHaveCount(1)
+
+    await ctx.page.getByRole('button', { name: 'Fichier précédent' }).click()
+    await expect(compteur).toHaveText('1/5')
+    // Au premier, on ne remonte plus.
+    await expect(ctx.page.getByRole('button', { name: 'Fichier précédent' })).toBeDisabled()
   })
 
   test('un binaire le dit, plutôt que de rester vide', async () => {

@@ -12,6 +12,10 @@ import {
   GitBranch,
   GitFork,
   Boxes,
+  Columns2 as DeuxColonnes,
+  Rows3,
+  UnfoldVertical,
+  FoldVertical,
   Plus,
   Ban,
   FileCode2,
@@ -54,6 +58,18 @@ export const IconeBranche = (p: Props): React.JSX.Element => <GitBranch {...regl
 
 /** Les dépôts d'un projet, quand il en porte plusieurs. */
 export const IconeDepots = (p: Props): React.JSX.Element => <Boxes {...reglages(p)} />
+
+/** Diff en deux colonnes. */
+export const IconeCoteACote = (p: Props): React.JSX.Element => <DeuxColonnes {...reglages(p)} />
+
+/** Diff d'un seul tenant. */
+export const IconeUnifie = (p: Props): React.JSX.Element => <Rows3 {...reglages(p)} />
+
+/** Déplier ce qui est replié. */
+export const IconeDeplier = (p: Props): React.JSX.Element => <UnfoldVertical {...reglages(p)} />
+
+/** Replier ce qui est déplié. */
+export const IconeReplier = (p: Props): React.JSX.Element => <FoldVertical {...reglages(p)} />
 
 /** Fichier suivi et modifié. */
 export const IconeModifie = (p: Props): React.JSX.Element => <FilePen {...reglages(p)} />
