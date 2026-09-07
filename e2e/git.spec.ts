@@ -137,6 +137,22 @@ test.describe('page Git', () => {
     await expect(ctx.page.getByRole('button', { name: /^repos/ })).toHaveCount(0)
   })
 
+  test('donne au nom la couleur de son état', async () => {
+    // Le code d'IntelliJ : bleu pour ce qui est suivi et modifié, rouge pour ce
+    // que git n'a jamais vu. Cela se voit à la volée, là où une lettre demande
+    // de la connaître.
+    const teinte = (cible: Locator): Promise<string> =>
+      cible.evaluate((el) => getComputedStyle(el).color)
+
+    const modifie = ctx.page.getByLabel('Changements').getByLabel('modifié').first()
+    const neuf = ctx.page.getByLabel('Fichiers non versionnés').getByLabel('non suivi').first()
+    await expect(modifie).toHaveText('base.txt')
+
+    // Les valeurs du thème : --color-info et --color-erreur.
+    expect(await teinte(modifie)).toBe('rgb(127, 168, 214)')
+    expect(await teinte(neuf)).toBe('rgb(224, 104, 95)')
+  })
+
   test('montre le dossier d’un fichier autant que son nom', async () => {
     // Dix `index.ts` dans un même dépôt ne se distinguent que par leur dossier.
     const ligne = ctx.page.getByTitle('Voir le diff de src/Lien.java')

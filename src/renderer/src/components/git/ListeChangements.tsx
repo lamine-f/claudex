@@ -3,21 +3,24 @@ import { estNonSuivi, type FichierGit, type Marque } from '@shared/git'
 import type { DepotGit } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { vueDiff } from '@renderer/state/vues'
+import { IconeFichier } from '../files/IconeFichier'
 import { IconeChevron } from '../ui/Icones'
 
 /**
  * Ce que chaque marque dit, et de quelle couleur.
  *
- * Les lettres de git sont lisibles pour qui les connaît. Une pastille se lit
- * sans les connaître, et le mot reste en infobulle pour lever le doute.
+ * La couleur est portée par le nom du fichier, comme dans IntelliJ. Un fichier
+ * modifié se lit en bleu, un fichier que git n'a jamais vu en rouge. Cela se
+ * voit à la volée, là où une lettre demande de la connaître et une pastille de
+ * la chercher.
  */
 const MARQUES: Record<Marque, { mot: string; teinte: string }> = {
-  inchange: { mot: 'inchangé', teinte: 'bg-texte-tenu' },
-  modifie: { mot: 'modifié', teinte: 'bg-info' },
-  ajoute: { mot: 'ajouté', teinte: 'bg-succes' },
-  supprime: { mot: 'supprimé', teinte: 'bg-erreur' },
-  renomme: { mot: 'renommé', teinte: 'bg-cyan' },
-  'non-suivi': { mot: 'non suivi', teinte: 'bg-texte-tenu' }
+  inchange: { mot: 'inchangé', teinte: 'text-texte-doux' },
+  modifie: { mot: 'modifié', teinte: 'text-info' },
+  ajoute: { mot: 'ajouté', teinte: 'text-succes' },
+  supprime: { mot: 'supprimé', teinte: 'text-erreur line-through' },
+  renomme: { mot: 'renommé', teinte: 'text-cyan' },
+  'non-suivi': { mot: 'non suivi', teinte: 'text-erreur' }
 }
 
 /** La marque qui compte pour l'affichage : la copie de travail, sinon l'index. */
@@ -270,11 +273,9 @@ function Depot({
                 libelle={fichier.chemin}
                 onBasculer={() => cocher([cle], !coches.includes(cle))}
               />
-              <span
-                aria-label={marque.mot}
-                title={marque.mot}
-                className={`ml-1 h-[7px] w-[7px] shrink-0 self-center rounded-full ${marque.teinte}`}
-              />
+              <span className="ml-1 flex w-[18px] shrink-0 self-center items-center justify-center">
+                <IconeFichier nom={nom} dossier={false} ouvert={false} />
+              </span>
               <button
                 type="button"
                 onClick={() =>
@@ -290,10 +291,12 @@ function Depot({
                     })
                   )
                 }
-                title={`Voir le diff de ${fichier.chemin}`}
+                title={`${marque.mot} · voir le diff de ${fichier.chemin}`}
                 className="flex min-w-0 flex-1 items-baseline gap-1.5 py-2 text-left"
               >
-                <span className="shrink-0 truncate text-[13px] text-texte-doux">{nom}</span>
+                <span aria-label={marque.mot} className={`shrink-0 truncate text-[13px] ${marque.teinte}`}>
+                  {nom}
+                </span>
                 {/* Le dossier compte autant que le nom : dix `index.ts` dans un
                     même dépôt ne se distinguent que par lui. */}
                 {dossier && (
