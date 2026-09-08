@@ -767,3 +767,44 @@ test.describe('imbrication de la page Git', () => {
     expect(await abscisse(fichier)).toBeCloseTo(await abscisse(section), 0)
   })
 })
+
+/**
+ * Un projet peut dire lui-même quels dépôts suivre, comme il déclare ses
+ * services. Sans le fichier, la recherche automatique tient.
+ */
+test.describe('dépôts déclarés par le projet', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    const projet = await mkdtemp(join(tmpdir(), 'claudex-declare-'))
+    await depot(join(projet, 'suivi'), 'local')
+    await depot(join(projet, 'ignore'), 'local')
+    await writeFile(join(projet, 'suivi', 'base.txt'), 'deux\n')
+    await writeFile(join(projet, 'ignore', 'base.txt'), 'trois\n')
+
+    await mkdir(join(projet, '.claudex'), { recursive: true })
+    await writeFile(
+      join(projet, '.claudex', 'git.yml'),
+      'depots:\n  - suivi\n  - absent\n'
+    )
+
+    ctx = await lancer({ projet })
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('ne montre que les dépôts nommés', async () => {
+    await expect(ctx.page.getByRole('button', { name: /^suivi/ })).toBeVisible()
+    await expect(ctx.page.getByRole('button', { name: /^ignore/ })).toHaveCount(0)
+  })
+
+  test('dit ce qui ne mène à aucun dépôt', async () => {
+    // Une faute de frappe laisserait sinon la page silencieusement incomplète.
+    const reproches = ctx.page.getByLabel('Reproches de la déclaration')
+    await expect(reproches).toContainText('absent')
+    await expect(reproches).toContainText('introuvable')
+  })
+})

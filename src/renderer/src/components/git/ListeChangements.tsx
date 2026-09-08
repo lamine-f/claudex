@@ -84,7 +84,7 @@ export function ListeChangements({ workspaceId }: { workspaceId: string }): Reac
   }
 
   const vide = sections.changements.length === 0 && sections.neufs.length === 0
-  if (vide) {
+  if (vide && !(git.reproches && git.reproches.length > 0)) {
     return (
       <p className="px-3 py-2 text-[12.5px] text-texte-faible">
         {filtre.trim()
@@ -95,7 +95,22 @@ export function ListeChangements({ workspaceId }: { workspaceId: string }): Reac
   }
 
   return (
-    <ul className="pb-2">
+    <>
+      {/* Ce que la déclaration a de bancal se dit en tête de liste. Un chemin
+          qui ne mène à aucun dépôt disparaîtrait sinon en silence, et la page
+          paraîtrait simplement plus courte. */}
+      {git.reproches && git.reproches.length > 0 && (
+        <ul aria-label="Reproches de la déclaration" className="px-2.5 pt-2">
+          {git.reproches.map((r, rang) => (
+            <li key={rang} className="flex items-baseline gap-1.5 py-0.5 text-[11.5px]">
+              <span className="shrink-0 text-attention">!</span>
+              {r.chemin && <span className="shrink-0 font-mono text-texte-doux">{r.chemin}</span>}
+              <span className="min-w-0 flex-1 text-texte-tenu">{r.message}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ul className="pb-2">
       {(['changements', 'neufs'] as const).map(
         (section) =>
           sections[section].length > 0 && (
@@ -109,7 +124,8 @@ export function ListeChangements({ workspaceId }: { workspaceId: string }): Reac
             />
           )
       )}
-    </ul>
+      </ul>
+    </>
   )
 }
 

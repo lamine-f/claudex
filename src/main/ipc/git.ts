@@ -24,8 +24,8 @@ export function registerGitIpc(): void {
 
       // Le dépôt vient du renderer : il doit être l'un de ceux que le projet
       // porte, et non un chemin quelconque qu'une page aurait pu inventer.
-      const connus = await depots(workspace.path)
-      if (!connus.includes(depot)) return { sortie: '' }
+      const { racines } = await depots(workspace.path)
+      if (!racines.includes(depot)) return { sortie: '' }
 
       return diff(depot, fichier, options)
     }
@@ -56,11 +56,11 @@ export function registerGitIpc(): void {
       if (!workspace) return []
       if (!message.trim()) return []
 
-      const connus = await depots(workspace.path)
+      const { racines } = await depots(workspace.path)
       const comptes: Compte[] = []
 
       for (const lot of lots) {
-        if (!connus.includes(lot.depot)) continue
+        if (!racines.includes(lot.depot)) continue
         const compte = await commiter(lot.depot, lot.fichiers, message.trim())
         // On ne pousse que ce qui vient d'être commité : pousser un dépôt dont
         // le commit a échoué enverrait un travail que l'on croit parti.

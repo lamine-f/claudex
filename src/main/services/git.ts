@@ -1,8 +1,16 @@
 import { execFile } from 'node:child_process'
-import { readdir, stat } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { readdir, readFile, stat } from 'node:fs/promises'
+import { basename, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
-import { estModifie, estNonSuivi, lireStatut } from '@shared/git'
+import { parse } from 'yaml'
+import {
+  estModifie,
+  estNonSuivi,
+  lireDeclaration,
+  lireStatut,
+  type DeclarationGit,
+  type Reproche
+} from '@shared/git'
 import type { DepotGit, EtatGit } from '@shared/types'
 
 const run = promisify(execFile)
@@ -10,23 +18,88 @@ const run = promisify(execFile)
 /** Au-delà, on cesse de chercher : un projet n'a pas cent dépôts sous la main. */
 const PLAFOND = 60
 
+/** Le fichier par lequel un projet dit quels dépôts suivre. Facultatif. */
+export const DECLARATION = join('.claudex', 'git.yml')
+
 /**
- * Les dépôts git d'un projet.
+ * Les dépôts d'un projet, déclarés ou trouvés.
  *
- * Deux cas, et un seul chemin de code pour les deux. Si le dossier du projet
- * porte un `.git`, il est le dépôt et il est seul. Sinon, ses enfants directs
- * sont examinés : c'est ainsi que sont rangés `olive_services` et
- * `web_clients`, qui ne sont pas des dépôts mais en contiennent seize et deux.
+ * Le fichier `.claudex/git.yml` prime quand il existe et nomme des dépôts. Il
+ * sert dans les deux sens : ne suivre que cinq des seize dépôts
+ * d'olive_services, ou aller chercher un dépôt que la recherche à un niveau ne
+ * trouve pas.
+ *
+ * Sans lui, la règle d'avant tient. Si le dossier du projet porte un `.git`,
+ * il est le dépôt et il est seul ; sinon ses enfants directs sont examinés.
+ * C'est ainsi que sont rangés `olive_services` et `web_clients`, qui ne sont
+ * pas des dépôts mais en contiennent seize et deux.
  *
  * La recherche ne descend jamais plus bas. C'est instantané, et cela évite par
  * construction de tomber sur les `.git` que des dépendances traînent parfois
- * dans `node_modules`.
+ * dans `node_modules`. Un dépôt plus profond se déclare.
  *
  * `.git` peut être un fichier plutôt qu'un dossier : c'est le cas des
  * sous-modules et des arbres de travail liés. Le test porte donc sur
  * l'existence, jamais sur le type.
  */
-export async function depots(chemin: string): Promise<string[]> {
+export async function depots(chemin: string): Promise<{
+  racines: string[]
+  reproches: Reproche[]
+}> {
+  const declare = await lireFichier(chemin)
+  if (declare.chemins.length > 0 || declare.reproches.length > 0) {
+    return verifierDeclares(chemin, declare)
+  }
+  return { racines: await chercher(chemin), reproches: [] }
+}
+
+/** Lit `.claudex/git.yml`. Un projet sans fichier n'est pas une erreur. */
+async function lireFichier(projet: string): Promise<{ chemins: string[]; reproches: Reproche[] }> {
+  const texte = await readFile(join(projet, DECLARATION), 'utf8').catch(() => null)
+  if (texte === null) return { chemins: [], reproches: [] }
+
+  try {
+    return lireDeclaration((parse(texte) ?? {}) as DeclarationGit)
+  } catch (erreur) {
+    return {
+      chemins: [],
+      reproches: [{ message: `Le fichier ne se lit pas : ${(erreur as Error).message}` }]
+    }
+  }
+}
+
+/**
+ * Résout les chemins déclarés et écarte ceux qui ne mènent à aucun dépôt.
+ *
+ * Un chemin qui ne tient pas se dit plutôt que de disparaître : sans cela, une
+ * faute de frappe dans le fichier laisserait la page silencieusement
+ * incomplète.
+ */
+async function verifierDeclares(
+  projet: string,
+  declare: { chemins: string[]; reproches: Reproche[] }
+): Promise<{ racines: string[]; reproches: Reproche[] }> {
+  const reproches = [...declare.reproches]
+  const racines: string[] = []
+
+  for (const relatif of declare.chemins) {
+    const absolu = resolve(projet, relatif)
+    if (!(await existe(absolu))) {
+      reproches.push({ chemin: relatif, message: 'Dossier introuvable.' })
+      continue
+    }
+    if (!(await existe(join(absolu, '.git')))) {
+      reproches.push({ chemin: relatif, message: 'Ce dossier n’est pas un dépôt git.' })
+      continue
+    }
+    racines.push(absolu)
+  }
+
+  return { racines, reproches }
+}
+
+/** La recherche d'avant : le projet lui-même, ou ses enfants directs. */
+async function chercher(chemin: string): Promise<string[]> {
   if (await existe(join(chemin, '.git'))) return [chemin]
 
   let entrees: string[]
@@ -92,12 +165,11 @@ export async function etatDepot(chemin: string): Promise<DepotGit | null> {
  * erreur : beaucoup de projets n'en sont pas.
  */
 export async function etat(chemin: string): Promise<EtatGit | null> {
-  const racines = await depots(chemin)
-  if (racines.length === 0) return null
+  const { racines, reproches } = await depots(chemin)
+  if (racines.length === 0 && reproches.length === 0) return null
 
   const lus = await Promise.all(racines.map(etatDepot))
   const trouves = lus.filter((d): d is DepotGit => d !== null)
-  if (trouves.length === 0) return null
 
   const branches = new Set(trouves.map((d) => d.branche).filter(Boolean))
   const tous = trouves.flatMap((d) => d.fichiers)
@@ -107,7 +179,8 @@ export async function etat(chemin: string): Promise<EtatGit | null> {
     // Seize dépôts sur trois branches n'ont pas de branche commune à annoncer.
     branche: branches.size === 1 ? [...branches][0] : undefined,
     modifies: tous.filter(estModifie).length,
-    nonSuivis: tous.filter(estNonSuivi).length
+    nonSuivis: tous.filter(estNonSuivi).length,
+    ...(reproches.length > 0 ? { reproches } : {})
   }
 }
 

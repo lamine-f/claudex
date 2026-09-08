@@ -234,6 +234,13 @@ export interface EtatGit {
   /** Fichiers suivis dont quelque chose a bougé, tous dépôts confondus. */
   modifies: number
   nonSuivis: number
+  /**
+   * Ce que la déclaration `.claudex/git.yml` a de bancal, s'il y a lieu.
+   *
+   * Un chemin qui ne mène à aucun dépôt se dit plutôt que de disparaître : une
+   * faute de frappe laisserait sinon la page silencieusement incomplète.
+   */
+  reproches?: { chemin?: string; message: string }[]
 }
 
 /**

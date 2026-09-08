@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { chantier, commiter, depots, etat, pousser } from '../src/main/services/git'
+import { chantier, commiter, DECLARATION, depots, etat, pousser } from '../src/main/services/git'
 
 const run = promisify(execFile)
 
@@ -43,7 +43,7 @@ describe('détection des dépôts d’un projet', () => {
     await depot(join(projet, 'passerelle'))
     await mkdir(join(projet, 'notes'), { recursive: true })
 
-    expect((await depots(projet)).map((c) => basename(c))).toEqual(['coeur', 'passerelle'])
+    expect((await depots(projet)).racines.map((c) => basename(c))).toEqual(['coeur', 'passerelle'])
   })
 
   it('s’arrête au projet quand c’est lui le dépôt', async () => {
@@ -54,7 +54,7 @@ describe('détection des dépôts d’un projet', () => {
     await mkdir(join(projet, 'sous'), { recursive: true })
     await depot(join(projet, 'sous', 'imbrique'))
 
-    expect(await depots(projet)).toEqual([projet])
+    expect((await depots(projet)).racines).toEqual([projet])
   })
 
   it('ne descend pas dans les dépendances', async () => {
@@ -64,14 +64,14 @@ describe('détection des dépôts d’un projet', () => {
     await depot(join(projet, 'app'))
     await depot(join(projet, 'app', 'node_modules', 'un-paquet'))
 
-    expect((await depots(projet)).map((c) => basename(c))).toEqual(['app'])
+    expect((await depots(projet)).racines.map((c) => basename(c))).toEqual(['app'])
   })
 
   it('ne trouve rien dans un dossier sans dépôt, ce qui n’est pas une erreur', async () => {
     const projet = join(racine, 'sans')
     await mkdir(join(projet, 'quelconque'), { recursive: true })
 
-    expect(await depots(projet)).toEqual([])
+    expect((await depots(projet)).racines).toEqual([])
     expect(await etat(projet)).toBeNull()
   })
 })
@@ -228,5 +228,100 @@ describe('écrire dans les dépôts', () => {
 
     expect((await commiter(projet, [], 'sans rien')).fait).toBe(false)
     expect(await journal(projet)).toEqual(['base'])
+  })
+})
+
+describe('déclaration des dépôts à suivre', () => {
+  let racine: string
+
+  beforeAll(async () => {
+    racine = await mkdtemp(join(tmpdir(), 'claudex-git-declare-'))
+  })
+
+  afterAll(async () => {
+    await rm(racine, { recursive: true, force: true })
+  })
+
+  /** Écrit `.claudex/git.yml` dans un projet. */
+  async function declarer(projet: string, contenu: string): Promise<void> {
+    await mkdir(join(projet, '.claudex'), { recursive: true })
+    await writeFile(join(projet, DECLARATION), contenu)
+  }
+
+  it('ne suit que ce qui est déclaré', async () => {
+    // Seize dépôts dont on n'en travaille que deux : la page n'a pas à porter
+    // les quatorze autres.
+    const projet = join(racine, 'choisis')
+    await depot(join(projet, 'un'))
+    await depot(join(projet, 'deux'))
+    await depot(join(projet, 'trois'))
+    await declarer(projet, 'depots:\n  - un\n  - trois\n')
+
+    const { racines, reproches } = await depots(projet)
+    expect(racines.map((c) => basename(c))).toEqual(['un', 'trois'])
+    expect(reproches).toEqual([])
+  })
+
+  it('va chercher un dépôt que la recherche à un niveau ne trouve pas', async () => {
+    const projet = join(racine, 'profond')
+    await mkdir(join(projet, 'sous'), { recursive: true })
+    await depot(join(projet, 'sous', 'cache'))
+    await declarer(projet, 'depots:\n  - sous/cache\n')
+
+    expect((await depots(projet)).racines.map((c) => basename(c))).toEqual(['cache'])
+  })
+
+  it('suit un dépôt rangé à côté du projet', async () => {
+    // La forme d'olive_services et web_clients, qui sont voisins.
+    const voisin = join(racine, 'voisin')
+    await depot(voisin)
+    const projet = join(racine, 'depuis-ailleurs')
+    await mkdir(projet, { recursive: true })
+    await declarer(projet, 'depots:\n  - ../voisin\n')
+
+    expect((await depots(projet)).racines.map((c) => basename(c))).toEqual(['voisin'])
+  })
+
+  it('dit ce qui ne mène à aucun dépôt, sans perdre le reste', async () => {
+    // Une faute de frappe laisserait sinon la page silencieusement incomplète.
+    const projet = join(racine, 'fautes')
+    await depot(join(projet, 'bon'))
+    await mkdir(join(projet, 'simple-dossier'), { recursive: true })
+    await declarer(projet, 'depots:\n  - bon\n  - absent\n  - simple-dossier\n')
+
+    const { racines, reproches } = await depots(projet)
+    expect(racines.map((c) => basename(c))).toEqual(['bon'])
+    expect(reproches.map((r) => r.chemin)).toEqual(['absent', 'simple-dossier'])
+    expect(reproches[0]?.message).toContain('introuvable')
+    expect(reproches[1]?.message).toContain('pas un dépôt')
+  })
+
+  it('remonte le reproche jusqu’à l’état du projet', async () => {
+    const projet = join(racine, 'remonte')
+    await depot(join(projet, 'bon'))
+    await declarer(projet, 'depots:\n  - bon\n  - absent\n')
+
+    const vu = await etat(projet)
+    expect(vu?.depots.map((d) => d.nom)).toEqual(['bon'])
+    expect(vu?.reproches).toHaveLength(1)
+  })
+
+  it('revient à la recherche quand le fichier ne parle pas des dépôts', async () => {
+    // Un fichier qui existe sans nommer de dépôt ne doit pas tout éteindre.
+    const projet = join(racine, 'muet')
+    await depot(join(projet, 'un'))
+    await declarer(projet, 'autre_chose: oui\n')
+
+    expect((await depots(projet)).racines.map((c) => basename(c))).toEqual(['un'])
+  })
+
+  it('dit ce qu’il ne sait pas lire, plutôt que de se taire', async () => {
+    const projet = join(racine, 'illisible')
+    await depot(join(projet, 'un'))
+    await declarer(projet, 'depots: [un\n')
+
+    const { racines, reproches } = await depots(projet)
+    expect(racines).toEqual([])
+    expect(reproches[0]?.message).toContain('ne se lit pas')
   })
 })

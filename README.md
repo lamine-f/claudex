@@ -168,6 +168,35 @@ sudo apt install xdg-utils
 - [x] Installer et retirer les hooks depuis l'application
 - [ ] Distinguer un agent interrompu d'un agent qui a fini
 
+### Git
+
+- [x] Suivre tous les dépôts d'un projet, y compris quand il en porte seize
+- [x] Choisir lesquels dans `.claudex/git.yml`
+- [x] Voir le diff d'un fichier, côte à côte ou d'un seul tenant
+- [x] Commiter et pousser sur plusieurs dépôts à la fois
+- [ ] Le graphe des commits et le détail d'un commit
+- [ ] Créer une branche, fusionner, résoudre les conflits
+
+Un projet qui porte plusieurs dépôts les montre tous, rangés sous leur nom avec
+leur branche. C'est le cas d'un dossier qui contient seize services, chacun
+étant son propre dépôt.
+
+Par défaut, Claudex cherche seul : le dossier du projet s'il est un dépôt, ses
+enfants directs sinon. Pour sortir de cette règle, un fichier `.claudex/git.yml`
+nomme les dépôts à suivre :
+
+```yaml
+depots:
+  - olive_core
+  - olive_gateway_service
+  - sous/dossier/un_depot_plus_profond
+  - ../web_clients/olive_front
+```
+
+Les chemins sont relatifs au projet et peuvent remonter d'un cran. Un chemin qui
+ne mène à aucun dépôt est signalé en tête de la page plutôt qu'ignoré. Sans le
+fichier, rien ne change.
+
 ### Projets et fichiers
 
 - [x] Ajouter un projet, lui donner une couleur, passer de l'un à l'autre

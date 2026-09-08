@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estModifie, estNonSuivi, lireStatut } from '../src/shared/git'
+import { estModifie, estNonSuivi, lireDeclaration, lireStatut } from '../src/shared/git'
 
 /** La sortie de git, où les octets nuls sont écrits `\0` pour rester lisibles. */
 const sortie = (...morceaux: string[]): string => morceaux.join('\0') + '\0'
@@ -144,5 +144,51 @@ describe('tri des fichiers', () => {
       'apres.java'
     ])
     expect(statut.fichiers.filter(estNonSuivi).map((f) => f.chemin)).toEqual(['neuf.java'])
+  })
+})
+
+describe('déclaration des dépôts à suivre', () => {
+  it('rend les chemins déclarés, dans leur ordre', () => {
+    const lu = lireDeclaration({ depots: ['olive_core', 'olive_gateway_service'] })
+    expect(lu.chemins).toEqual(['olive_core', 'olive_gateway_service'])
+    expect(lu.reproches).toEqual([])
+  })
+
+  it('laisse la recherche faire quand rien n’est déclaré', () => {
+    // Un projet sans fichier, ou un fichier qui ne parle pas des dépôts : le
+    // comportement d'avant tient, et ce n'est pas une erreur.
+    expect(lireDeclaration({})).toEqual({ chemins: [], reproches: [] })
+  })
+
+  it('accepte un chemin qui remonte, pour un dépôt rangé à côté', () => {
+    expect(lireDeclaration({ depots: ['../web_clients/olive_front'] }).chemins).toEqual([
+      '../web_clients/olive_front'
+    ])
+  })
+
+  it('refuse un chemin absolu, et dit pourquoi', () => {
+    // Le fichier vit dans le projet et parle de lui. Un chemin absolu l'en
+    // sortirait sans que rien ne le signale.
+    const lu = lireDeclaration({ depots: ['/Users/quelquun/ailleurs'] })
+    expect(lu.chemins).toEqual([])
+    expect(lu.reproches[0]?.message).toContain('absolu')
+  })
+
+  it('dit qu’une liste vide ne suivra rien', () => {
+    // Écrire `depots: []` est un geste, non un oubli : on le prend au mot, et
+    // l'on prévient que la page restera vide.
+    const lu = lireDeclaration({ depots: [] })
+    expect(lu.chemins).toEqual([])
+    expect(lu.reproches[0]?.message).toContain('vide')
+  })
+
+  it('écarte ce qui n’est pas du texte, sans perdre le reste', () => {
+    const lu = lireDeclaration({ depots: ['bon', 42, '', 'bon'] })
+    expect(lu.chemins).toEqual(['bon'])
+    expect(lu.reproches).toHaveLength(3)
+  })
+
+  it('refuse une déclaration qui n’est pas une liste', () => {
+    expect(lireDeclaration({ depots: 'olive_core' }).reproches[0]?.message).toContain('liste')
   })
 })

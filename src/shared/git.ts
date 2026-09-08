@@ -153,3 +153,81 @@ export const estNonSuivi = (f: FichierGit): boolean => f.travail === 'non-suivi'
 /** Un fichier suivi dont quelque chose a bougé, d'un côté ou de l'autre. */
 export const estModifie = (f: FichierGit): boolean =>
   !estNonSuivi(f) && (f.index !== 'inchange' || f.travail !== 'inchange')
+
+/**
+ * Ce qu'un projet déclare des dépôts qu'il veut suivre.
+ *
+ * Le fichier est facultatif. Sans lui, Claudex cherche les dépôts lui-même :
+ * le dossier du projet s'il en est un, ses enfants directs sinon. La
+ * déclaration sert à sortir de cette règle, dans les deux sens. Ne suivre que
+ * cinq des seize dépôts d'olive_services, ou aller en chercher un que la
+ * recherche à un niveau ne trouve pas.
+ */
+export interface DeclarationGit {
+  depots?: unknown
+}
+
+/** Un chemin déclaré, et ce qu'on lui reproche s'il y a lieu. */
+export interface Reproche {
+  chemin?: string
+  message: string
+}
+
+/**
+ * Lit la liste des chemins déclarés.
+ *
+ * Les chemins sont rendus tels qu'ils sont écrits, sans être résolus : la
+ * résolution demande le système de fichiers, et ce module n'y touche pas. Ce
+ * qui est vérifié ici est la forme, et elle se vérifie sans disque.
+ */
+export function lireDeclaration(declaration: DeclarationGit): {
+  chemins: string[]
+  reproches: Reproche[]
+} {
+  const reproches: Reproche[] = []
+
+  if (declaration.depots === undefined) {
+    return { chemins: [], reproches }
+  }
+
+  if (!Array.isArray(declaration.depots)) {
+    return {
+      chemins: [],
+      reproches: [{ message: '`depots` doit être une liste de chemins.' }]
+    }
+  }
+
+  const chemins: string[] = []
+  for (const entree of declaration.depots) {
+    if (typeof entree !== 'string') {
+      reproches.push({ message: `Chemin ignoré : ${JSON.stringify(entree)} n'est pas du texte.` })
+      continue
+    }
+    const propre = entree.trim()
+    if (!propre) {
+      reproches.push({ message: 'Chemin vide ignoré.' })
+      continue
+    }
+    // Un chemin absolu sortirait le projet de son dossier sans le dire. Le
+    // fichier vit dans le projet et parle de lui : ses chemins lui sont
+    // relatifs, `..` compris pour les dépôts rangés à côté.
+    if (propre.startsWith('/') || /^[A-Za-z]:[\\/]/.test(propre)) {
+      reproches.push({
+        chemin: propre,
+        message: 'Chemin absolu refusé. Écris-le relativement au projet.'
+      })
+      continue
+    }
+    if (chemins.includes(propre)) {
+      reproches.push({ chemin: propre, message: 'Chemin en double, gardé une seule fois.' })
+      continue
+    }
+    chemins.push(propre)
+  }
+
+  if (chemins.length === 0 && reproches.length === 0) {
+    reproches.push({ message: '`depots` est vide : aucun dépôt ne sera suivi.' })
+  }
+
+  return { chemins, reproches }
+}
