@@ -152,6 +152,8 @@ const api = {
       ipcRenderer.invoke('services:liberer', workspaceId, nom),
     skill: (workspaceId: string): Promise<string | null> =>
       ipcRenderer.invoke('services:skill', workspaceId),
+    mcp: (workspaceId: string): Promise<string | null> =>
+      ipcRenderer.invoke('services:mcp', workspaceId),
     /** Ouvre une fenêtre qui suit le journal d'un service. */
     fenetreJournal: (chemin: string, titre: string): Promise<void> =>
       ipcRenderer.invoke('services:fenetreJournal', chemin, titre),

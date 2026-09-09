@@ -12,6 +12,7 @@ import {
   GitBranch,
   GitFork,
   Boxes,
+  Cable,
   Columns2 as DeuxColonnes,
   Rows3,
   UnfoldVertical,
@@ -58,6 +59,9 @@ export const IconeBranche = (p: Props): React.JSX.Element => <GitBranch {...regl
 
 /** Les dépôts d'un projet, quand il en porte plusieurs. */
 export const IconeDepots = (p: Props): React.JSX.Element => <Boxes {...reglages(p)} />
+
+/** Le branchement d'un agent sur le projet. */
+export const IconeBranchement = (p: Props): React.JSX.Element => <Cable {...reglages(p)} />
 
 /** Diff en deux colonnes. */
 export const IconeCoteACote = (p: Props): React.JSX.Element => <DeuxColonnes {...reglages(p)} />

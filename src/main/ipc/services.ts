@@ -1,5 +1,6 @@
 import { open, stat } from 'node:fs/promises'
-import { ipcMain } from 'electron'
+import { join } from 'node:path'
+import { app, ipcMain } from 'electron'
 import type { ServiceVu } from '@shared/types'
 import * as services from '../services/projets-services'
 import * as store from '../services/store'
@@ -47,6 +48,19 @@ export function registerServicesIpc(): void {
   ipcMain.handle('services:skill', async (_evenement, workspaceId: string) => {
     const chemin = projet(workspaceId)
     return chemin ? services.ecrireSkill(chemin) : null
+  })
+
+  /** Pose le serveur MCP dans le projet, pour que les agents y agissent. */
+  ipcMain.handle('services:mcp', async (_evenement, workspaceId: string) => {
+    const chemin = projet(workspaceId)
+    if (!chemin) return null
+    // `getAppPath` rend l'asar une fois empaqueté, et la racine du projet quand
+    // on travaille sur les sources. Le serveur est au même endroit dans les
+    // deux cas, à côté du point d'entrée de l'application.
+    return services.ecrireMcp(chemin, {
+      executable: process.execPath,
+      serveur: join(app.getAppPath(), 'out', 'main', 'mcp.js')
+    })
   })
 
   /** Ouvre une fenêtre qui suit le journal d'un service. */

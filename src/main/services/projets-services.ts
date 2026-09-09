@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { createConnection } from 'node:net'
 import { promisify } from 'node:util'
-import { access, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { access, mkdir, open, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { resoudre, vagues, type Declaration, type Reproche, type Service } from '@shared/services'
@@ -293,10 +293,15 @@ Ne pas le lire en entier : un service Java écrit vite, et le fichier bascule en
 \`.log.1\` au-delà de dix mégaoctets. La fin du fichier porte ce qui vient de se
 produire, le \`.log.1\` porte le démarrage précédent.
 
-## Ce que ce skill ne permet pas
+## Agir sur un service
 
-Démarrer ou arrêter un service. Ils sont pilotés depuis Claudex, et les relancer
-à la main ferait tourner deux instances du même service.
+Si les outils \`mcp__claudex__*\` sont disponibles, les préférer à tout le reste.
+\`journal\` filtre à la source et rend deux cents lignes utiles là où \`cat\` en
+rendrait cent mille ; \`relancer\` est le geste à faire après une correction.
+
+Sans eux, ne pas démarrer ni arrêter un service à la main : ils sont pilotés
+depuis Claudex, et les relancer ailleurs ferait tourner deux instances du même
+service.
 `
   const chemin = join(dossier, 'SKILL.md')
   await writeFile(chemin, contenu)
@@ -380,4 +385,101 @@ export async function liberer(projet: string, nom: string): Promise<number[]> {
     await new Promise((suite) => setTimeout(suite, 200))
   }
   return pids
+}
+
+/** Ce qu'on lit au plus dans un journal, avant de le découper en lignes. */
+const QUEUE_MAX = 2 * 1024 * 1024
+
+/**
+ * Les dernières lignes du journal d'un service, filtrées.
+ *
+ * Seule la fin du fichier est lue. Un service Java écrit vite, et rendre cent
+ * mille lignes pour en montrer deux cents coûterait à celui qui les lit autant
+ * qu'à celui qui les cherche.
+ *
+ * Rend `null` quand le service n'est pas déclaré, ce qui n'est pas la même
+ * chose qu'un journal vide.
+ */
+export async function lireJournal(
+  projet: string,
+  nom: string,
+  options: { lignes?: number; motif?: string } = {}
+): Promise<string | null> {
+  const { services } = await charger(projet)
+  if (!services.some((s) => s.nom === nom)) return null
+
+  const fichier = cheminJournal(projet, nom)
+  const infos = await stat(fichier).catch(() => null)
+  if (!infos) return ''
+
+  const depuis = Math.max(0, infos.size - QUEUE_MAX)
+  const poignee = await open(fichier, 'r')
+  try {
+    const tampon = Buffer.alloc(infos.size - depuis)
+    await poignee.read(tampon, 0, tampon.length, depuis)
+    let lignes = tampon.toString('utf8').split('\n')
+    // La première ligne est coupée quand on n'a pas lu depuis le début.
+    if (depuis > 0) lignes = lignes.slice(1)
+
+    if (options.motif) {
+      const terme = options.motif.toLowerCase()
+      lignes = lignes.filter((l) => l.toLowerCase().includes(terme))
+    }
+    return lignes.slice(-(options.lignes ?? 200)).join('\n').trim()
+  } finally {
+    await poignee.close()
+  }
+}
+
+/**
+ * Pose le serveur MCP de Claudex dans le projet.
+ *
+ * Le fichier appartient au projet, non à Claudex : ce qui s'y trouve déjà est
+ * gardé, et une copie est mise de côté avant d'écrire. Seule l'entrée `claudex`
+ * est posée ou remplacée.
+ *
+ * L'exécutable est celui de l'application, lancé en mode Node : Electron sait
+ * le faire, et cela évite d'exiger un Node installé à côté. Le chemin du projet
+ * est passé en argument plutôt que déduit du dossier courant, un agent lancé
+ * dans un sous-dossier devant voir les mêmes services.
+ *
+ * Les deux chemins viennent de l'appelant. Déduits ici, ils seraient faux dans
+ * l'un des deux cas : `process.resourcesPath` n'existe pas hors d'Electron, et
+ * il désigne le paquet d'Electron lui-même quand on travaille sur les sources.
+ */
+export async function ecrireMcp(
+  projet: string,
+  ou: { executable: string; serveur: string }
+): Promise<string> {
+  const fichier = join(projet, '.mcp.json')
+
+  let existant: Record<string, unknown> = {}
+  const texte = await readFile(fichier, 'utf8').catch(() => null)
+  if (texte !== null) {
+    try {
+      existant = JSON.parse(texte) as Record<string, unknown>
+      await writeFile(`${fichier}.avant`, texte)
+    } catch {
+      // Un JSON illisible ne doit pas être écrasé sans trace : on le garde à
+      // côté et l'on repart d'un fichier propre.
+      await writeFile(`${fichier}.avant`, texte)
+      existant = {}
+    }
+  }
+
+  const serveurs = (existant.mcpServers ?? {}) as Record<string, unknown>
+  const contenu = {
+    ...existant,
+    mcpServers: {
+      ...serveurs,
+      claudex: {
+        command: ou.executable,
+        args: [ou.serveur, '--projet', projet],
+        env: { ELECTRON_RUN_AS_NODE: '1' }
+      }
+    }
+  }
+
+  await writeFile(fichier, `${JSON.stringify(contenu, null, 2)}\n`)
+  return fichier
 }

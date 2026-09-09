@@ -10,6 +10,7 @@ import { ListeServices } from '../services/ListeServices'
 import {
   IconeArborescence,
   IconeBranche,
+  IconeBranchement,
   IconeConversations,
   IconeServices,
   IconeSkill,
@@ -174,10 +175,18 @@ export function ColonneLaterale(): React.JSX.Element {
               void rafraichirArbre(courant.path)
             )}
 
-          {panneau === 'services' &&
-            outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
-              void ecrireSkill(courant.id)
-            )}
+          {panneau === 'services' && (
+            <>
+              {outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
+                void ecrireSkill(courant.id)
+              )}
+              {/* Le skill dit aux agents où lire ; le serveur MCP leur laisse
+                  agir. Relancer un service à la main en ferait tourner deux. */}
+              {outil('Poser le serveur MCP dans le projet', <IconeBranchement taille={15} />, () =>
+                void window.claudex.services.mcp(courant.id)
+              )}
+            </>
+          )}
 
           {panneau === 'git' &&
             outil('Relire l’état des dépôts', <IconeSynchro taille={15} />, () =>

@@ -205,6 +205,25 @@ les configure. L'agent n'écrit rien dans le dépôt, il remplit le champ, et un
 message déjà écrit n'est pas remplacé sans qu'on le demande. Compter une demi-
 minute. La commande appelée est `claude`, réglable par `CLAUDEX_CLAUDE`.
 
+### Agents
+
+- [x] Un skill écrit dans le projet, qui dit où sont les journaux
+- [x] Un serveur MCP, pour qu'un agent pilote les services et lise l'état git
+- [ ] Commiter depuis un agent
+
+Le bouton en forme de câble, dans la barre de la page Services, pose un
+`.mcp.json` dans le projet. Toute conversation Claude Code lancée là voit alors
+sept outils : l'état des services, leur journal filtré, les démarrer, les
+arrêter, les relancer, les dépôts git et le diff d'un fichier.
+
+Le serveur ne parle jamais à l'application. Un service est une session du
+multiplexeur au nom déterministe : le serveur lit la même déclaration, calcule
+le même nom, interroge le même multiplexeur. Il n'y a donc ni port, ni
+authentification, et les outils répondent même quand Claudex est fermé.
+
+Un agent qui relance un service à la main en ferait tourner deux, hors de la vue
+de Claudex. C'est ce que le serveur évite.
+
 ### Projets et fichiers
 
 - [x] Ajouter un projet, lui donner une couleur, passer de l'un à l'autre
