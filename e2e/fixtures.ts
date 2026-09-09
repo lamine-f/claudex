@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -146,6 +146,11 @@ export async function lancer(
   options: { donnees?: string; projet?: string; env?: Record<string, string> } = {}
 ): Promise<Contexte> {
   const donnees = options.donnees ?? (await mkdtemp(join(tmpdir(), 'claudex-e2e-')))
+  // Une maison jetable : sans elle, un cas qui branche les agents écrirait dans
+  // le vrai `~/.claude.json`, et lancer la suite changerait les réglages de qui
+  // la lance.
+  const maison = join(donnees, 'maison')
+  await mkdir(maison, { recursive: true })
   const projet = options.projet ?? (await mkdtemp(join(tmpdir(), 'claudex-projet-')))
 
   // Un profil déjà peuplé est repris tel quel : c'est ce qui permet de vérifier
@@ -182,7 +187,7 @@ export async function lancer(
     args: [resolve('out/main/index.js'), `--user-data-dir=${donnees}`],
     // Socket tmux propre aux tests : sans lui, un `kill-server` de la suite
     // emporterait les sessions de l'application ouverte à côté.
-    env: environnementPropre(options.env)
+    env: environnementPropre({ CLAUDEX_MAISON: maison, ...options.env })
   })
 
   const page = await app.firstWindow()

@@ -147,11 +147,15 @@ export interface DoctorCheck {
     | 'retention'
     | 'notifications'
     | 'pont'
+    | 'mcp'
   label: string
   severity: DoctorSeverity
   detail: string
   /** Correctif applicable depuis l'écran de diagnostic, s'il en existe un. */
-  fix?: { label: string; action: 'applySettingsFix' | 'installerHooks' | 'retirerHooks' }
+  fix?: {
+    label: string
+    action: 'applySettingsFix' | 'installerHooks' | 'retirerHooks' | 'brancherAgents'
+  }
   /**
    * Vrai si ce contrôle ouvre l'écran de lui-même au démarrage.
    *

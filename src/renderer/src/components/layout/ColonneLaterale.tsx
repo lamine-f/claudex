@@ -10,7 +10,6 @@ import { ListeServices } from '../services/ListeServices'
 import {
   IconeArborescence,
   IconeBranche,
-  IconeBranchement,
   IconeConversations,
   IconeServices,
   IconeSkill,
@@ -185,20 +184,13 @@ export function ColonneLaterale(): React.JSX.Element {
               void rafraichirArbre(courant.path)
             )}
 
-          {panneau === 'services' && (
-            <>
-              {outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
-                void annoncer(window.claudex.services.skill(courant.id))
-              )}
-              {/* Le skill dit aux agents où lire ; le serveur MCP leur laisse
-                  agir. Relancer un service à la main en ferait tourner deux. */}
-              {outil(
-                'Brancher les agents sur Claudex, pour tous les projets',
-                <IconeBranchement taille={15} />,
-                () => void annoncer(window.claudex.services.mcp(courant.id, 'utilisateur'))
-              )}
-            </>
-          )}
+          {/* Le skill vit dans le projet, et se pose donc ici. Brancher les
+              agents sur Claudex ne dépend d'aucun projet : c'est un réglage de
+              l'application, et il a rejoint l'écran d'état. */}
+          {panneau === 'services' &&
+            outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
+              void annoncer(window.claudex.services.skill(courant.id))
+            )}
 
           {panneau === 'git' &&
             outil('Relire l’état des dépôts', <IconeSynchro taille={15} />, () =>

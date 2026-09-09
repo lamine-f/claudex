@@ -86,7 +86,7 @@ if (!app.requestSingleInstanceLock()) {
         // configurations déjà posées pointeraient alors dans le vide, et l'on
         // ne saurait pas qu'il faut les refaire.
         await projetsServices.rafraichirMcp(
-          { adresse, jeton: mcp.jeton(), maison: app.getPath('home') },
+          { adresse, jeton: mcp.jeton(), maison: process.env.CLAUDEX_MAISON || app.getPath('home') },
           store.get().workspaces.map((w) => w.path)
         )
       })

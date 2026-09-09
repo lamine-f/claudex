@@ -8,6 +8,7 @@ import { trouvable } from '../util/chemin'
 import { binaireClaude, claudeProjectsRoot, claudeSettingsPath } from '../util/paths'
 import { installes } from './hooks'
 import { multiplexeur } from './multiplexeur'
+import * as mcp from './mcp'
 
 const run = promisify(execFile)
 
@@ -181,6 +182,30 @@ export async function check(): Promise<DoctorCheck[]> {
       }
     })
   }
+
+  // Le serveur MCP, qui laisse un agent piloter les services et lire l'état git.
+  // Le réglage est global : il ne dépend d'aucun projet, et se pose donc ici.
+  const branches = await mcp.agentsBranches()
+  const ecoute = mcp.adresse()
+  const controleMcp: DoctorCheck = branches
+    ? {
+        id: 'mcp',
+        label: 'Agents branchés sur Claudex',
+        severity: 'ok',
+        detail: `Les conversations Claude Code joignent ${ecoute} et peuvent piloter les services, lire l'état git et les diffs.`
+      }
+    : {
+        id: 'mcp',
+        label: 'Agents branchés sur Claudex',
+        severity: 'warn',
+        detail: ecoute
+          ? `Le serveur écoute sur ${ecoute}, mais aucune conversation ne le sait. Branchés, les agents relancent un service et lisent son journal filtré, au lieu de lancer la commande dans leur coin et de faire tourner deux instances du même service.`
+          : 'Le serveur n’écoute pas. Le port est peut-être tenu par une autre instance de Claudex.'
+      }
+  if (!branches && ecoute) {
+    controleMcp.fix = { label: 'Brancher les agents', action: 'brancherAgents' }
+  }
+  checks.push(controleMcp)
 
   if (installes(settings)) {
     checks.push({

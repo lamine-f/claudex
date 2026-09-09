@@ -107,17 +107,18 @@ test.describe('serveur MCP', () => {
     ).rejects.toThrow()
   })
 
-  test('dit ce qu’il a écrit, et où', async () => {
-    // Le bouton pose un fichier hors de la vue. Sans un mot, cliquer ne produit
-    // rien de visible et l'on recommence, en croyant que c'est resté sans effet.
-    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
-    await ctx.page
-      .getByRole('button', { name: 'Brancher les agents sur Claudex, pour tous les projets' })
-      .click()
+  test('se branche depuis l’écran d’état, non depuis un projet', async () => {
+    // Le réglage ne dépend d'aucun projet : le poser dans la barre d'un projet
+    // laissait croire qu'il ne valait que pour lui.
+    await ctx.page.getByRole('button', { name: "État de l'environnement" }).click()
+    const bouton = ctx.page.getByRole('button', { name: 'Brancher les agents' })
+    await expect(bouton).toBeVisible()
 
-    const dit = ctx.page.getByText(/^écrit dans /)
-    await expect(dit).toBeVisible()
-    await expect(dit).toContainText('.claude.json')
+    await bouton.click()
+    await expect(ctx.page.getByText(/Les agents joindront Claudex/)).toBeVisible()
+
+    // Une fois branchés, le contrôle passe au vert et n'offre plus le geste.
+    await expect(bouton).toHaveCount(0)
   })
 
   test('nomme le projet ouvert dans Claudex', async () => {

@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { serveurDesOutils } from '../../mcp/outils'
+import { ecrireMcp } from './projets-services'
 import * as store from './store'
 
 /**
@@ -15,6 +19,17 @@ import * as store from './store'
  * processus de la machine pourrait démarrer et arrêter les services, et lire
  * le code des dépôts.
  */
+
+/**
+ * Le dossier de l'utilisateur, où vit `~/.claude.json`.
+ *
+ * Remplaçable : sans cela, un essai de bout en bout écrirait dans la vraie
+ * configuration de Claude Code, et une suite de tests changerait les réglages
+ * de qui la lance.
+ */
+function maison(): string {
+  return process.env.CLAUDEX_MAISON || homedir()
+}
 
 /** Le port par défaut. Retenu dès qu'il a servi, pour que la configuration reste vraie. */
 const PORT_VOULU = 7317
@@ -140,6 +155,45 @@ function autorise(requete: IncomingMessage): boolean {
   try {
     const url = new URL(requete.url ?? '/', 'http://127.0.0.1')
     return url.searchParams.get('jeton') === attendu
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Dit à Claude Code où joindre ce serveur, pour tous les projets.
+ *
+ * Le réglage est global : il ne dépend d'aucun projet, et n'a donc pas sa place
+ * dans la barre d'un projet. L'entrée va dans la configuration de
+ * l'utilisateur, et aucun dépôt n'est touché.
+ */
+export async function brancherAgents(): Promise<{ ok: boolean; message: string }> {
+  const url = adresse()
+  if (!url) {
+    return { ok: false, message: 'Le serveur n’écoute pas. Relance l’application.' }
+  }
+
+  try {
+    const fichier = await ecrireMcp('', {
+      adresse: url,
+      jeton: jeton(),
+      portee: 'utilisateur',
+      maison: maison()
+    })
+    return { ok: true, message: `Les agents joindront Claudex. Écrit dans ${fichier}.` }
+  } catch (erreur) {
+    return { ok: false, message: (erreur as Error).message }
+  }
+}
+
+/** Vrai quand la configuration de l'utilisateur pointe bien vers ce serveur. */
+export async function agentsBranches(): Promise<boolean> {
+  const url = adresse()
+  if (!url) return false
+  try {
+    const brut = await readFile(join(maison(), '.claude.json'), 'utf8')
+    const lu = JSON.parse(brut) as { mcpServers?: Record<string, { url?: string }> }
+    return lu.mcpServers?.claudex?.url === url
   } catch {
     return false
   }

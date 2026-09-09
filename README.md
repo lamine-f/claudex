@@ -211,8 +211,10 @@ minute. La commande appelée est `claude`, réglable par `CLAUDEX_CLAUDE`.
 - [x] Un serveur MCP, pour qu'un agent pilote les services et lise l'état git
 - [ ] Commiter depuis un agent
 
-Le bouton en forme de câble, dans la barre de la page Services, écrit la
-configuration. Toute conversation Claude Code voit alors huit outils : les
+L'écran d'état porte le geste, sous « Agents branchés sur Claudex ». C'est un
+réglage de l'application et non d'un projet : posé dans la barre d'un projet, il
+laissait croire qu'il ne valait que pour lui. Toute conversation Claude Code
+voit alors huit outils : les
 projets ouverts, l'état des services, leur journal filtré, les démarrer, les
 arrêter, les relancer, les dépôts git et le diff d'un fichier.
 
