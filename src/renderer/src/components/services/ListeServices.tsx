@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { EtatService, ServiceVu } from '@shared/types'
+import { couleurDeGroupe, teintePour } from '@shared/teintes'
 import { useStore } from '@renderer/state/store'
+import { ouverts, vueJournal } from '@renderer/state/vues'
 import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import {
   IconeArreter,
@@ -40,6 +42,12 @@ interface Props {
 }
 
 export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.Element {
+  // Ce qui est ouvert dans la zone principale : un service dont on suit le
+  // journal porte la teinte de la vue qui le montre.
+  const onglets = useStore((e) => e.tabs)
+  const vues = useStore((e) => e.vues[workspaceId])
+  const ouvertsIci = ouverts(onglets, vues ?? [])
+
   const tous = useStore((e) => e.services[workspaceId])
   const filtre = useStore((e) => e.filtre)
   const services = useMemo(() => {
@@ -260,6 +268,14 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                 >
                   <IconeChevron taille={13} />
                 </span>
+                {/* La couleur d'un groupe se tire de son nom, comme un projet
+                    porte la sienne dans le rail. Onze services back les uns
+                    sous les autres se suivaient mal sans elle. */}
+                <span
+                  aria-hidden
+                  style={{ background: couleurDeGroupe(groupe) }}
+                  className="h-3 w-[3px] shrink-0 rounded-full"
+                />
                 <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-texte-doux">
                   {groupe}
                 </span>
@@ -282,6 +298,13 @@ export function ListeServices({ workspaceId, onVoirJournal }: Props): React.JSX.
                       e.preventDefault()
                       setMenu({ x: e.clientX, y: e.clientY, actions: actionsDe(service) })
                     }}
+                    // La teinte du journal ouvert, s'il l'est : c'est elle qui
+                    // relie la ligne à la fenêtre qui montre sa sortie.
+                    style={
+                      teintePour(vueJournal(service).id, ouvertsIci)
+                        ? { borderLeftColor: teintePour(vueJournal(service).id, ouvertsIci) }
+                        : undefined
+                    }
                     className="relative border-l-2 border-l-separateur transition-colors hover:border-l-bordure hover:bg-fond-survol"
                   >
                     {/* Toute la surface ouvre le journal, comme une ligne de

@@ -1,5 +1,5 @@
 import { useStore } from '@renderer/state/store'
-import type { Vue } from '@renderer/state/vues'
+import { ouverts, type Vue } from '@renderer/state/vues'
 import { VueDiff } from '../git/VueDiff'
 import { SuiviJournal } from '../services/FenetreJournal'
 import { TerminalInstance } from './TerminalInstance'
@@ -39,6 +39,7 @@ export function TerminalPane(): React.JSX.Element {
     <section className="flex h-full min-w-0 flex-col bg-fond">
       <TerminalTabs
         tabs={tabs}
+        ouverts={ouverts(tabs, vues ?? [])}
         vueOuverte={Boolean(regarde)}
         sollicitees={new Set(Object.keys(sollicitations))}
         actifId={activeTabId}

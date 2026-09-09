@@ -65,7 +65,18 @@ function borner(index: number, longueur: number): number {
 /** Applique le rangement aux éléments tels qu'on les a lus. */
 export function assembler<T extends { id: string }>(
   elements: T[],
-  rangement: Rangement
+  rangement: Rangement,
+  /**
+   * Ce que vaut un groupe dont personne n'a dit s'il était plié.
+   *
+   * Les conversations les veulent repliés : un projet en compte parfois
+   * quarante, et les voir toutes déployées à l'ouverture noie ce qu'on cherche.
+   * Les projets du rail les veulent ouverts, un groupe y tenant trois lignes.
+   *
+   * Un groupe que l'on a plié ou déplié soi-même porte sa valeur, et celle-ci
+   * ne le touche plus.
+   */
+  replieParDefaut = false
 ): Ligne<T>[] {
   const parId = new Map(elements.map((e) => [e.id, e]))
   const rangees = new Set<string>()
@@ -87,7 +98,7 @@ export function assembler<T extends { id: string }>(
     type: 'groupe',
     id,
     nom: groupe.nom,
-    replie: groupe.replie ?? false,
+    replie: groupe.replie ?? replieParDefaut,
     // Un membre cité mais disparu est simplement omis : le rangement n'a pas à
     // être nettoyé pour rester lisible.
     membres: groupe.sessions
@@ -200,7 +211,9 @@ export function creerGroupe(
 ): Rangement {
   const copie = copier(rangement)
   for (const uuid of avec) retirer(copie, { type: 'session', id: uuid })
-  copie.groupes[id] = { nom, sessions: [...avec] }
+  // Ouvert à la naissance, quel que soit le défaut : on vient d'y ranger
+  // quelque chose, et le replier aussitôt cacherait le geste qu'on a fait.
+  copie.groupes[id] = { nom, replie: false, sessions: [...avec] }
   copie.ordre.splice(borner(index, copie.ordre.length), 0, { type: 'groupe', id })
   return copie
 }

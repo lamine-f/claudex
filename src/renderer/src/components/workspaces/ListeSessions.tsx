@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ClaudeSession, StatutSession } from '@shared/types'
 import { RANGEMENT_VIDE, assembler, type Cible, type Element, type Ligne } from '@shared/rangement'
 import { useStore } from '@renderer/state/store'
+import { ouverts } from '@renderer/state/vues'
 import { EnteteGroupe } from './EnteteGroupe'
 import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import { SessionRow } from './SessionRow'
@@ -23,6 +24,12 @@ interface Survol {
  * réunit en groupes nommés ; ce classement se garde d'une session à l'autre.
  */
 export function ListeSessions({ workspaceId }: { workspaceId: string }): React.JSX.Element {
+  // Ce qui est ouvert dans la zone principale : chaque conversation y prend la
+  // teinte de l'onglet qui la tient, et l'onglet porte la même.
+  const ongletsOuverts = useStore((e) => e.tabs)
+  const vuesOuvertes = useStore((e) => e.vues[workspaceId])
+  const ouvertsIci = ouverts(ongletsOuverts, vuesOuvertes ?? [])
+
   const sessions = useStore((e) => e.sessions[workspaceId])
   const rangement = useStore((e) => e.rangements[workspaceId]) ?? RANGEMENT_VIDE
   const chargement = useStore((e) => e.sessionsEnCours[workspaceId] ?? false)
@@ -58,7 +65,10 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
   )
   const aLEcran = tabs.find((t) => t.id === activeTabId)?.claudeSessionId
 
-  const lignes = useMemo(() => assembler(sessions ?? [], rangement), [sessions, rangement])
+  // Repliés par défaut : un projet compte parfois quarante conversations, et
+  // les voir toutes déployées à l'ouverture noie ce qu'on cherche. Un groupe
+  // que l'on a déplié soi-même le reste.
+  const lignes = useMemo(() => assembler(sessions ?? [], rangement, true), [sessions, rangement])
 
   const retenues = useMemo(() => {
     const terme = filtre.trim().toLowerCase()
@@ -117,6 +127,7 @@ export function ListeSessions({ workspaceId }: { workspaceId: string }): React.J
         key={session.id}
         session={session}
         statut={statutDe(session.id)}
+        ouverts={ouvertsIci}
         glisser={
           glissable
             ? {

@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { estNonSuivi, type FichierGit, type Marque } from '@shared/git'
 import type { DepotGit } from '@shared/types'
 import { useStore } from '@renderer/state/store'
-import { vueDiff } from '@renderer/state/vues'
+import { teintePour } from '@shared/teintes'
+import { ouverts, vueDiff } from '@renderer/state/vues'
 import { IconeFichier } from '../files/IconeFichier'
 import { IconeChevron } from '../ui/Icones'
 
@@ -218,9 +219,22 @@ function Depot({
   const coches = useStore((e) => e.coches)
   const cocher = useStore((e) => e.cocher)
   const ouvrirVue = useStore((e) => e.ouvrirVue)
+  const onglets = useStore((e) => e.tabs)
+  const vues = useStore((e) => e.vues[workspaceId])
+  const ouvertsIci = ouverts(onglets, vues ?? [])
 
   const cles = depot.fichiers.map((f) => cleDe(depot.chemin, f.chemin))
   const tout = cles.every((c) => coches.includes(c))
+
+  /** La teinte du diff de ce fichier, quand il est ouvert dans la zone principale. */
+  const teinteDe = (fichier: FichierGit): string | undefined =>
+    teintePour(
+      vueDiff(depot.chemin, depot.nom, fichier.chemin, {
+        indexe: fichier.travail === 'inchange',
+        nonSuivi: estNonSuivi(fichier)
+      }).id,
+      ouvertsIci
+    )
 
   return (
     <li>

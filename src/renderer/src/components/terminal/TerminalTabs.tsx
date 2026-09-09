@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import type { Tab } from '@shared/types'
+import { teintePour } from '@shared/teintes'
 import { raccourci } from '@renderer/systeme'
 import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
   tabs: Tab[]
+  /** Ce qui est ouvert dans la zone principale, dans l'ordre : la teinte en vient. */
+  ouverts: string[]
   /** Vrai quand une vue occupe l'écran à la place du terminal. */
   vueOuverte?: boolean
   /** Conversations qui réclament leur utilisateur, par identifiant de session. */
@@ -25,6 +28,7 @@ interface Props {
  */
 export function TerminalTabs({
   tabs,
+  ouverts,
   vueOuverte,
   sollicitees,
   actifId,
@@ -121,10 +125,14 @@ export function TerminalTabs({
                     <IconeAttente taille={12} />
                   </span>
                 ) : (
+                  // La teinte relie l'onglet à sa conversation dans la
+                  // colonne, qui porte la même. Une fois ouvert, plus rien ne
+                  // disait d'où il venait.
                   <span
                     aria-hidden
+                    style={{ background: teintePour(tab.claudeSessionId, ouverts) }}
                     className={`h-[6px] w-[6px] shrink-0 rounded-full ${
-                      courant ? 'bg-projet' : 'bg-texte-tenu'
+                      teintePour(tab.claudeSessionId, ouverts) ? '' : 'bg-texte-tenu'
                     }`}
                   />
                 ))}

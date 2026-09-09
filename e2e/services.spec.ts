@@ -356,6 +356,18 @@ services:
       .toBe(true)
   })
 
+  test('donne à chaque groupe sa couleur', async () => {
+    // Onze services back les uns sous les autres se suivaient mal. La couleur
+    // se tire du nom : elle est donc la même d'un lancement à l'autre.
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    const entete = ctx.page.getByRole('button', { name: /^bruit/ })
+    const marque = entete.locator('span[aria-hidden].rounded-full')
+
+    await expect(marque).toHaveCount(1)
+    const couleur = await marque.evaluate((e) => getComputedStyle(e).backgroundColor)
+    expect(couleur).not.toBe('rgba(0, 0, 0, 0)')
+  })
+
   test('un groupe se replie et se rouvre', async () => {
     await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
     const entete = ctx.page.getByRole('button', { name: /^bruit/ })

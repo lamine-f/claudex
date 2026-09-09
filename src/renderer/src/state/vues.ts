@@ -54,3 +54,21 @@ export const vueDiff = (
   indexe: options.indexe,
   nonSuivi: options.nonSuivi
 })
+
+/**
+ * Ce qui est ouvert dans la zone principale, dans l'ordre.
+ *
+ * Une seule suite pour les onglets et les vues : c'est elle qui donne à chacun
+ * sa teinte, et deux choses ouvertes en même temps doivent en porter deux
+ * différentes, qu'elles soient de même sorte ou non.
+ *
+ * Un onglet s'identifie par sa conversation et non par lui-même : c'est la
+ * ligne de la colonne qui doit porter la même marque, et elle ne connaît que
+ * la conversation.
+ */
+export function ouverts(
+  onglets: { id: string; claudeSessionId?: string }[],
+  vues: Vue[]
+): string[] {
+  return [...onglets.map((t) => t.claudeSessionId ?? t.id), ...vues.map((v) => v.id)]
+}

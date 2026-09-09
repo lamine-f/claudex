@@ -118,3 +118,36 @@ describe('rangement des conversations', () => {
     expect(origine).toEqual(copie)
   })
 })
+
+describe('repli par défaut', () => {
+  const rangement = {
+    groupes: {
+      g1: { nom: 'Sans valeur', sessions: ['a'] },
+      g2: { nom: 'Déplié à la main', replie: false, sessions: ['b'] }
+    },
+    ordre: [
+      { type: 'groupe' as const, id: 'g1' },
+      { type: 'groupe' as const, id: 'g2' }
+    ]
+  }
+  const elements = [{ id: 'a' }, { id: 'b' }]
+
+  it('replie ce dont personne n’a rien dit, quand on le demande', () => {
+    // Les conversations le demandent : un projet en compte parfois quarante.
+    const lignes = assembler(elements, rangement, true)
+    expect(lignes.map((l) => (l.type === 'groupe' ? l.replie : null))).toEqual([true, false])
+  })
+
+  it('laisse tout ouvert quand on ne le demande pas', () => {
+    // Le rail des projets ne le demande pas : un groupe y tient trois lignes.
+    const lignes = assembler(elements, rangement)
+    expect(lignes.map((l) => (l.type === 'groupe' ? l.replie : null))).toEqual([false, false])
+  })
+
+  it('ouvre un groupe qui vient de naître, quel que soit le défaut', () => {
+    // Le replier aussitôt cacherait le geste qu'on vient de faire.
+    const neuf = creerGroupe({ groupes: {}, ordre: [] }, 'g3', 'Neuf', 0, ['a'])
+    const lignes = assembler(elements, neuf, true)
+    expect(lignes.find((l) => l.type === 'groupe')).toMatchObject({ replie: false })
+  })
+})
