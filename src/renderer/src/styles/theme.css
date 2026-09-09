@@ -39,6 +39,17 @@
    */
   --color-projet: var(--color-accent);
   --color-projet-tenu: color-mix(in oklab, var(--color-projet) 42%, var(--color-fond));
+  /*
+   * Le fond sur lequel se lit du code.
+   *
+   * Celui du thème de l'aperçu de fichier, repris tel quel : lire un diff et
+   * lire un fichier sont le même geste, et le noir pur de l'application y
+   * durcissait le contraste au point de fatiguer. La marge reprend celle du
+   * même thème, un cran plus sombre.
+   */
+  --color-fond-code: #282c34;
+  --color-fond-code-marge: #21252b;
+
   --color-attention: #dfb45e;
   --color-erreur: #e0685f;
   --color-succes: #94c47a;

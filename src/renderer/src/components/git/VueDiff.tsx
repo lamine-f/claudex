@@ -250,7 +250,7 @@ export function VueDiff({
       </div>
 
       {etat.phase !== 'lu' ? (
-        <div aria-label="État du diff" className="min-h-0 flex-1 overflow-auto">
+        <div aria-label="État du diff" className="min-h-0 flex-1 overflow-auto bg-fond-code">
           {etat.phase === 'lecture' && <Mot>Lecture…</Mot>}
           {etat.phase === 'binaire' && (
             <Mot>Fichier binaire. Git ne le compare pas ligne à ligne.</Mot>
@@ -266,7 +266,7 @@ export function VueDiff({
       ) : cote ? (
         <DeuxVolets sections={etat.diff.sections} coupures={!entier} zone={zone} />
       ) : (
-        <div ref={zone} aria-label="Diff unifié" className="min-h-0 flex-1 overflow-auto">
+        <div ref={zone} aria-label="Diff unifié" className="min-h-0 flex-1 overflow-auto bg-fond-code">
           {etat.diff.sections.map((section, rang) => (
             <SectionUnifiee key={rang} section={section} coupure={!entier} />
           ))}
@@ -325,7 +325,7 @@ const Geste = ({
 /** La barre qui sépare deux sections, et dit où l'on se trouve dans le fichier. */
 function Coupure({ section }: { section: Section }): React.JSX.Element {
   return (
-    <div className="flex h-full items-center gap-2 border-y border-separateur bg-fond-creux px-3 font-mono text-[10.5px] text-texte-tenu">
+    <div className="flex h-full items-center gap-2 border-y border-separateur bg-fond-code-marge px-3 font-mono text-[10.5px] text-texte-tenu">
       <span>
         @@ {section.departGauche} → {section.departDroite}
       </span>
@@ -336,8 +336,8 @@ function Coupure({ section }: { section: Section }): React.JSX.Element {
 
 const FONDS: Record<LigneDiff['genre'], string> = {
   contexte: '',
-  retire: 'bg-erreur/12',
-  ajoute: 'bg-succes/12'
+  retire: 'bg-erreur/18',
+  ajoute: 'bg-succes/18'
 }
 
 const SIGNES: Record<LigneDiff['genre'], string> = {
@@ -447,7 +447,7 @@ function DeuxVolets({
   })
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 bg-fond-code">
       <Volet cote="gauche" rangees={rangees} conteneur={zone} onDefiler={suivre} />
 
       {/* Les numéros ne défilent qu'en hauteur. Emportés par le glissement
@@ -456,7 +456,7 @@ function DeuxVolets({
       <div
         ref={gouttiere}
         aria-hidden
-        className="shrink-0 overflow-hidden border-x border-separateur bg-fond-creux"
+        className="shrink-0 overflow-hidden border-x border-separateur bg-fond-code-marge"
       >
         <table className="border-collapse font-mono text-[12px] leading-[1.5]">
           <tbody>
@@ -503,7 +503,7 @@ function Volet({
       ref={conteneur}
       aria-label={cote === 'gauche' ? 'Volet gauche' : 'Volet droit'}
       onScroll={(e) => onDefiler(e.currentTarget)}
-      className="min-w-0 flex-1 overflow-auto"
+      className="min-w-0 flex-1 overflow-auto bg-fond-code"
     >
       {/* `min-w-full` et non `w-full` : la table remplit le volet quand le code
           est court, et s'élargit pour ce qui dépasse. Contrainte à la largeur
@@ -526,7 +526,7 @@ function Volet({
               <tr key={rang} className={HAUTEUR_LIGNE} {...repere(r.debut)}>
                 <td
                   className={`${HAUTEUR_LIGNE} px-3 whitespace-pre text-texte-doux ${
-                    ligne ? FONDS[ligne.genre] : 'bg-fond-creux'
+                    ligne ? FONDS[ligne.genre] : 'bg-fond-code-marge'
                   }`}
                 >
                   {ligne ? ligne.texte || ' ' : ' '}

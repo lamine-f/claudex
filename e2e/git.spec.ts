@@ -551,6 +551,26 @@ test.describe('vue de diff', () => {
     expect(numeros).toEqual(aGauche)
   })
 
+  test('se lit sur le fond de l’aperçu de fichier, non sur le noir', async () => {
+    // Lire un diff et lire un fichier sont le même geste. Le noir pur de
+    // l'application y durcissait le contraste au point de fatiguer.
+    await ctx.page.getByTitle(/voir le diff de base\.txt/).click()
+    await montrerCoteACote()
+
+    const fond = await ctx.page
+      .getByLabel('Volet gauche')
+      .evaluate((el) => getComputedStyle(el).backgroundColor)
+    // La valeur du thème de l'aperçu, reprise telle quelle.
+    expect(fond).toBe('rgb(40, 44, 52)')
+
+    // La marge des numéros se creuse d'un cran, comme dans le même thème.
+    const marge = await ctx.page
+      .getByLabel('Volet gauche')
+      .locator('xpath=../div[@aria-hidden="true"]')
+      .evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(marge).toBe('rgb(33, 37, 43)')
+  })
+
   test('un binaire le dit, plutôt que de rester vide', async () => {
     await ctx.page.getByTitle('Voir le diff de image.bin').click()
     await expect(
