@@ -17,11 +17,6 @@ test.describe('serveur MCP', () => {
 
   test.beforeAll(async () => {
     ctx = await lancer()
-
-    // Le bouton de la page Services pose la configuration, et c'est elle qui
-    // porte l'adresse et le jeton : les lire là vérifie aussi qu'elle est juste.
-    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
-    await ctx.page.getByRole('button', { name: 'Poser le serveur MCP dans le projet' }).click()
   })
 
   test.afterAll(async () => {
@@ -110,6 +105,19 @@ test.describe('serveur MCP', () => {
         signal: AbortSignal.timeout(3000)
       })
     ).rejects.toThrow()
+  })
+
+  test('dit ce qu’il a écrit, et où', async () => {
+    // Le bouton pose un fichier hors de la vue. Sans un mot, cliquer ne produit
+    // rien de visible et l'on recommence, en croyant que c'est resté sans effet.
+    await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
+    await ctx.page
+      .getByRole('button', { name: 'Brancher les agents sur Claudex, pour tous les projets' })
+      .click()
+
+    const dit = ctx.page.getByText(/^écrit dans /)
+    await expect(dit).toBeVisible()
+    await expect(dit).toContainText('.claude.json')
   })
 
   test('nomme le projet ouvert dans Claudex', async () => {

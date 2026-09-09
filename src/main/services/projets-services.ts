@@ -491,3 +491,51 @@ export async function ecrireMcp(
   await writeFile(fichier, `${JSON.stringify(contenu, null, 2)}\n`)
   return fichier
 }
+
+/**
+ * Remet à jour les configurations qui pointent vers l'ancienne adresse.
+ *
+ * Le port change quand celui qu'on retenait est pris, et la configuration
+ * écrite hier devient alors fausse. Sans cette reprise, il faudrait recliquer
+ * le bouton après chaque changement, et l'on ne saurait même pas qu'il le faut :
+ * l'agent dirait seulement que le serveur ne répond pas.
+ *
+ * Seules les entrées déjà posées sont touchées. Rien n'est créé ici.
+ */
+export async function rafraichirMcp(
+  ou: { adresse: string; jeton: string; maison: string },
+  projets: string[]
+): Promise<string[]> {
+  const fichiers = [join(ou.maison, '.claude.json'), ...projets.map((p) => join(p, '.mcp.json'))]
+  const repris: string[] = []
+
+  for (const fichier of fichiers) {
+    const texte = await readFile(fichier, 'utf8').catch(() => null)
+    if (texte === null) continue
+
+    let contenu: Record<string, unknown>
+    try {
+      contenu = JSON.parse(texte) as Record<string, unknown>
+    } catch {
+      continue
+    }
+
+    const serveurs = contenu.mcpServers as Record<string, Record<string, unknown>> | undefined
+    const entree = serveurs?.claudex
+    if (!entree || (entree.url === ou.adresse && aLeJeton(entree, ou.jeton))) continue
+
+    entree.type = 'http'
+    entree.url = ou.adresse
+    entree.headers = { Authorization: `Bearer ${ou.jeton}` }
+    await writeFile(fichier, `${JSON.stringify(contenu, null, 2)}\n`)
+    repris.push(fichier)
+  }
+
+  return repris
+}
+
+/** Vrai quand l'entrée porte déjà le bon jeton. */
+function aLeJeton(entree: Record<string, unknown>, jeton: string): boolean {
+  const entetes = entree.headers as Record<string, string> | undefined
+  return entetes?.Authorization === `Bearer ${jeton}`
+}

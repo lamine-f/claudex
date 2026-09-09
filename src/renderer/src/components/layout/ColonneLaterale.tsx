@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ServiceVu } from '@shared/types'
 import { useStore } from '@renderer/state/store'
 import { vueJournal } from '@renderer/state/vues'
@@ -58,9 +58,19 @@ export function ColonneLaterale(): React.JSX.Element {
   const ouvrirVue = useStore((e) => e.ouvrirVue)
   const rafraichirArbre = useStore((e) => e.rafraichirArbre)
 
-  /** Écrit le skill qui dit aux agents où sont les journaux des services. */
-  const ecrireSkill = (workspaceId: string): void => {
-    void window.claudex.services.skill(workspaceId)
+  /**
+   * Ce qu'un geste vient d'écrire, le temps qu'on le lise.
+   *
+   * Ces deux boutons posent un fichier ailleurs que dans la vue : sans un mot,
+   * cliquer ne produit rien de visible, et l'on recommence en croyant que
+   * c'est resté sans effet.
+   */
+  const [ecrit, setEcrit] = useState<string | null>(null)
+
+  const annoncer = async (quoi: Promise<string | null>): Promise<void> => {
+    const chemin = await quoi.catch(() => null)
+    setEcrit(chemin ? `écrit dans ${abreger(chemin)}` : 'rien n’a pu être écrit')
+    setTimeout(() => setEcrit(null), 6000)
   }
 
   // Le compte annoncé est celui des conversations, groupées ou non : c'est ce
@@ -178,12 +188,14 @@ export function ColonneLaterale(): React.JSX.Element {
           {panneau === 'services' && (
             <>
               {outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
-                void ecrireSkill(courant.id)
+                void annoncer(window.claudex.services.skill(courant.id))
               )}
               {/* Le skill dit aux agents où lire ; le serveur MCP leur laisse
                   agir. Relancer un service à la main en ferait tourner deux. */}
-              {outil('Poser le serveur MCP dans le projet', <IconeBranchement taille={15} />, () =>
-                void window.claudex.services.mcp(courant.id, 'utilisateur')
+              {outil(
+                'Brancher les agents sur Claudex, pour tous les projets',
+                <IconeBranchement taille={15} />,
+                () => void annoncer(window.claudex.services.mcp(courant.id, 'utilisateur'))
               )}
             </>
           )}
@@ -193,6 +205,15 @@ export function ColonneLaterale(): React.JSX.Element {
               void rafraichirGit()
             )}
         </div>
+      )}
+
+      {ecrit && (
+        <p
+          aria-live="polite"
+          className="shrink-0 truncate px-2.5 pb-1.5 font-mono text-[10.5px] text-texte-tenu"
+        >
+          {ecrit}
+        </p>
       )}
 
       {!courant ? (
@@ -219,4 +240,10 @@ export function ColonneLaterale(): React.JSX.Element {
       )}
     </section>
   )
+}
+
+/** Un chemin dit court : la maison en `~`, et le reste tel quel. */
+function abreger(chemin: string): string {
+  const maison = /^(\/Users\/[^/]+|\/home\/[^/]+|[A-Z]:\\Users\\[^\\]+)/.exec(chemin)?.[0]
+  return maison ? `~${chemin.slice(maison.length)}` : chemin
 }

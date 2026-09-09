@@ -6,6 +6,7 @@ import { annoncerPresence, retirerPresence } from './services/hooks'
 import * as mcp from './services/mcp'
 import * as notifications from './services/notifications'
 import { toutArreter } from './services/session-watcher'
+import * as projetsServices from './services/projets-services'
 import * as pty from './services/pty'
 import * as scrollback from './services/scrollback'
 import * as store from './services/store'
@@ -76,7 +77,20 @@ if (!app.requestSingleInstanceLock()) {
     // Le serveur MCP, dans ce processus : un serveur lancé par conversation
     // pesait quatre-vingt-huit mégaoctets. Un port pris n'empêche rien de
     // démarrer, les outils étant un service de plus et non le cœur.
-    void mcp.ouvrir().catch(() => null)
+    void mcp
+      .ouvrir()
+      .then(async () => {
+        const adresse = mcp.adresse()
+        if (!adresse) return
+        // Le port change quand celui qu'on retenait est pris. Les
+        // configurations déjà posées pointeraient alors dans le vide, et l'on
+        // ne saurait pas qu'il faut les refaire.
+        await projetsServices.rafraichirMcp(
+          { adresse, jeton: mcp.jeton(), maison: app.getPath('home') },
+          store.get().workspaces.map((w) => w.path)
+        )
+      })
+      .catch(() => null)
 
     // Le script de notification ne parle qu'à une application vivante : sans
     // cette marque, il se tait — et il faut donc la poser avant d'écouter.
