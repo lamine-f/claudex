@@ -432,26 +432,34 @@ export async function lireJournal(
 }
 
 /**
- * Pose le serveur MCP de Claudex dans le projet.
+ * Dit à Claude Code où joindre le serveur MCP de Claudex.
  *
- * Le fichier appartient au projet, non à Claudex : ce qui s'y trouve déjà est
- * gardé, et une copie est mise de côté avant d'écrire. Seule l'entrée `claudex`
- * est posée ou remplacée.
+ * L'entrée pointe vers le serveur que l'application porte déjà, sur la boucle
+ * locale, avec le jeton qui l'autorise. Un serveur lancé par conversation
+ * pesait quatre-vingt-huit mégaoctets, cinq conversations en faisant quatre
+ * cent quarante : ici le coût est nul.
  *
- * L'exécutable est celui de l'application, lancé en mode Node : Electron sait
- * le faire, et cela évite d'exiger un Node installé à côté. Le chemin du projet
- * est passé en argument plutôt que déduit du dossier courant, un agent lancé
- * dans un sous-dossier devant voir les mêmes services.
+ * Pour tous les projets, l'entrée va dans la configuration de l'utilisateur et
+ * aucun dépôt n'est touché. Le projet visé se dit alors à chaque outil, et sans
+ * cela c'est celui qu'on regarde dans l'application.
  *
- * Les deux chemins viennent de l'appelant. Déduits ici, ils seraient faux dans
- * l'un des deux cas : `process.resourcesPath` n'existe pas hors d'Electron, et
- * il désigne le paquet d'Electron lui-même quand on travaille sur les sources.
+ * Pour un seul, un `.mcp.json` est écrit dans le projet. Il y devient un
+ * fichier de plus à commiter ou à ignorer, ce qui vaut quand on veut que
+ * l'équipe l'ait aussi.
+ *
+ * Le fichier appartient à qui le porte, non à Claudex : ce qui s'y trouve déjà
+ * est gardé, et une copie est mise de côté avant d'écrire. Seule l'entrée
+ * `claudex` est posée ou remplacée.
  */
 export async function ecrireMcp(
   projet: string,
-  ou: { executable: string; serveur: string }
+  ou: { adresse: string; jeton: string; portee: 'projet' | 'utilisateur'; maison: string }
 ): Promise<string> {
-  const fichier = join(projet, '.mcp.json')
+  // Pour tous les projets, l'entrée va dans la configuration de l'utilisateur
+  // et ne fige pas de projet : le serveur le déduit du dossier où l'agent
+  // tourne. Rien n'est alors écrit dans les dépôts.
+  const fichier =
+    ou.portee === 'utilisateur' ? join(ou.maison, '.claude.json') : join(projet, '.mcp.json')
 
   let existant: Record<string, unknown> = {}
   const texte = await readFile(fichier, 'utf8').catch(() => null)
@@ -473,9 +481,9 @@ export async function ecrireMcp(
     mcpServers: {
       ...serveurs,
       claudex: {
-        command: ou.executable,
-        args: [ou.serveur, '--projet', projet],
-        env: { ELECTRON_RUN_AS_NODE: '1' }
+        type: 'http',
+        url: ou.adresse,
+        headers: { Authorization: `Bearer ${ou.jeton}` }
       }
     }
   }

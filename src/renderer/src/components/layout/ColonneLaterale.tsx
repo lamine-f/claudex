@@ -183,7 +183,7 @@ export function ColonneLaterale(): React.JSX.Element {
               {/* Le skill dit aux agents où lire ; le serveur MCP leur laisse
                   agir. Relancer un service à la main en ferait tourner deux. */}
               {outil('Poser le serveur MCP dans le projet', <IconeBranchement taille={15} />, () =>
-                void window.claudex.services.mcp(courant.id)
+                void window.claudex.services.mcp(courant.id, 'utilisateur')
               )}
             </>
           )}

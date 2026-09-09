@@ -42,6 +42,15 @@ export interface Tab {
 }
 
 export interface AppState {
+  /**
+   * Le jeton qui autorise un agent à joindre le serveur MCP.
+   *
+   * Retenu plutôt que régénéré à chaque lancement : la configuration de Claude
+   * Code le porte, et le changer la rendrait fausse toutes les nuits.
+   */
+  mcpJeton?: string
+  /** Le port du serveur MCP, retenu pour que la configuration reste vraie. */
+  mcpPort?: number
   workspaces: Workspace[]
   /**
    * Groupes et ordre du rail, posés à la main.

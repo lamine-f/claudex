@@ -6,17 +6,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
-    build: {
-      rollupOptions: {
-        // Deux points d'entrée. L'application, et le serveur MCP que Claude Code
-        // lance à part : il ne démarre ni fenêtre ni Electron, seulement le
-        // moteur Node qu'Electron embarque.
-        input: {
-          index: resolve('src/main/index.ts'),
-          mcp: resolve('src/mcp/index.ts')
-        }
-      }
-    },
     resolve: {
       alias: {
         '@shared': resolve('src/shared'),

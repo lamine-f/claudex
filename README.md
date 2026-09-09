@@ -211,15 +211,19 @@ minute. La commande appelée est `claude`, réglable par `CLAUDEX_CLAUDE`.
 - [x] Un serveur MCP, pour qu'un agent pilote les services et lise l'état git
 - [ ] Commiter depuis un agent
 
-Le bouton en forme de câble, dans la barre de la page Services, pose un
-`.mcp.json` dans le projet. Toute conversation Claude Code lancée là voit alors
-sept outils : l'état des services, leur journal filtré, les démarrer, les
+Le bouton en forme de câble, dans la barre de la page Services, écrit la
+configuration. Toute conversation Claude Code voit alors huit outils : les
+projets ouverts, l'état des services, leur journal filtré, les démarrer, les
 arrêter, les relancer, les dépôts git et le diff d'un fichier.
 
-Le serveur ne parle jamais à l'application. Un service est une session du
-multiplexeur au nom déterministe : le serveur lit la même déclaration, calcule
-le même nom, interroge le même multiplexeur. Il n'y a donc ni port, ni
-authentification, et les outils répondent même quand Claudex est fermé.
+Le serveur vit dans le processus de Claudex, qui tourne déjà. Un serveur lancé
+par conversation pesait quatre-vingt-huit mégaoctets : cinq conversations en
+auraient fait quatre cent quarante, contre cent quarante-neuf pour Claudex tout
+entier. Ici, le coût est nul.
+
+Il n'écoute que la boucle locale et exige un jeton, sans quoi tout processus de
+la machine pourrait piloter les services et lire le code des dépôts. Chaque
+outil accepte le projet visé ; sans lui, c'est celui qu'on regarde.
 
 Un agent qui relance un service à la main en ferait tourner deux, hors de la vue
 de Claudex. C'est ce que le serveur évite.

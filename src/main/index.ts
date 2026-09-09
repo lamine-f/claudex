@@ -3,6 +3,7 @@ import { registerIpc } from './ipc'
 import { completerChemin } from './util/chemin'
 import { arreterVeilleurs } from './ipc/fs'
 import { annoncerPresence, retirerPresence } from './services/hooks'
+import * as mcp from './services/mcp'
 import * as notifications from './services/notifications'
 import { toutArreter } from './services/session-watcher'
 import * as pty from './services/pty'
@@ -71,6 +72,11 @@ if (!app.requestSingleInstanceLock()) {
     servirMedias()
     registerIpc()
     createWindow()
+
+    // Le serveur MCP, dans ce processus : un serveur lancé par conversation
+    // pesait quatre-vingt-huit mégaoctets. Un port pris n'empêche rien de
+    // démarrer, les outils étant un service de plus et non le cœur.
+    void mcp.ouvrir().catch(() => null)
 
     // Le script de notification ne parle qu'à une application vivante : sans
     // cette marque, il se tait — et il faut donc la poser avant d'écouter.
