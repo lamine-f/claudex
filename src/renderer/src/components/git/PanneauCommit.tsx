@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DepotGit } from '@shared/types'
 import { useStore } from '@renderer/state/store'
+import { IconeEtincelle } from '../ui/Icones'
 import { cleDe } from './ListeChangements'
 
 /** Ce qu'un dépôt a donné, tel que le processus principal le rapporte. */
@@ -27,6 +28,8 @@ export function PanneauCommit({ workspaceId }: { workspaceId: string }): React.J
   const [message, setMessage] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [comptes, setComptes] = useState<Compte[] | null>(null)
+  const [redaction, setRedaction] = useState<'repos' | 'en cours' | 'confirmer'>('repos')
+  const [echec, setEchec] = useState<string | null>(null)
 
   const lots = repartir(git?.depots, coches)
   const fichiers = lots.reduce((total, lot) => total + lot.fichiers.length, 0)
@@ -54,6 +57,26 @@ export function PanneauCommit({ workspaceId }: { workspaceId: string }): React.J
     }
   }
 
+  /**
+   * Fait rédiger le message par un agent, à partir des fichiers cochés.
+   *
+   * L'agent n'écrit pas dans le dépôt : il remplit le champ, et l'on relit. Un
+   * message déjà là n'est pas écrasé sans qu'on le demande.
+   */
+  const rediger = async (remplacer: boolean): Promise<void> => {
+    if (message.trim() && !remplacer) return setRedaction('confirmer')
+
+    setRedaction('en cours')
+    setEchec(null)
+    try {
+      const rendu = await window.claudex.git.rediger(workspaceId, lots)
+      if (rendu.message) setMessage(rendu.message)
+      else setEchec(rendu.erreur ?? 'La rédaction n’a rien donné.')
+    } finally {
+      setRedaction('repos')
+    }
+  }
+
   return (
     <div className="shrink-0 border-t border-separateur px-2.5 py-2">
       <textarea
@@ -73,6 +96,31 @@ export function PanneauCommit({ workspaceId }: { workspaceId: string }): React.J
 
       {comptes && <CompteRendu comptes={comptes} />}
 
+      {echec && (
+        // Ce que `claude` a dit, tel quel : c'est ce qui sert à comprendre.
+        <p className="mt-2 font-mono text-[10.5px] whitespace-pre-wrap text-erreur">{echec}</p>
+      )}
+
+      {redaction === 'confirmer' && (
+        <p className="mt-2 flex flex-wrap items-baseline gap-2 text-[11.5px] text-texte-faible">
+          <span>Un message est déjà écrit.</span>
+          <button
+            type="button"
+            onClick={() => void rediger(true)}
+            className="rounded px-1.5 text-accent transition-colors hover:bg-fond-survol"
+          >
+            Le remplacer
+          </button>
+          <button
+            type="button"
+            onClick={() => setRedaction('repos')}
+            className="rounded px-1.5 text-texte-tenu transition-colors hover:bg-fond-survol"
+          >
+            Le garder
+          </button>
+        </p>
+      )}
+
       {/* Ce qui est coché se lit au-dessus des gestes, non à côté. Posée sur la
           même ligne, cette mesure prenait la largeur qui manquait au second
           bouton, dont l'intitulé passait à deux lignes. */}
@@ -87,6 +135,17 @@ export function PanneauCommit({ workspaceId }: { workspaceId: string }): React.J
       </p>
 
       <div className="mt-1.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={fichiers === 0 || redaction === 'en cours' || enCours}
+          onClick={() => void rediger(false)}
+          title="Faire rédiger le message par un agent, d’après les fichiers cochés"
+          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-bordure text-texte-faible transition-colors hover:bg-fond-survol hover:text-texte disabled:opacity-35"
+        >
+          <span className={redaction === 'en cours' ? 'animate-pulse' : ''}>
+            <IconeEtincelle taille={15} />
+          </span>
+        </button>
         <button
           type="button"
           disabled={!pret}

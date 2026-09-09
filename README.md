@@ -174,6 +174,7 @@ sudo apt install xdg-utils
 - [x] Choisir lesquels dans `.claudex/git.yml`
 - [x] Voir le diff d'un fichier, côte à côte ou d'un seul tenant
 - [x] Commiter et pousser sur plusieurs dépôts à la fois
+- [x] Faire rédiger le message du commit par un agent
 - [ ] Le graphe des commits et le détail d'un commit
 - [ ] Créer une branche, fusionner, résoudre les conflits
 
@@ -196,6 +197,13 @@ depots:
 Les chemins sont relatifs au projet et peuvent remonter d'un cran. Un chemin qui
 ne mène à aucun dépôt est signalé en tête de la page plutôt qu'ignoré. Sans le
 fichier, rien ne change.
+
+Le bouton en forme d'étincelle, sous le champ de message, fait rédiger celui-ci
+par un agent à partir des fichiers cochés. Il reçoit les derniers commits du
+dépôt comme modèle : la langue, le format et le ton s'en déduisent, sans qu'on
+les configure. L'agent n'écrit rien dans le dépôt, il remplit le champ, et un
+message déjà écrit n'est pas remplacé sans qu'on le demande. Compter une demi-
+minute. La commande appelée est `claude`, réglable par `CLAUDEX_CLAUDE`.
 
 ### Projets et fichiers
 

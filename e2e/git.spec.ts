@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -806,5 +806,94 @@ test.describe('dépôts déclarés par le projet', () => {
     const reproches = ctx.page.getByLabel('Reproches de la déclaration')
     await expect(reproches).toContainText('absent')
     await expect(reproches).toContainText('introuvable')
+  })
+})
+
+/**
+ * Le bouton qui fait rédiger le message. L'agent n'écrit pas dans le dépôt : il
+ * remplit un champ que l'on relit.
+ */
+test.describe('rédaction du message de commit', () => {
+  let ctx: Contexte
+  let faux: string
+
+  test.beforeAll(async () => {
+    const projet = await mkdtemp(join(tmpdir(), 'claudex-redige-'))
+    await depot(projet, 'local')
+    await writeFile(join(projet, 'base.txt'), 'deux\n')
+
+    // Un faux `claude` : appeler le vrai prendrait quarante secondes et
+    // dépendrait du réseau. Ce qu'on vérifie ici est le geste, non sa réponse.
+    // Il recopie son entrée dans un fichier, pour qu'on lise le prompt reçu.
+    faux = join(projet, 'faux-claude.sh')
+    await writeFile(
+      faux,
+      `#!/bin/sh\ncat > "${join(projet, 'prompt-recu.txt')}"\n` +
+        `printf 'fix(essai): le message rédigé\\n\\nUn corps qui explique.\\n'\n`,
+      { mode: 0o755 }
+    )
+
+    ctx = await lancer({ projet, env: { CLAUDEX_CLAUDE: faux } })
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  const bouton = (): Locator =>
+    ctx.page.getByRole('button', {
+      name: 'Faire rédiger le message par un agent, d’après les fichiers cochés'
+    })
+
+  test('ne propose rien tant que rien n’est coché', async () => {
+    await expect(bouton()).toBeDisabled()
+  })
+
+  test('remplit le champ à partir des fichiers cochés', async () => {
+    await ctx.page.getByRole('checkbox', { name: 'base.txt' }).click()
+    await expect(bouton()).toBeEnabled()
+
+    await bouton().click()
+    await expect(ctx.page.getByLabel('Message du commit')).toHaveValue(
+      'fix(essai): le message rédigé\n\nUn corps qui explique.'
+    )
+  })
+
+  test('donne à l’agent les derniers commits et le diff', async () => {
+    // Le style du dépôt se montre plutôt qu'il ne s'écrit, et le compte reste
+    // entier même quand le diff est coupé.
+    const prompt = await readFile(join(ctx.projet, 'prompt-recu.txt'), 'utf8')
+    expect(prompt).toContain('derniers commits de ce dépôt')
+    expect(prompt).toContain('base')
+    expect(prompt).toContain('+deux')
+    expect(prompt).toContain('1 file changed')
+  })
+
+  test('ne remplace pas un message écrit sans le demander', async () => {
+    const champ = ctx.page.getByLabel('Message du commit')
+    await champ.fill('mon propre message')
+
+    await bouton().click()
+    await expect(ctx.page.getByText('Un message est déjà écrit.')).toBeVisible()
+    await expect(champ).toHaveValue('mon propre message')
+
+    await ctx.page.getByRole('button', { name: 'Le garder' }).click()
+    await expect(champ).toHaveValue('mon propre message')
+
+    await bouton().click()
+    await ctx.page.getByRole('button', { name: 'Le remplacer' }).click()
+    await expect(champ).toContainText('')
+    await expect(champ).toHaveValue(/le message rédigé/)
+  })
+
+  test('dit ce que la commande a répondu quand elle échoue', async () => {
+    await writeFile(faux, '#!/bin/sh\ncat > /dev/null\necho "rien à dire" >&2\nexit 1\n', {
+      mode: 0o755
+    })
+    await ctx.page.getByLabel('Message du commit').fill('')
+
+    await bouton().click()
+    await expect(ctx.page.getByText('rien à dire')).toBeVisible()
   })
 })

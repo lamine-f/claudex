@@ -1,6 +1,15 @@
 import { ipcMain } from 'electron'
 import type { EtatGit } from '@shared/types'
-import { commiter, depots, diff, etat, pousser, type Compte, type DiffLu } from '../services/git'
+import {
+  commiter,
+  depots,
+  diff,
+  etat,
+  pousser,
+  redigerMessage,
+  type Compte,
+  type DiffLu
+} from '../services/git'
 import * as store from '../services/store'
 
 export function registerGitIpc(): void {
@@ -28,6 +37,30 @@ export function registerGitIpc(): void {
       if (!racines.includes(depot)) return { sortie: '' }
 
       return diff(depot, fichier, options)
+    }
+  )
+
+  /**
+   * Fait rédiger le message du commit à venir.
+   *
+   * L'agent ne touche pas au dépôt : il rend un texte que l'on relit. C'est ce
+   * qui rend le geste sûr là où « l'agent commite » ne l'aurait pas été.
+   */
+  ipcMain.handle(
+    'git:rediger',
+    async (
+      _evenement,
+      workspaceId: string,
+      lots: { depot: string; fichiers: string[] }[]
+    ): Promise<{ message?: string; erreur?: string }> => {
+      const workspace = store.get().workspaces.find((w) => w.id === workspaceId)
+      if (!workspace) return { erreur: 'Projet inconnu.' }
+
+      const { racines } = await depots(workspace.path)
+      const retenus = lots.filter((l) => racines.includes(l.depot))
+      if (retenus.length === 0) return { erreur: 'Aucun fichier choisi.' }
+
+      return redigerMessage(retenus)
     }
   )
 

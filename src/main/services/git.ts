@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -11,6 +11,7 @@ import {
   type DeclarationGit,
   type Reproche
 } from '@shared/git'
+import { construirePrompt, nettoyer, tronquer, type Apport } from '@shared/message-commit'
 import type { DepotGit, EtatGit } from '@shared/types'
 
 const run = promisify(execFile)
@@ -387,5 +388,169 @@ async function existe(chemin: string): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Le nombre de commits montrés à l'agent comme modèle de style.
+ *
+ * Assez pour que la langue, le format et le ton se dégagent ; pas au point
+ * d'emplir le prompt de ce qui n'est pas le changement en cours.
+ */
+const EXEMPLES = 8
+
+/** Au-delà, `claude` n'a pas répondu et l'on rend la main. */
+const DELAI_REDACTION = 180_000
+
+/**
+ * Fait rédiger le message du commit à venir.
+ *
+ * `claude -p` plutôt qu'une clé d'API : il est déjà installé, c'est la
+ * dépendance centrale de Claudex, et il porte l'abonnement de l'utilisateur.
+ * Lancé dans le dossier du dépôt, il y lit aussi le `CLAUDE.md` s'il en est un,
+ * donc les conventions du projet.
+ *
+ * L'agent n'écrit rien : il rend un texte que l'on relit avant de commiter.
+ */
+export async function redigerMessage(
+  lots: { depot: string; fichiers: string[] }[]
+): Promise<{ message?: string; erreur?: string }> {
+  const utiles = lots.filter((l) => l.fichiers.length > 0)
+  if (utiles.length === 0) return { erreur: 'Aucun fichier choisi.' }
+
+  const apports: Apport[] = []
+  for (const lot of utiles) {
+    const apport = await apportDe(lot.depot, lot.fichiers)
+    if (apport) apports.push(apport)
+  }
+  if (apports.length === 0) return { erreur: 'Rien à lire dans ce qui est choisi.' }
+
+  const prompt = construirePrompt(apports, await exemplesDe(utiles[0]!.depot))
+
+  const rendu = await appelerClaude(prompt, utiles[0]!.depot)
+  if (rendu.erreur) return rendu
+  const message = nettoyer(rendu.message ?? '')
+  return message ? { message } : { erreur: 'La réponse est vide.' }
+}
+
+/**
+ * Envoie un prompt à `claude -p` et rend sa réponse.
+ *
+ * Le prompt passe par l'entrée standard, non en argument : un diff de cinquante
+ * kilo-octets dépasserait ce que la ligne de commande accepte. `execFile` ne
+ * sait pas écrire sur l'entrée d'un processus, d'où `spawn`.
+ */
+function appelerClaude(
+  prompt: string,
+  dossier: string
+): Promise<{ message?: string; erreur?: string }> {
+  return new Promise((resoudre) => {
+    // La commande est réglable : les cas de bout en bout la remplacent par un
+    // script, et une installation qui la range ailleurs s'en sert aussi.
+    const enfant = spawn(process.env.CLAUDEX_CLAUDE || 'claude', ['-p'], { cwd: dossier })
+    let sortie = ''
+    let plainte = ''
+    let fini = false
+
+    const finir = (rendu: { message?: string; erreur?: string }): void => {
+      if (fini) return
+      fini = true
+      clearTimeout(minuterie)
+      resoudre(rendu)
+    }
+
+    const minuterie = setTimeout(() => {
+      enfant.kill('SIGKILL')
+      finir({ erreur: 'La rédaction a dépassé trois minutes.' })
+    }, DELAI_REDACTION)
+
+    enfant.stdout.on('data', (bloc) => {
+      sortie += String(bloc)
+    })
+    enfant.stderr.on('data', (bloc) => {
+      plainte += String(bloc)
+    })
+
+    enfant.on('error', (erreur) => {
+      const code = (erreur as NodeJS.ErrnoException).code
+      finir({
+        erreur:
+          code === 'ENOENT'
+            ? 'La commande `claude` est introuvable. Vois l’écran d’état.'
+            : erreur.message
+      })
+    })
+
+    enfant.on('close', (code) => {
+      if (code === 0) return finir({ message: sortie })
+      const dit = (plainte || sortie).trim().split('\n').slice(0, 4).join('\n')
+      finir({ erreur: dit || `\`claude\` a rendu ${code}.` })
+    })
+
+    enfant.stdin.on('error', () => undefined)
+    enfant.stdin.end(prompt)
+  })
+}
+
+/** Le diff et le compte d'un dépôt, pour ses seuls fichiers choisis. */
+async function apportDe(depot: string, fichiers: string[]): Promise<Apport | null> {
+  const lu = await etatDepot(depot)
+  const neufs = new Set(
+    (lu?.fichiers ?? []).filter(estNonSuivi).map((f) => f.chemin)
+  )
+  const suivis = fichiers.filter((f) => !neufs.has(f))
+  const ajoutes = fichiers.filter((f) => neufs.has(f))
+
+  const morceaux: string[] = []
+  let stat = ''
+
+  if (suivis.length > 0) {
+    // `HEAD` et non l'index : ce qui sera commité est l'état de travail, que
+    // les fichiers soient déjà indexés ou non.
+    stat = await sortie(depot, ['diff', '--stat', 'HEAD', '--', ...suivis])
+    morceaux.push(await sortie(depot, ['diff', '--no-color', 'HEAD', '--', ...suivis]))
+  }
+
+  for (const neuf of ajoutes) {
+    // Un fichier que git ne suit pas n'a pas d'ancien côté, et `git diff` n'en
+    // dirait rien. `--no-index` contre `/dev/null` le montre entier.
+    morceaux.push(await sortie(depot, ['diff', '--no-color', '--no-index', '/dev/null', neuf]))
+  }
+  if (ajoutes.length > 0) {
+    stat = `${stat}\n${ajoutes.length} fichier(s) neuf(s) : ${ajoutes.join(', ')}`.trim()
+  }
+
+  const entier = morceaux.filter(Boolean).join('\n')
+  if (!entier.trim()) return null
+
+  const coupe = tronquer(entier)
+  return { nom: basename(depot), stat: stat || 'compte indisponible', diff: coupe.texte, tronque: coupe.tronque }
+}
+
+/** Les derniers messages du dépôt, qui servent de modèle de style. */
+async function exemplesDe(depot: string): Promise<string[]> {
+  const texte = await sortie(depot, ['log', `-${EXEMPLES}`, '--format=%s%n%n%b%x00'])
+  return texte
+    .split('\0')
+    .map((e) => e.trim())
+    .filter(Boolean)
+}
+
+/**
+ * La sortie d'une commande git, ou du vide.
+ *
+ * `git diff --no-index` sort en 1 dès qu'il trouve une différence, ce qui est
+ * ici le cas nominal : sa sortie est bonne malgré ce code de retour.
+ */
+async function sortie(depot: string, arguments_: string[]): Promise<string> {
+  try {
+    const { stdout } = await run('git', ['-c', 'core.quotepath=false', '-C', depot, ...arguments_], {
+      timeout: 20_000,
+      maxBuffer: 16 * 1024 * 1024
+    })
+    return stdout
+  } catch (erreur) {
+    const echec = erreur as { code?: number; stdout?: string }
+    return echec.code === 1 && typeof echec.stdout === 'string' ? echec.stdout : ''
   }
 }

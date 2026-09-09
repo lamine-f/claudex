@@ -176,7 +176,12 @@ const api = {
       message: string,
       pousserAussi: boolean
     ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
-      ipcRenderer.invoke('git:commiter', workspaceId, lots, message, pousserAussi)
+      ipcRenderer.invoke('git:commiter', workspaceId, lots, message, pousserAussi),
+    rediger: (
+      workspaceId: string,
+      lots: { depot: string; fichiers: string[] }[]
+    ): Promise<{ message?: string; erreur?: string }> =>
+      ipcRenderer.invoke('git:rediger', workspaceId, lots)
   },
   systeme: {
     /**
