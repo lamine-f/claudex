@@ -979,3 +979,81 @@ test.describe('rédaction du message de commit', () => {
     await expect(ctx.page.getByText('rien à dire')).toBeVisible()
   })
 })
+
+/**
+ * Les dépôts, à côté des changements. Un dépôt sans fichier modifié peut avoir
+ * des commits à pousser : il n'apparaissait alors nulle part.
+ */
+test.describe('section des dépôts', () => {
+  let ctx: Contexte
+  let projet: string
+
+  test.beforeAll(async () => {
+    projet = await mkdtemp(join(tmpdir(), 'claudex-depots-git-'))
+
+    // Un dépôt propre mais en avance sur son amont : le cas que rien ne
+    // montrait.
+    const amont = join(projet, 'amont.git')
+    await run('git', ['init', '-q', '--bare', '-b', 'principale', amont])
+    const avance = join(projet, 'avance')
+    await depot(avance, 'principale')
+    await run('git', ['-C', avance, 'remote', 'add', 'origin', amont])
+    await run('git', ['-C', avance, 'push', '-q', '-u', 'origin', 'principale'])
+    await writeFile(join(avance, 'base.txt'), 'deux\n')
+    await run('git', ['-C', avance, 'commit', '-qam', 'un pas de plus'])
+    await run('git', ['-C', avance, 'branch', 'travail'])
+
+    // Un second, avec la même branche, pour la bascule à plusieurs.
+    const autre = join(projet, 'autre')
+    await depot(autre, 'principale')
+    await run('git', ['-C', autre, 'branch', 'travail'])
+
+    ctx = await lancer({ projet })
+    await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('montre un dépôt propre mais en avance', async () => {
+    const ligne = ctx.page.getByLabel('Dépôts').getByRole('listitem').filter({ hasText: 'avance' })
+    await expect(ligne).toContainText('principale')
+    await expect(ligne).toContainText('↑1')
+  })
+
+  test('pousse ce qui est coché, et le compte rendu le dit', async () => {
+    await ctx.page.getByRole('checkbox', { name: 'avance' }).click()
+    await ctx.page.getByTitle('Pousser les dépôts cochés vers leur amont').click()
+
+    const rendu = ctx.page.getByLabel('Compte rendu des dépôts')
+    await expect(rendu).toContainText('avance')
+    await expect(rendu).toContainText('✓')
+
+    // Poussé, il n'est plus en avance.
+    await expect.poll(async () => {
+      const { stdout } = await run('git', ['-C', join(projet, 'avance'), 'status', '-sb'])
+      return stdout
+    }).not.toContain('ahead')
+  })
+
+  test('ne propose que les branches que tous les dépôts cochés portent', async () => {
+    // Proposer celle d'un seul ferait échouer les autres sans qu'on l'ait vu.
+    await ctx.page.getByRole('checkbox', { name: 'autre' }).click()
+    await ctx.page.getByTitle('Changer de branche dans les dépôts cochés').click()
+
+    const communes = ctx.page.getByLabel('Branches communes')
+    await expect(communes.getByRole('button', { name: 'travail' })).toBeVisible()
+    await expect(communes.getByRole('button', { name: 'principale' })).toBeVisible()
+  })
+
+  test('change de branche dans les deux à la fois', async () => {
+    await ctx.page.getByLabel('Branches communes').getByRole('button', { name: 'travail' }).click()
+
+    await expect(ctx.page.getByLabel('Compte rendu des dépôts')).toContainText('✓')
+    for (const nom of ['avance', 'autre']) {
+      const { stdout } = await run('git', ['-C', join(projet, nom), 'rev-parse', '--abbrev-ref', 'HEAD'])
+      expect(stdout.trim()).toBe('travail')
+    }
+  })
+})

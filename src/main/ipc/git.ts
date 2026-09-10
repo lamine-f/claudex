@@ -1,12 +1,15 @@
 import { ipcMain } from 'electron'
 import type { EtatGit } from '@shared/types'
 import {
+  branches,
+  changerBranche,
   commiter,
   depots,
   diff,
   etat,
   pousser,
   redigerMessage,
+  type Branches,
   type Compte,
   type DiffLu
 } from '../services/git'
@@ -37,6 +40,63 @@ export function registerGitIpc(): void {
       if (!racines.includes(depot)) return { sortie: '' }
 
       return diff(depot, fichier, options)
+    }
+  )
+
+  /** Les branches de chaque dépôt, pour savoir où l'on est avant d'agir. */
+  ipcMain.handle(
+    'git:branches',
+    async (_evenement, workspaceId: string): Promise<Record<string, Branches>> => {
+      const workspace = store.get().workspaces.find((w) => w.id === workspaceId)
+      if (!workspace) return {}
+
+      const { racines } = await depots(workspace.path)
+      const lues = await Promise.all(racines.map(async (r) => [r, await branches(r)] as const))
+      return Object.fromEntries(lues.filter(([, b]) => b !== null)) as Record<string, Branches>
+    }
+  )
+
+  /**
+   * Pousse les dépôts choisis, et rend compte de chacun.
+   *
+   * L'échec y est partiel par nature : une branche sans amont, un rejet, une
+   * authentification qui manque. Aucun dépôt n'interrompt les suivants.
+   */
+  ipcMain.handle(
+    'git:pousser',
+    async (_evenement, workspaceId: string, choisis: string[]): Promise<Compte[]> => {
+      const workspace = store.get().workspaces.find((w) => w.id === workspaceId)
+      if (!workspace) return []
+
+      const { racines } = await depots(workspace.path)
+      const comptes: Compte[] = []
+      // L'un après l'autre : en parallèle, les demandes d'authentification se
+      // mêleraient et l'on ne saurait plus laquelle répond à quoi.
+      for (const depot of choisis.filter((d) => racines.includes(d))) {
+        comptes.push(await pousser(depot))
+      }
+      return comptes
+    }
+  )
+
+  /** Change de branche dans les dépôts choisis. */
+  ipcMain.handle(
+    'git:changerBranche',
+    async (
+      _evenement,
+      workspaceId: string,
+      choisis: string[],
+      branche: string
+    ): Promise<Compte[]> => {
+      const workspace = store.get().workspaces.find((w) => w.id === workspaceId)
+      if (!workspace || !branche.trim()) return []
+
+      const { racines } = await depots(workspace.path)
+      const comptes: Compte[] = []
+      for (const depot of choisis.filter((d) => racines.includes(d))) {
+        comptes.push(await changerBranche(depot, branche))
+      }
+      return comptes
     }
   )
 

@@ -153,6 +153,15 @@ interface EtatUi {
    */
   coches: string[]
   cocher: (cles: string[], coche: boolean) => void
+  /**
+   * Dépôts cochés, par leur chemin.
+   *
+   * Une sélection à part de celle des fichiers : cocher un dépôt vise ce qu'on
+   * fait au dépôt entier, pousser ou changer de branche, non ce qui part au
+   * prochain commit.
+   */
+  depotsCoches: string[]
+  cocherDepots: (chemins: string[], coche: boolean) => void
   /** Forme du diff, retenue d'un fichier à l'autre. */
   diffCoteACote: boolean
   basculerDiffCoteACote: () => void
@@ -303,6 +312,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   vues: {},
   depotsReplies: {},
   coches: [],
+  depotsCoches: [],
   diffCoteACote: true,
   diffEntier: true,
   groupesReplies: {},
@@ -508,6 +518,11 @@ export const useStore = create<EtatUi>((set, get) => ({
   basculerDiffCoteACote: () => set({ diffCoteACote: !get().diffCoteACote }),
 
   basculerDiffEntier: () => set({ diffEntier: !get().diffEntier }),
+
+  cocherDepots: (chemins, coche) => {
+    const restants = get().depotsCoches.filter((c) => !chemins.includes(c))
+    set({ depotsCoches: coche ? [...restants, ...chemins] : restants })
+  },
 
   cocher: (cles, coche) => {
     const restantes = get().coches.filter((c) => !cles.includes(c))

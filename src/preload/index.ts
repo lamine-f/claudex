@@ -180,6 +180,21 @@ const api = {
       pousserAussi: boolean
     ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
       ipcRenderer.invoke('git:commiter', workspaceId, lots, message, pousserAussi),
+    branches: (
+      workspaceId: string
+    ): Promise<Record<string, { courante: string; locales: string[]; distantes: string[] }>> =>
+      ipcRenderer.invoke('git:branches', workspaceId),
+    pousser: (
+      workspaceId: string,
+      depots: string[]
+    ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
+      ipcRenderer.invoke('git:pousser', workspaceId, depots),
+    changerBranche: (
+      workspaceId: string,
+      depots: string[],
+      branche: string
+    ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
+      ipcRenderer.invoke('git:changerBranche', workspaceId, depots, branche),
     rediger: (
       workspaceId: string,
       lots: { depot: string; fichiers: string[] }[]

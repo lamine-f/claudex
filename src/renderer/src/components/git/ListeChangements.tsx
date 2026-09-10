@@ -5,6 +5,7 @@ import { useStore } from '@renderer/state/store'
 import { teintePour } from '@shared/teintes'
 import { ouverts, vueDiff } from '@renderer/state/vues'
 import { IconeFichier } from '../files/IconeFichier'
+import { ListeDepots } from './ListeDepots'
 import { IconeChevron } from '../ui/Icones'
 
 /**
@@ -86,12 +87,19 @@ export function ListeChangements({ workspaceId }: { workspaceId: string }): Reac
 
   const vide = sections.changements.length === 0 && sections.neufs.length === 0
   if (vide && !(git.reproches && git.reproches.length > 0)) {
+    // La liste des dépôts reste : elle porte ce qui attend d'être poussé, et le
+    // moyen de changer de branche.
     return (
-      <p className="px-3 py-2 text-[12.5px] text-texte-faible">
-        {filtre.trim()
-          ? 'Aucun fichier ne correspond.'
-          : `Rien à commiter dans ${git.depots.length > 1 ? `les ${git.depots.length} dépôts` : 'ce dépôt'}.`}
-      </p>
+      <>
+        <p className="px-3 py-2 text-[12.5px] text-texte-faible">
+          {filtre.trim()
+            ? 'Aucun fichier ne correspond.'
+            : `Rien à commiter dans ${git.depots.length > 1 ? `les ${git.depots.length} dépôts` : 'ce dépôt'}.`}
+        </p>
+        <ul>
+          <ListeDepots workspaceId={workspaceId} />
+        </ul>
+      </>
     )
   }
 
@@ -112,6 +120,9 @@ export function ListeChangements({ workspaceId }: { workspaceId: string }): Reac
         </ul>
       )}
       <ul className="pb-2">
+      {/* Les dépôts d'abord : un dépôt sans fichier modifié peut avoir douze
+          commits à pousser, et n'apparaît dans aucune des deux autres. */}
+      <ListeDepots workspaceId={workspaceId} />
       {(['changements', 'neufs'] as const).map(
         (section) =>
           sections[section].length > 0 && (

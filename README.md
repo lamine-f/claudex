@@ -175,6 +175,7 @@ sudo apt install xdg-utils
 - [x] Voir le diff d'un fichier, côte à côte ou d'un seul tenant
 - [x] Commiter et pousser sur plusieurs dépôts à la fois
 - [x] Faire rédiger le message du commit par un agent
+- [x] Voir la branche de chaque dépôt, pousser et changer de branche
 - [ ] Le graphe des commits et le détail d'un commit
 - [ ] Créer une branche, fusionner, résoudre les conflits
 
@@ -197,6 +198,13 @@ depots:
 Les chemins sont relatifs au projet et peuvent remonter d'un cran. Un chemin qui
 ne mène à aucun dépôt est signalé en tête de la page plutôt qu'ignoré. Sans le
 fichier, rien ne change.
+
+La section « Dépôts » liste chacun avec sa branche et ce qui attend d'être
+poussé. Elle est séparée des changements parce qu'un dépôt sans fichier modifié
+peut avoir douze commits en avance : il n'apparaissait alors nulle part. Cocher
+des dépôts permet de les pousser ou d'y changer de branche à plusieurs. Seules
+les branches que tous portent sont proposées, celle d'un seul faisant échouer
+les autres sans qu'on l'ait vu.
 
 Le bouton en forme d'étincelle, sous le champ de message, fait rédiger celui-ci
 par un agent à partir des fichiers cochés. Il reçoit les derniers commits du

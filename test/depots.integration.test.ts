@@ -4,7 +4,16 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { chantier, commiter, DECLARATION, depots, etat, pousser } from '../src/main/services/git'
+import {
+  branches,
+  changerBranche,
+  chantier,
+  commiter,
+  DECLARATION,
+  depots,
+  etat,
+  pousser
+} from '../src/main/services/git'
 
 const run = promisify(execFile)
 
@@ -323,5 +332,78 @@ describe('déclaration des dépôts à suivre', () => {
     const { racines, reproches } = await depots(projet)
     expect(racines).toEqual([])
     expect(reproches[0]?.message).toContain('ne se lit pas')
+  })
+})
+
+describe('branches d’un dépôt', () => {
+  let racine: string
+
+  beforeAll(async () => {
+    racine = await mkdtemp(join(tmpdir(), 'claudex-branches-'))
+  })
+
+  afterAll(async () => {
+    await rm(racine, { recursive: true, force: true })
+  })
+
+  it('dit où l’on est et ce qui existe à côté', async () => {
+    const projet = join(racine, 'plusieurs')
+    await depot(projet, 'principale')
+    await run('git', ['-C', projet, 'branch', 'travail'])
+    await run('git', ['-C', projet, 'branch', 'essai'])
+
+    const lu = await branches(projet)
+    expect(lu?.courante).toBe('principale')
+    expect(lu?.locales.sort()).toEqual(['essai', 'principale', 'travail'])
+  })
+
+  it('ne montre pas deux fois une branche qui a sa jumelle locale', async () => {
+    // Voir « local » et « origin/local » côte à côte laisserait croire à deux
+    // endroits différents, alors que s'y rendre passe par la locale.
+    const amont = join(racine, 'amont.git')
+    await run('git', ['init', '-q', '--bare', '-b', 'principale', amont])
+    const projet = join(racine, 'avec-amont')
+    await depot(projet, 'principale')
+    await run('git', ['-C', projet, 'remote', 'add', 'origin', amont])
+    await run('git', ['-C', projet, 'push', '-q', '-u', 'origin', 'principale'])
+
+    const lu = await branches(projet)
+    expect(lu?.locales).toContain('principale')
+    expect(lu?.distantes).not.toContain('origin/principale')
+  })
+
+  it('change de branche, et le dit', async () => {
+    const projet = join(racine, 'bascule')
+    await depot(projet, 'principale')
+    await run('git', ['-C', projet, 'branch', 'travail'])
+
+    const compte = await changerBranche(projet, 'travail')
+    expect(compte.fait).toBe(true)
+    expect((await branches(projet))?.courante).toBe('travail')
+  })
+
+  it('refuse de changer par-dessus une fusion en cours', async () => {
+    const projet = join(racine, 'fusion-en-cours')
+    await depot(projet, 'principale')
+    await run('git', ['-C', projet, 'checkout', '-q', '-b', 'autre'])
+    await writeFile(join(projet, 'base.txt'), 'autre\n')
+    await run('git', ['-C', projet, 'commit', '-qam', 'côté autre'])
+    await run('git', ['-C', projet, 'checkout', '-q', 'principale'])
+    await writeFile(join(projet, 'base.txt'), 'principale\n')
+    await run('git', ['-C', projet, 'commit', '-qam', 'côté principale'])
+    await run('git', ['-C', projet, 'merge', 'autre']).catch(() => undefined)
+
+    const compte = await changerBranche(projet, 'autre')
+    expect(compte.fait).toBe(false)
+    expect(compte.message).toContain('fusion')
+  })
+
+  it('rapporte ce que git dit quand la branche n’existe pas', async () => {
+    const projet = join(racine, 'absente')
+    await depot(projet)
+
+    const compte = await changerBranche(projet, 'nulle-part')
+    expect(compte.fait).toBe(false)
+    expect(compte.message).toBeTruthy()
   })
 })

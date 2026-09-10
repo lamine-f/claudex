@@ -554,3 +554,77 @@ async function sortie(depot: string, arguments_: string[]): Promise<string> {
     return echec.code === 1 && typeof echec.stdout === 'string' ? echec.stdout : ''
   }
 }
+
+/** Ce qu'un dépôt offre comme branches, et où l'on est. */
+export interface Branches {
+  courante: string
+  /** Les branches du dépôt, la locale d'abord, puis les distantes sans jumelle. */
+  locales: string[]
+  distantes: string[]
+}
+
+/**
+ * Les branches d'un dépôt.
+ *
+ * Une distante dont une locale porte déjà le nom n'est pas listée deux fois :
+ * s'y rendre passe par la locale, et voir « local » et « origin/local » côte à
+ * côte laisserait croire à deux endroits différents.
+ */
+export async function branches(depot: string): Promise<Branches | null> {
+  try {
+    const [tete, refs] = await Promise.all([
+      run('git', ['-C', depot, 'rev-parse', '--abbrev-ref', 'HEAD'], { timeout: 4000 }),
+      run(
+        'git',
+        ['-C', depot, 'for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/remotes'],
+        { timeout: 8000, maxBuffer: 4 * 1024 * 1024 }
+      )
+    ])
+
+    const noms = refs.stdout.split('\n').filter(Boolean)
+    const locales = noms.filter((n) => !n.includes('/') || !estDistante(n, noms))
+    const distantes = noms.filter((n) => estDistante(n, noms) && !n.endsWith('/HEAD'))
+
+    return {
+      courante: tete.stdout.trim(),
+      locales: locales.filter((n) => !distantes.includes(n)),
+      // Celles dont aucune locale ne porte le nom : les autres se rejoignent
+      // par leur locale.
+      distantes: distantes.filter((d) => !locales.includes(sansDistant(d)))
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Une référence sous `refs/remotes` porte le nom d'un distant en tête. */
+function estDistante(nom: string, tous: string[]): boolean {
+  const tete = nom.split('/')[0]
+  // `origin` seul est le HEAD du distant ; `origin/x` en est une branche.
+  return tete !== undefined && nom.includes('/') && tous.includes(tete)
+}
+
+/** `origin/local` désigne la même branche que `local`. */
+function sansDistant(nom: string): string {
+  return nom.split('/').slice(1).join('/')
+}
+
+/**
+ * Change de branche dans un dépôt.
+ *
+ * Une branche distante donne une locale qui la suit, ce que fait `switch` sans
+ * qu'on le lui demande. Un travail non commité qui gênerait le passage fait
+ * échouer la commande, et git dit pourquoi : on ne force rien.
+ */
+export async function changerBranche(depot: string, branche: string): Promise<Compte> {
+  const nom = basename(depot)
+  const enPlan = await chantier(depot)
+  if (enPlan) return { depot, nom, fait: false, message: `Ce dépôt est en cours de ${enPlan}.` }
+
+  try {
+    await run('git', ['-C', depot, 'switch', branche], { timeout: 60_000 })
+    return { depot, nom, fait: true }
+  } catch (erreur) {
+    return { depot, nom, fait: false, message: ditGit(erreur) }
+  }
+}
