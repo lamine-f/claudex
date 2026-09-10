@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { rangerSelon } from '@shared/ordre'
+import { RANGEMENT_VIDE, type Rangement } from '@shared/rangement'
 import type { Workspace } from '@shared/types'
 import { multiplexeur } from '../services/multiplexeur'
 import * as pty from '../services/pty'
@@ -15,6 +16,15 @@ const ACCENTS = ['#e8825a', '#5aa9e8', '#7ec96f', '#c98fe0', '#e0c15a', '#5ad0c0
 
 export function registerWorkspaceIpc(): void {
   ipcMain.handle('workspace:list', () => store.get().workspaces)
+
+  ipcMain.handle('workspace:rangement', (): Rangement => store.get().rangementProjets ?? RANGEMENT_VIDE)
+
+  /** Écrit le rangement du rail : groupes, ordre, replis. */
+  ipcMain.handle('workspace:arranger', (_evenement, rangement: Rangement) => {
+    store.update((etat) => {
+      etat.rangementProjets = rangement
+    })
+  })
 
   /**
    * Ajoute un projet, par le dialogue du système ou sur un chemin donné.

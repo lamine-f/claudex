@@ -39,6 +39,17 @@
    */
   --color-projet: var(--color-accent);
   --color-projet-tenu: color-mix(in oklab, var(--color-projet) 42%, var(--color-fond));
+  /*
+   * Le fond sur lequel se lit du code.
+   *
+   * Celui du thème de l'aperçu de fichier, repris tel quel : lire un diff et
+   * lire un fichier sont le même geste, et le noir pur de l'application y
+   * durcissait le contraste au point de fatiguer. La marge reprend celle du
+   * même thème, un cran plus sombre.
+   */
+  --color-fond-code: #282c34;
+  --color-fond-code-marge: #21252b;
+
   --color-attention: #dfb45e;
   --color-erreur: #e0685f;
   --color-succes: #94c47a;
@@ -84,10 +95,17 @@ label[for] {
   cursor: pointer;
 }
 
-/* Le focus clavier doit rester lisible sur un fond noir sans alourdir le survol. */
-:focus-visible {
-  outline: 1px solid var(--color-accent);
-  outline-offset: 1px;
+/* Le focus clavier doit rester lisible sur un fond noir sans alourdir le survol.
+   Dans la couche de base, et non hors couche : hors couche, la règle battait
+   les utilitaires, et le `focus:outline-none` que chaque champ portait déjà
+   restait lettre morte — on écrivait dans un cadre orange plus voyant que le
+   texte saisi. Un champ dit son focus autrement, par sa bordure et par son
+   curseur. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 1px;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -106,4 +124,16 @@ label[for] {
 ::-webkit-scrollbar-thumb:hover {
   background: #433d37;
   background-clip: content-box;
+}
+
+/*
+ * La sélection de texte, accordée au reste.
+ *
+ * Le navigateur la peint en bleu vif, la seule couleur de l'interface à ne pas
+ * venir de la palette. C'est la même teinte que celle du terminal, qui la tient
+ * de son côté depuis toujours.
+ */
+::selection {
+  background: #2e2a26;
+  color: var(--color-texte);
 }

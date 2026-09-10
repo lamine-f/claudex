@@ -1,14 +1,22 @@
+import { useState } from 'react'
 import type { Tab } from '@shared/types'
+import { teintePour } from '@shared/teintes'
 import { raccourci } from '@renderer/systeme'
+import { MenuContextuel, type Action } from '../ui/MenuContextuel'
 import { IconeAttente, IconeBifurquer, IconeFermer, IconePlus } from '../ui/Icones'
 
 interface Props {
   tabs: Tab[]
+  /** Ce qui est ouvert dans la zone principale, dans l'ordre : la teinte en vient. */
+  ouverts: string[]
+  /** Vrai quand une vue occupe l'écran à la place du terminal. */
+  vueOuverte?: boolean
   /** Conversations qui réclament leur utilisateur, par identifiant de session. */
   sollicitees: Set<string>
   actifId?: string
   onChoisir: (id: string) => void
   onFermer: (id: string) => void
+  onFermerPlusieurs: (ids: string[]) => void
   onNouveau: () => void
   onBifurquer: (tab: Tab) => void
 }
@@ -20,14 +28,74 @@ interface Props {
  */
 export function TerminalTabs({
   tabs,
+  ouverts,
+  vueOuverte,
   sollicitees,
   actifId,
   onChoisir,
   onFermer,
+  onFermerPlusieurs,
   onNouveau,
   onBifurquer
 }: Props): React.JSX.Element {
-  const actif = tabs.find((t) => t.id === actifId)
+  // Rien à bifurquer quand on regarde une vue : ce n'est pas une conversation.
+  const actif = vueOuverte ? undefined : tabs.find((t) => t.id === actifId)
+  const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null)
+
+  /**
+   * Ce que le clic droit propose sur un onglet.
+   *
+   * Les comptes sont écrits dans les intitulés : fermer un onglet détruit sa
+   * session et l'agent qui y travaille, et « fermer les autres » n'a pas le
+   * même poids selon qu'il y en a un ou sept.
+   */
+  const actionsDe = (tab: Tab): Action[] => {
+    const rang = tabs.findIndex((t) => t.id === tab.id)
+    const autres = tabs.filter((t) => t.id !== tab.id).map((t) => t.id)
+    const gauche = tabs.slice(0, rang).map((t) => t.id)
+    const droite = tabs.slice(rang + 1).map((t) => t.id)
+    const pluriel = (n: number): string => (n > 1 ? 's' : '')
+
+    return [
+      { libelle: `Fermer (${raccourci('W')})`, ecarte: true, onChoisir: () => onFermer(tab.id) },
+      ...(autres.length > 0
+        ? [
+            {
+              libelle: `Fermer les ${autres.length} autre${pluriel(autres.length)}`,
+              ecarte: true,
+              onChoisir: () => onFermerPlusieurs(autres)
+            }
+          ]
+        : []),
+      ...(gauche.length > 0
+        ? [
+            {
+              libelle: `Fermer les ${gauche.length} de gauche`,
+              ecarte: true,
+              onChoisir: () => onFermerPlusieurs(gauche)
+            }
+          ]
+        : []),
+      ...(droite.length > 0
+        ? [
+            {
+              libelle: `Fermer les ${droite.length} de droite`,
+              ecarte: true,
+              onChoisir: () => onFermerPlusieurs(droite)
+            }
+          ]
+        : []),
+      ...(tabs.length > 1
+        ? [
+            {
+              libelle: `Fermer les ${tabs.length} onglets`,
+              ecarte: true,
+              onChoisir: () => onFermerPlusieurs(tabs.map((t) => t.id))
+            }
+          ]
+        : [])
+    ]
+  }
 
   return (
     <div className="flex h-14 shrink-0 items-center gap-1.5 border-b border-separateur px-3.5">
@@ -37,6 +105,10 @@ export function TerminalTabs({
           return (
             <div
               key={tab.id}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setMenu({ x: e.clientX, y: e.clientY, actions: actionsDe(tab) })
+              }}
               className={`group flex h-9 shrink-0 items-center gap-2 rounded-lg pr-2 pl-3 transition-colors ${
                 courant ? 'bg-fond-eleve' : 'hover:bg-fond-survol'
               }`}
@@ -53,10 +125,14 @@ export function TerminalTabs({
                     <IconeAttente taille={12} />
                   </span>
                 ) : (
+                  // La teinte relie l'onglet à sa conversation dans la
+                  // colonne, qui porte la même. Une fois ouvert, plus rien ne
+                  // disait d'où il venait.
                   <span
                     aria-hidden
+                    style={{ background: teintePour(tab.claudeSessionId, ouverts) }}
                     className={`h-[6px] w-[6px] shrink-0 rounded-full ${
-                      courant ? 'bg-projet' : 'bg-texte-tenu'
+                      teintePour(tab.claudeSessionId, ouverts) ? '' : 'bg-texte-tenu'
                     }`}
                   />
                 ))}
@@ -85,6 +161,7 @@ export function TerminalTabs({
             </div>
           )
         })}
+
       </div>
 
       {actif?.claudeSessionId && (
@@ -107,6 +184,16 @@ export function TerminalTabs({
       >
         <IconePlus taille={16} />
       </button>
+
+      {menu && (
+        <MenuContextuel
+          x={menu.x}
+          y={menu.y}
+          actions={menu.actions}
+          intitule="Actions de l’onglet"
+          onFermer={() => setMenu(null)}
+        />
+      )}
     </div>
   )
 }

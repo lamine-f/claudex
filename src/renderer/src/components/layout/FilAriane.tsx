@@ -3,11 +3,14 @@ import { useStore } from '@renderer/state/store'
 import { SUR_MAC } from '@renderer/systeme'
 import {
   IconeBranche,
+  IconeDepots,
   IconeEtincelle,
   IconeModifie,
+  IconeServices,
   IconeNonSuivi,
   IconePanneauColonne,
   IconePanneauProjets,
+  IconePanneauTaches,
   IconeTerminal
 } from '../ui/Icones'
 
@@ -21,15 +24,18 @@ import {
 function Mesure({
   icone,
   valeur,
-  titre
+  titre,
+  teinte
 }: {
   icone: React.ReactNode
   valeur: string
   titre: string
+  /** Couleur du chiffre, quand il porte plus qu'un compte. */
+  teinte?: string
 }): React.JSX.Element {
   return (
     <span
-      className="flex items-center gap-1.5 font-mono text-[11px] text-texte-faible"
+      className={`flex items-center gap-1.5 font-mono text-[11px] ${teinte ?? 'text-texte-faible'}`}
       title={titre}
     >
       <span className="text-texte-tenu">{icone}</span>
@@ -71,6 +77,7 @@ export function FilAriane(): React.JSX.Element {
   const tabs = useStore((e) => e.tabs)
   const activeTabId = useStore((e) => e.activeTabId)
   const git = useStore((e) => e.git)
+  const services = useStore((e) => (e.activeWorkspaceId ? e.services[e.activeWorkspaceId] : undefined))
   const diagnostics = useStore((e) => e.diagnostics)
   const rafraichirGit = useStore((e) => e.rafraichirGit)
   const layout = useStore((e) => e.layout)
@@ -119,6 +126,13 @@ export function FilAriane(): React.JSX.Element {
         onBasculer={() => replier('colonne')}
       />
 
+      <BoutonRepli
+        actif={!layout.tachesOuvertes}
+        titre={layout.tachesOuvertes ? 'Masquer les tâches' : 'Afficher les tâches'}
+        icone={<IconePanneauTaches taille={15} />}
+        onBasculer={() => replier('taches')}
+      />
+
       {courant && (
         // Le fil vit dans sa propre boîte rétrécissable. Sans `min-w-0`, un
         // titre d'onglet un peu long ne peut pas se couper : il pousse la
@@ -136,26 +150,44 @@ export function FilAriane(): React.JSX.Element {
         </div>
       )}
 
-      {/* Centré sur la fenêtre, non sur la place qui reste : le nom doit tomber
-          au milieu quel que soit ce qui l'entoure.
-
-          Sur macOS il remplit une barre de titre effacée. Ailleurs, la barre du
-          système est là et porte déjà le nom de la fenêtre : le répéter juste
-          en dessous ne dit rien de plus. */}
-      {SUR_MAC && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] text-texte-tenu"
-        >
-          Claudex
-        </span>
-      )}
-
       <div className="min-w-4 flex-1" />
 
       <div className="flex shrink-0 items-center gap-3.5">
+        {/* Une seule mesure pour tous les services : neuf pastilles séparées
+            seraient illisibles, un chiffre se lit sans s'arrêter. Elle ne
+            paraît que là où des services sont déclarés. */}
+        {services && services.length > 0 && (
+          <Mesure
+            icone={<IconeServices />}
+            valeur={`${services.filter((s) => s.etat !== 'arrete').length}/${services.length}`}
+            titre={
+              services.some((s) => s.reproche)
+                ? 'Services en marche. Une déclaration est incomplète.'
+                : 'Services en marche sur ceux qui sont déclarés'
+            }
+            teinte={services.some((s) => s.reproche) ? 'text-attention' : undefined}
+          />
+        )}
+        {/* Un projet peut porter seize dépôts sur trois branches. Le compte de
+            ceux qui ont des changements se lit d'un coup d'œil, là où seize
+            pastilles ne diraient rien. */}
+        {git && git.depots.length > 1 && (
+          <Mesure
+            icone={<IconeDepots />}
+            valeur={`${git.depots.filter((d) => d.fichiers.length > 0).length}/${git.depots.length}`}
+            titre={`${git.depots.filter((d) => d.fichiers.length > 0).length} dépôt(s) avec des changements, sur ${git.depots.length}`}
+          />
+        )}
         {git?.branche && (
-          <Mesure icone={<IconeBranche />} valeur={git.branche} titre="Branche courante" />
+          <Mesure
+            icone={<IconeBranche />}
+            valeur={git.branche}
+            titre={
+              git.depots.length > 1
+                ? 'Branche commune aux dépôts du projet'
+                : 'Branche courante'
+            }
+          />
         )}
         {git && git.modifies > 0 && (
           <Mesure

@@ -3,6 +3,7 @@ import { basename } from 'node:path'
 import chokidar, { type FSWatcher } from 'chokidar'
 import type { WebContents } from 'electron'
 import { dernierRegarde } from '@shared/onglets'
+import { migrer } from '@shared/taches'
 import { claudeProjectPath } from '../util/paths'
 import * as store from './store'
 
@@ -81,6 +82,11 @@ function rattacher(cheminWorkspace: string, uuid: string): void {
       etat.tabs.filter((t) => t.workspaceId === workspace.id && !t.claudeSessionId)
     )
     if (!candidat) return
+
+    // Les consignes préparées avant que Claude Code ne démarre étaient rangées
+    // sous l'identifiant de l'onglet : elles suivent la conversation, faute de
+    // quoi elles disparaîtraient de l'écran à l'instant où l'agent se nomme.
+    if (etat.taches) etat.taches = migrer(etat.taches, candidat.id, uuid)
 
     candidat.claudeSessionId = uuid
     candidat.claudeProjectDir = claudeProjectPath(cheminWorkspace)

@@ -168,6 +168,110 @@ sudo apt install xdg-utils
 - [x] Installer et retirer les hooks depuis l'application
 - [ ] Distinguer un agent interrompu d'un agent qui a fini
 
+### Git
+
+- [x] Suivre tous les dépôts d'un projet, y compris quand il en porte seize
+- [x] Choisir lesquels dans `.claudex/git.yml`
+- [x] Voir le diff d'un fichier, côte à côte ou d'un seul tenant
+- [x] Commiter et pousser sur plusieurs dépôts à la fois
+- [x] Faire rédiger le message du commit par un agent
+- [x] Voir la branche de chaque dépôt, pousser et changer de branche
+- [ ] Le graphe des commits et le détail d'un commit
+- [ ] Créer une branche, fusionner, résoudre les conflits
+
+Un projet qui porte plusieurs dépôts les montre tous, rangés sous leur nom avec
+leur branche. C'est le cas d'un dossier qui contient seize services, chacun
+étant son propre dépôt.
+
+Par défaut, Claudex cherche seul : le dossier du projet s'il est un dépôt, ses
+enfants directs sinon. Pour sortir de cette règle, un fichier `.claudex/git.yml`
+nomme les dépôts à suivre :
+
+```yaml
+depots:
+  - olive_core
+  - olive_gateway_service
+  - sous/dossier/un_depot_plus_profond
+  - ../web_clients/olive_front
+```
+
+Les chemins sont relatifs au projet et peuvent remonter d'un cran. Un chemin qui
+ne mène à aucun dépôt est signalé en tête de la page plutôt qu'ignoré. Sans le
+fichier, rien ne change.
+
+La section « Dépôts » liste chacun avec sa branche et ce qui attend d'être
+poussé. Elle est séparée des changements parce qu'un dépôt sans fichier modifié
+peut avoir douze commits en avance : il n'apparaissait alors nulle part. Cocher
+des dépôts permet de les pousser ou d'y changer de branche à plusieurs. Seules
+les branches que tous portent sont proposées, celle d'un seul faisant échouer
+les autres sans qu'on l'ait vu.
+
+Le bouton en forme d'étincelle, sous le champ de message, fait rédiger celui-ci
+par un agent à partir des fichiers cochés. Il reçoit les derniers commits du
+dépôt comme modèle : la langue, le format et le ton s'en déduisent, sans qu'on
+les configure. L'agent n'écrit rien dans le dépôt, il remplit le champ, et un
+message déjà écrit n'est pas remplacé sans qu'on le demande. Compter une demi-
+minute. La commande appelée est `claude`, réglable par `CLAUDEX_CLAUDE`.
+
+### Services
+
+- [x] Lancer les services d'un projet, dans l'ordre de leurs dépendances
+- [x] Verser leur sortie dans un fichier, que les agents lisent
+- [x] Des modèles nommés, séparés des groupes d'affichage
+- [ ] Détecter les services d'un projet sans déclaration
+- [ ] Surveiller la santé et relancer ce qui tombe
+
+Un projet déclare ses services dans `.claudex/services.yml` :
+
+```yaml
+# Ce dont un service tient ses réglages. Nommé, donc cité par qui veut.
+modeles:
+  spring:
+    commande: ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+    sante: http://localhost:{port}/actuator/health
+    depend_de: [infra]
+  angular:
+    commande: npm start
+
+services:
+  - { nom: infra, commande: docker compose up -d, detache: true }
+  - { nom: coeur, modele: spring,  groupe: back,  port: 8081, dossier: olive_core }
+  - { nom: front, modele: angular, groupe: front, port: 4200, dossier: olive_front }
+```
+
+Le modèle dit d'où viennent les réglages, le groupe dit où le service s'affiche.
+Les séparer permet à un front qui se lance autrement que ses voisins de rester
+dans leur famille, au lieu de former un groupe à lui seul.
+
+Les fichiers écrits avant les modèles marchent sans être repris : un bloc
+`defaut:` s'applique toujours par nom de groupe, et un service qui cite un
+modèle ne le consulte pas.
+
+### Agents
+
+- [x] Un skill écrit dans le projet, qui dit où sont les journaux
+- [x] Un serveur MCP, pour qu'un agent pilote les services et lise l'état git
+- [ ] Commiter depuis un agent
+
+L'écran d'état porte le geste, sous « Agents branchés sur Claudex ». C'est un
+réglage de l'application et non d'un projet : posé dans la barre d'un projet, il
+laissait croire qu'il ne valait que pour lui. Toute conversation Claude Code
+voit alors huit outils : les
+projets ouverts, l'état des services, leur journal filtré, les démarrer, les
+arrêter, les relancer, les dépôts git et le diff d'un fichier.
+
+Le serveur vit dans le processus de Claudex, qui tourne déjà. Un serveur lancé
+par conversation pesait quatre-vingt-huit mégaoctets : cinq conversations en
+auraient fait quatre cent quarante, contre cent quarante-neuf pour Claudex tout
+entier. Ici, le coût est nul.
+
+Il n'écoute que la boucle locale et exige un jeton, sans quoi tout processus de
+la machine pourrait piloter les services et lire le code des dépôts. Chaque
+outil accepte le projet visé ; sans lui, c'est celui qu'on regarde.
+
+Un agent qui relance un service à la main en ferait tourner deux, hors de la vue
+de Claudex. C'est ce que le serveur évite.
+
 ### Projets et fichiers
 
 - [x] Ajouter un projet, lui donner une couleur, passer de l'un à l'autre
@@ -183,7 +287,7 @@ sudo apt install xdg-utils
 |---|---|---|
 | `⌘T` | `Ctrl+Maj+T` | nouveau terminal |
 | `⌘W` | `Ctrl+Maj+W` | fermer l'onglet, et sa session avec lui |
-| `⌘E` | `Ctrl+Maj+E` | basculer entre les conversations et les fichiers |
+| `⌘E` | `Ctrl+Maj+E` | passer d'une page de la colonne à la suivante : conversations, fichiers, git, services |
 | `⌘1`…`⌘9` | `Ctrl+1`…`Ctrl+9` | passer d'un projet à l'autre |
 | `Ctrl+Tab` | `Ctrl+Tab` | passer à l'onglet suivant, `Maj` pour le précédent |
 

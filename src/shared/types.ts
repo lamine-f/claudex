@@ -1,7 +1,10 @@
 /** Types partagés entre le processus main, le preload et le renderer. */
 
+import type { FichierGit } from './git'
 import type { GenreMedia } from './media'
 import type { Rangement } from './rangement'
+
+export type { FichierGit } from './git'
 
 export interface Workspace {
   id: string
@@ -38,8 +41,54 @@ export interface Tab {
   lastActiveAt: number
 }
 
+/**
+ * Une consigne préparée pour un agent, en attente d'être envoyée.
+ *
+ * Elle vit avant d'être dite : on l'écrit quand l'idée vient, on la corrige, on
+ * la range, et on la donne quand l'agent est libre. Sans elle, chaque consigne
+ * demande d'être là au bon moment, et une conversation qui tourne vingt minutes
+ * laisse vingt minutes de battement.
+ */
+export interface Tache {
+  id: string
+  texte: string
+  /**
+   * Images jointes, par leur chemin sur le disque.
+   *
+   * Le chemin plutôt que l'image : c'est ainsi que Claude Code la lit, et une
+   * capture pesant deux mégaoctets n'a rien à faire dans le fichier d'état.
+   */
+  images?: string[]
+  creeeLe: number
+}
+
 export interface AppState {
+  /**
+   * Le jeton qui autorise un agent à joindre le serveur MCP.
+   *
+   * Retenu plutôt que régénéré à chaque lancement : la configuration de Claude
+   * Code le porte, et le changer la rendrait fausse toutes les nuits.
+   */
+  mcpJeton?: string
+  /** Le port du serveur MCP, retenu pour que la configuration reste vraie. */
+  mcpPort?: number
+  /**
+   * Les consignes en attente, par conversation.
+   *
+   * Rangées par l'identifiant de la conversation et non par onglet : ce qu'on
+   * prépare s'adresse à cet agent-là, et le retrouve quand on rouvre sa
+   * conversation.
+   */
+  taches?: Record<string, Tache[]>
   workspaces: Workspace[]
+  /**
+   * Groupes et ordre du rail, posés à la main.
+   *
+   * Le même modèle que celui des conversations : il ne connaît de ce qu'il
+   * range que son identifiant, et sert donc aux deux sans qu'on écrive deux
+   * fois la mécanique du glisser-déposer.
+   */
+  rangementProjets?: Rangement
   tabs: Tab[]
   /**
    * Noms donnés à la main, par identifiant de conversation.
@@ -85,6 +134,13 @@ export interface AppState {
     /** Panneaux repliés, pour rendre leur largeur au terminal. */
     railReplie?: boolean
     colonneRepliee?: boolean
+    /**
+     * Le volet des consignes, à droite.
+     *
+     * Dit ouvert et non replié, à l'inverse des deux autres : il est fermé tant
+     * qu'on ne l'a pas demandé, là où le rail et la colonne sont là d'emblée.
+     */
+    tachesOuvertes?: boolean
   }
   activeWorkspaceId?: string
   activeTabId?: string
@@ -127,11 +183,15 @@ export interface DoctorCheck {
     | 'retention'
     | 'notifications'
     | 'pont'
+    | 'mcp'
   label: string
   severity: DoctorSeverity
   detail: string
   /** Correctif applicable depuis l'écran de diagnostic, s'il en existe un. */
-  fix?: { label: string; action: 'applySettingsFix' | 'installerHooks' | 'retirerHooks' }
+  fix?: {
+    label: string
+    action: 'applySettingsFix' | 'installerHooks' | 'retirerHooks' | 'brancherAgents'
+  }
   /**
    * Vrai si ce contrôle ouvre l'écran de lui-même au démarrage.
    *
@@ -165,11 +225,71 @@ export type Apercu =
   /** Image, vidéo ou son : servis en flux par leur adresse, jamais lus ici. */
   | { type: GenreMedia; url: string; octets: number }
 
+/** Où en est un service : ce que l'écran en montre. */
+export type EtatService =
+  | 'arrete'
+  /** Sa session vit, son port ne répond pas encore. */
+  | 'demarrage'
+  | 'vivant'
+  /** Son port répond, mais ce n'est pas Claudex qui l'a lancé. */
+  | 'dehors'
+
+/** Un service tel que l'interface le voit. */
+export interface ServiceVu {
+  nom: string
+  groupe?: string
+  port?: number
+  detache: boolean
+  depend_de: string[]
+  etat: EtatService
+  /** Vrai quand la session appartient à Claudex. */
+  notre: boolean
+  /** Chemin du fichier de journal. */
+  journal: string
+  /** Ce qui cloche dans sa déclaration, s'il y a lieu. */
+  reproche?: string
+}
+
 /** État git d'un projet, réduit à ce que la barre de statut affiche. */
-export interface EtatGit {
+/**
+ * Un dépôt git sous un projet.
+ *
+ * Le projet de travail principal, `olive_services`, n'est pas un dépôt : il en
+ * contient seize, sur trois branches différentes. Le multi-dépôts n'est donc
+ * pas une extension à prévoir, c'est le cas nominal, et un projet qui est
+ * lui-même un dépôt en est le cas à un seul élément.
+ */
+export interface DepotGit {
+  /** Le nom du dossier, qui est ce qu'on lit dans la liste. */
+  nom: string
+  /** Racine du dépôt, en absolu. */
+  chemin: string
+  /** Vide sur une tête détachée. */
   branche: string
+  /** Absent tant que la branche n'a pas d'amont, ce qui arrive et n'est pas une erreur. */
+  amont?: string
+  avance: number
+  retard: number
+  fichiers: FichierGit[]
+}
+
+export interface EtatGit {
+  depots: DepotGit[]
+  /**
+   * La branche, quand tous les dépôts s'accordent sur la même. Absente sinon :
+   * en afficher une parmi trois ferait croire que le projet y est tout entier.
+   */
+  branche?: string
+  /** Fichiers suivis dont quelque chose a bougé, tous dépôts confondus. */
   modifies: number
   nonSuivis: number
+  /**
+   * Ce que la déclaration `.claudex/git.yml` a de bancal, s'il y a lieu.
+   *
+   * Un chemin qui ne mène à aucun dépôt se dit plutôt que de disparaître : une
+   * faute de frappe laisserait sinon la page silencieusement incomplète.
+   */
+  reproches?: { chemin?: string; message: string }[]
 }
 
 /**

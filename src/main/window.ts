@@ -113,3 +113,42 @@ export function createWindow(): BrowserWindow {
 
   return fenetre
 }
+
+/**
+ * Une fenêtre qui suit le journal d'un service.
+ *
+ * Elle charge le même renderer, avec un fragment qui lui dit quoi montrer. Rien
+ * à empaqueter en plus, et le thème comme le terminal sont ceux de
+ * l'application.
+ *
+ * Elle ne s'attache pas à la session du service. Claudex attache avec
+ * `attach-session -d`, qui détache les autres clients : deux fenêtres se
+ * chasseraient l'une l'autre, et sans le `-d` le plus petit imposerait sa
+ * taille. Elle lit le fichier, celui-là même que lit un agent.
+ */
+export function ouvrirFenetreJournal(chemin: string, titre: string): BrowserWindow {
+  const fenetre = new BrowserWindow({
+    width: 1000,
+    height: 640,
+    minWidth: 480,
+    minHeight: 240,
+    show: false,
+    title: `${titre} — journal`,
+    backgroundColor: '#000000',
+    webPreferences: {
+      preload: join(import.meta.dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webviewTag: false
+    }
+  })
+
+  const fragment = `#journal=${encodeURIComponent(chemin)}&titre=${encodeURIComponent(titre)}`
+  const devServer = process.env.ELECTRON_RENDERER_URL
+  if (devServer) void fenetre.loadURL(devServer + fragment)
+  else void fenetre.loadFile(join(import.meta.dirname, '../renderer/index.html'), { hash: fragment.slice(1) })
+
+  fenetre.once('ready-to-show', () => fenetre.show())
+  return fenetre
+}

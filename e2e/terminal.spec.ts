@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { attendreInvite, FERMER_ONGLET, fermer, lancer, lireTerminaux, NOUVEAU_TERMINAL, taper, type Contexte } from './fixtures'
+import { attendreInvite, fermer, FERMER_ONGLET, lancer, lireTerminaux, NOUVEAU_TERMINAL, nouveauTerminal, taper, type Contexte } from './fixtures'
 
 test.describe('terminaux', () => {
   let ctx: Contexte
@@ -48,5 +48,24 @@ test.describe('terminaux', () => {
     const terminaux = await lireTerminaux(ctx.page)
     expect(terminaux).toHaveLength(1)
     expect(terminaux[0]!.lignes.join('\n')).toContain('BONJOUR_CLAUDEX')
+  })
+
+  test('le clic droit sur un onglet propose de fermer les autres', async () => {
+    // Trois terminaux, pour que « les autres » et « de gauche » aient un sens.
+    while ((await ctx.page.locator('.xterm').count()) < 3) await nouveauTerminal(ctx.page)
+    await expect(ctx.page.locator('.xterm')).toHaveCount(3)
+
+    const premier = ctx.page.getByRole('button', { name: 'Terminal', exact: true }).first()
+    await premier.click({ button: 'right' })
+
+    // Les comptes sont dans les intitulés : fermer emporte des sessions, et le
+    // geste n'a pas le même poids selon qu'il en emporte une ou sept.
+    const menu = ctx.page.getByRole('menu')
+    await expect(menu.getByRole('menuitem', { name: 'Fermer les 2 autres' })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Fermer les 2 de droite' })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: /de gauche/ })).toHaveCount(0)
+
+    await menu.getByRole('menuitem', { name: 'Fermer les 2 autres' }).click()
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1, { timeout: 20_000 })
   })
 })

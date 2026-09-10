@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { createWriteStream, type WriteStream } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { homedir, release } from 'node:os'
@@ -53,6 +54,8 @@ interface Session {
    */
   ecran: Terminal
   serialiseur: SerializeAddon
+  /** Flux d'écriture du journal, quand la session est journalisée. */
+  journal?: WriteStream
 }
 
 /**
@@ -159,6 +162,9 @@ async function ecrireAmorce(nom: string, amorce: Amorce): Promise<string> {
       `[Console]::Out.Write([IO.File]::ReadAllText(${proteger(amorce.ecranPrecedent)}, [Text.Encoding]::UTF8))`
     )
   }
+  for (const [cle, valeur] of Object.entries(amorce.env ?? {})) {
+    lignes.push(`$env:${cle} = ${proteger(valeur)}`)
+  }
   if (amorce.commande) lignes.push(amorce.commande)
 
   await mkdir(dossierAmorces, { recursive: true })
@@ -234,10 +240,22 @@ export const pilote: Multiplexeur = {
     const serialiseur = new SerializeAddon()
     ecran.loadAddon(serialiseur)
 
-    const session: Session = { processus, ecran, serialiseur }
+    // Le flux est ouvert avant l'abonnement à la sortie : c'est ce qui garantit
+    // que la trace de démarrage y arrive, et non ce que le service a écrit après.
+    const session: Session = {
+      processus,
+      ecran,
+      serialiseur,
+      journal: amorce?.journal ? createWriteStream(amorce.journal, { flags: 'a' }) : undefined
+    }
     // L’écran voit tout ce que le pty écrit, que quelqu’un le regarde ou non :
     // c’est ce qui permet de le restituer à une session recréée.
-    processus.onData((donnees) => ecran.write(donnees))
+    processus.onData((donnees) => {
+      ecran.write(donnees)
+      // Le journal reçoit les mêmes octets, séquences de couleur comprises :
+      // c'est ce qui permet de le réafficher tel quel dans une fenêtre de suivi.
+      session.journal?.write(donnees)
+    })
     processus.onExit(() => {
       // Ne retirer l'entrée que si elle désigne encore CE processus : une
       // fermeture d'onglet suivie d'une réouverture immédiate rejouerait sinon
@@ -258,6 +276,7 @@ export const pilote: Multiplexeur = {
     } catch {
       /* déjà mort */
     }
+    session?.journal?.end()
     session?.ecran.dispose()
     await oublierAmorce(nom)
   },
@@ -285,6 +304,20 @@ export const pilote: Multiplexeur = {
     const hauteur = Math.max(rows, 5)
     processus.resize(largeur, hauteur)
     sessions.get(nom)?.ecran.resize(largeur, hauteur)
+  },
+
+  /**
+   * Duplique la sortie dans un fichier.
+   *
+   * Là où tmux a `pipe-pane`, ce pilote voit passer chaque octet : il suffit de
+   * les écrire au fil de l'eau. Le fichier est ouvert en ajout, pour que le
+   * journal d'un service relancé s'écrive à la suite du précédent.
+   */
+  async journaliser(nom, fichier) {
+    const session = sessions.get(nom)
+    if (!session) return
+    session.journal?.end()
+    session.journal = fichier === null ? undefined : createWriteStream(fichier, { flags: 'a' })
   },
 
   async capturer(nom, lignes = HISTORIQUE) {

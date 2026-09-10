@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { fermer, lancer, type Contexte } from './fixtures'
 
 /**
@@ -148,13 +148,93 @@ test.describe('barre de menus', () => {
     // pour dépendre des accélérateurs du menu. Ils n'en dépendent pas, Chromium
     // les traitant lui-même sur une zone éditable — mais cela se vérifie plutôt
     // que se suppose, et ce cas tombera si la conclusion cesse d'être vraie.
+    // La touche du presse-papiers appartient au système : Commande sur macOS,
+    // Contrôle ailleurs. Taper Contrôle sur un Mac ne collait rien, et le cas
+    // tombait sur une plateforme où le menu n'a même pas été retiré.
+    const modificateur = process.platform === 'darwin' ? 'Meta' : 'Control'
     const champ = ctx.page.getByPlaceholder('Rechercher')
     await champ.click()
     await champ.fill('bonjour presse-papiers')
-    await ctx.page.keyboard.press('Control+A')
-    await ctx.page.keyboard.press('Control+C')
+    await ctx.page.keyboard.press(`${modificateur}+A`)
+    await ctx.page.keyboard.press(`${modificateur}+C`)
     await champ.fill('')
-    await ctx.page.keyboard.press('Control+V')
+    await ctx.page.keyboard.press(`${modificateur}+V`)
     await expect(champ).toHaveValue('bonjour presse-papiers')
+  })
+})
+
+/**
+ * La sélection de texte, accordée au reste.
+ *
+ * Le navigateur la peint en bleu vif, la seule couleur de l'interface à ne pas
+ * venir de la palette. Le cas la mesure là où elle se voyait : dans un champ.
+ */
+test.describe('sélection de texte', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  test('prend la teinte du thème, pas le bleu du navigateur', async () => {
+    const teinte = await ctx.page.evaluate(() => {
+      const regle = [...document.styleSheets]
+        .flatMap((f) => {
+          try {
+            return [...f.cssRules]
+          } catch {
+            return []
+          }
+        })
+        .find((r) => r.cssText.startsWith('::selection'))
+      return regle?.cssText ?? ''
+    })
+    // Le navigateur rend la couleur résolue, non celle qu'on a écrite.
+    expect(teinte).toContain('rgb(46, 42, 38)')
+    // La même que celle du terminal, qui la tient de son côté depuis toujours.
+    expect(teinte).toContain('var(--color-texte)')
+  })
+})
+
+/**
+ * L'anneau de focus se voit là où rien d'autre ne dit où l'on est, et nulle
+ * part ailleurs.
+ */
+test.describe('anneau de focus', () => {
+  let ctx: Contexte
+
+  test.beforeAll(async () => {
+    ctx = await lancer()
+  })
+
+  test.afterAll(async () => {
+    await fermer(ctx)
+  })
+
+  const contour = (cible: Locator): Promise<string> =>
+    cible.evaluate((el) => getComputedStyle(el).outlineStyle)
+
+  test('épargne les champs, qui disent leur focus autrement', async () => {
+    // La règle vivait hors couche et battait les utilitaires : le
+    // `focus:outline-none` de chaque champ restait lettre morte, et l'on
+    // écrivait dans un cadre orange.
+    const champ = ctx.page.getByLabel('Rechercher un projet')
+    await champ.focus()
+    expect(await contour(champ)).toBe('none')
+  })
+
+  test('reste sur ce qui n’a pas d’autre marque', async () => {
+    await ctx.page.getByLabel('Rechercher un projet').focus()
+    await ctx.page.keyboard.press('Tab')
+
+    // Le geste suivant sort du champ pour un bouton du rail, quel qu'il soit :
+    // là, l'anneau est la seule chose qui dise où l'on est.
+    const suivant = ctx.page.locator(':focus')
+    await expect(suivant).toHaveRole('button')
+    expect(await contour(suivant)).toBe('solid')
   })
 })

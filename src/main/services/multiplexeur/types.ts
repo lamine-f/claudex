@@ -16,6 +16,37 @@ export interface Amorce {
   commande?: string
   /** Fichier portant l'écran de la vie précédente, à réafficher avant elle. */
   ecranPrecedent?: string
+  /**
+   * Variables d'environnement à poser avant la commande.
+   *
+   * Elles sont composées par le pilote et non par l'appelant : `A=1 commande`
+   * ne veut rien dire pour PowerShell, qui écrit `$env:A='1'`. C'est la même
+   * raison qui a fait passer l'amorce en morceaux plutôt qu'en chaîne toute
+   * faite.
+   */
+  env?: Record<string, string>
+
+  /**
+   * Fichier où dupliquer la sortie, branché avant que la commande ne parte.
+   *
+   * L'ordre compte : brancher après le lancement perd tout ce que le service a
+   * écrit dans l'intervalle, c'est-à-dire sa trace de démarrage, celle-là même
+   * qu'on veut garder. Mesuré sur un service qui n'écrit qu'une ligne : elle
+   * n'arrivait jamais dans le fichier.
+   */
+  journal?: string
+
+  /**
+   * Joue la commande dans un shell de connexion, avec l'environnement de
+   * l'utilisateur.
+   *
+   * Un service lancé sans lui ne voit que le PATH du système. Mesuré : `./mvnw`
+   * trouvait `/usr/bin/java`, l'ébauche que macOS livre, et répondait « Unable
+   * to locate a Java Runtime » — le vrai JDK et `JAVA_HOME` venaient d'un
+   * `.zprofile`, que seuls les shells de connexion lisent. Le même écart vaut
+   * pour nvm, sdkman ou pyenv.
+   */
+  connexion?: boolean
 }
 
 /**
@@ -89,6 +120,17 @@ export interface Multiplexeur {
    * les dimensions qu'avait l'onglet à sa création.
    */
   redimensionner(nom: string, processus: IPty, cols: number, rows: number): void
+
+  /**
+   * Duplique la sortie de la session dans un fichier, sans rien retirer de
+   * l'écran. `null` arrête la duplication.
+   *
+   * C'est par là qu'un agent lit les journaux d'un service : il ouvre un
+   * fichier, ce qu'il sait déjà faire, plutôt qu'un protocole qu'il faudrait
+   * lui apprendre. Le même flux nourrit donc l'écran, la fenêtre de suivi et
+   * l'agent, et personne ne voit un état différent d'un autre.
+   */
+  journaliser(nom: string, fichier: string | null): Promise<void>
 
   /** Écran et historique visibles, séquences ANSI comprises. */
   capturer(nom: string, lignes?: number): Promise<string>

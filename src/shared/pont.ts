@@ -9,7 +9,7 @@
  */
 const ATTENDU: Record<string, string[]> = {
   state: ['get', 'setLayout', 'setActiveWorkspace'],
-  workspace: ['list', 'add', 'remove', 'update', 'ranger'],
+  workspace: ['list', 'add', 'remove', 'update', 'ranger', 'rangement', 'arranger'],
   term: [
     'list',
     'comptes',
@@ -33,6 +33,25 @@ const ATTENDU: Record<string, string[]> = {
     'rangement',
     'arranger',
     'apaiser'
+  ],
+  services: [
+    'etats',
+    'demarrer',
+    'arreter',
+    'liberer',
+    'modele',
+    'fenetreJournal',
+    'journal'
+  ],
+  taches: [
+    'lire',
+    'ajouter',
+    'modifier',
+    'retirer',
+    'ranger',
+    'joindre',
+    'choisirImages',
+    'envoyer'
   ],
   git: ['etat'],
   systeme: ['plateforme'],

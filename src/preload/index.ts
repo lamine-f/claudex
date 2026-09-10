@@ -7,8 +7,10 @@ import type {
   DoctorCheck,
   Entree,
   EtatGit,
+  ServiceVu,
   Sollicitation,
   Tab,
+  Tache,
   Workspace
 } from '@shared/types'
 
@@ -38,6 +40,10 @@ const api = {
     update: (id: string, patch: Partial<Omit<Workspace, 'id'>>): Promise<Workspace[]> =>
       ipcRenderer.invoke('workspace:update', id, patch),
     /** Range les projets dans l'ordre donné. */
+    /** Groupes et ordre du rail. */
+    rangement: (): Promise<Rangement> => ipcRenderer.invoke('workspace:rangement'),
+    arranger: (rangement: Rangement): Promise<void> =>
+      ipcRenderer.invoke('workspace:arranger', rangement),
     ranger: (ids: string[]): Promise<Workspace[]> => ipcRenderer.invoke('workspace:ranger', ids)
   },
   term: {
@@ -135,9 +141,90 @@ const api = {
       return () => ipcRenderer.removeListener('claude:allerVers', ecouteur)
     }
   },
+  services: {
+    etats: (workspaceId: string): Promise<ServiceVu[]> =>
+      ipcRenderer.invoke('services:etats', workspaceId),
+    demarrer: (workspaceId: string, noms: string[]): Promise<{ bloques: string[] }> =>
+      ipcRenderer.invoke('services:demarrer', workspaceId, noms),
+    arreter: (workspaceId: string, noms: string[]): Promise<void> =>
+      ipcRenderer.invoke('services:arreter', workspaceId, noms),
+    /** Tue ce qui écoute sur le port d'un service déclaré. Rend les PID visés. */
+    liberer: (workspaceId: string, nom: string): Promise<number[]> =>
+      ipcRenderer.invoke('services:liberer', workspaceId, nom),
+    modele: (workspaceId: string): Promise<string | null> =>
+      ipcRenderer.invoke('services:modele', workspaceId),
+    mcp: (workspaceId: string, portee: 'projet' | 'utilisateur'): Promise<string | null> =>
+      ipcRenderer.invoke('services:mcp', workspaceId, portee),
+    /** Ouvre une fenêtre qui suit le journal d'un service. */
+    fenetreJournal: (chemin: string, titre: string): Promise<void> =>
+      ipcRenderer.invoke('services:fenetreJournal', chemin, titre),
+    /** Ce qu'un journal porte depuis un décalage, séquences ANSI comprises. */
+    journal: (chemin: string, depuis?: number): Promise<{ texte: string; taille: number }> =>
+      ipcRenderer.invoke('services:journal', chemin, depuis)
+  },
+
+  copier: (texte: string): Promise<void> => ipcRenderer.invoke('fs:copier', texte),
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>
-      ipcRenderer.invoke('git:etat', workspaceId)
+      ipcRenderer.invoke('git:etat', workspaceId),
+    diff: (
+      workspaceId: string,
+      depot: string,
+      fichier: string,
+      options: { indexe?: boolean; nonSuivi?: boolean; contexte?: number } = {}
+    ): Promise<{ sortie: string; trop?: number }> =>
+      ipcRenderer.invoke('git:diff', workspaceId, depot, fichier, options),
+    commiter: (
+      workspaceId: string,
+      lots: { depot: string; fichiers: string[] }[],
+      message: string,
+      pousserAussi: boolean
+    ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
+      ipcRenderer.invoke('git:commiter', workspaceId, lots, message, pousserAussi),
+    branches: (
+      workspaceId: string
+    ): Promise<Record<string, { courante: string; locales: string[]; distantes: string[] }>> =>
+      ipcRenderer.invoke('git:branches', workspaceId),
+    pousser: (
+      workspaceId: string,
+      depots: string[]
+    ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
+      ipcRenderer.invoke('git:pousser', workspaceId, depots),
+    changerBranche: (
+      workspaceId: string,
+      depots: string[],
+      branche: string
+    ): Promise<{ depot: string; nom: string; fait: boolean; message?: string }[]> =>
+      ipcRenderer.invoke('git:changerBranche', workspaceId, depots, branche),
+    rediger: (
+      workspaceId: string,
+      lots: { depot: string; fichiers: string[] }[]
+    ): Promise<{ message?: string; erreur?: string }> =>
+      ipcRenderer.invoke('git:rediger', workspaceId, lots)
+  },
+  taches: {
+    lire: (cle: string): Promise<Tache[]> => ipcRenderer.invoke('taches:lire', cle),
+    ajouter: (cle: string, texte: string, images: string[] = []): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:ajouter', cle, texte, images),
+    modifier: (cle: string, id: string, patch: Partial<Omit<Tache, 'id'>>): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:modifier', cle, id, patch),
+    retirer: (cle: string, id: string): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:retirer', cle, id),
+    /** Range une consigne à une nouvelle place dans la file. */
+    ranger: (cle: string, id: string, vers: number): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:ranger', cle, id, vers),
+    /** Écrit une image jointe sur le disque et rend son chemin. */
+    joindre: (donnees: Uint8Array, type: string): Promise<string> =>
+      ipcRenderer.invoke('taches:joindre', donnees, type),
+    /** Ouvre le dialogue du système et rend les chemins des copies faites. */
+    choisirImages: (): Promise<string[]> => ipcRenderer.invoke('taches:choisirImages'),
+    /** Envoie une consigne dans le terminal d'un onglet, et la retire de la file. */
+    envoyer: (
+      cle: string,
+      id: string,
+      tabId: string
+    ): Promise<{ envoye: boolean; raison?: string; restantes: Tache[] }> =>
+      ipcRenderer.invoke('taches:envoyer', cle, id, tabId)
   },
   systeme: {
     /**

@@ -1,5 +1,11 @@
 import {
   ChevronRight,
+  GripVertical,
+  ListTodo,
+  Paperclip,
+  Pencil,
+  PanelRight,
+  SendHorizontal,
   Columns2,
   FolderPlus,
   Hand,
@@ -11,8 +17,20 @@ import {
   PanelLeft,
   GitBranch,
   GitFork,
+  Boxes,
+  Cable,
+  Columns2 as DeuxColonnes,
+  Rows3,
+  UnfoldVertical,
+  FoldVertical,
   Plus,
+  Ban,
+  FileCode2,
+  Play,
   RefreshCw,
+  RotateCcw,
+  Server,
+  Square,
   Sparkles,
   SquareTerminal,
   Star,
@@ -44,6 +62,24 @@ const reglages = ({ taille = TAILLE, className }: Props): Record<string, unknown
 
 /** Branche git courante. */
 export const IconeBranche = (p: Props): React.JSX.Element => <GitBranch {...reglages(p)} />
+
+/** Les dépôts d'un projet, quand il en porte plusieurs. */
+export const IconeDepots = (p: Props): React.JSX.Element => <Boxes {...reglages(p)} />
+
+/** Le branchement d'un agent sur le projet. */
+export const IconeBranchement = (p: Props): React.JSX.Element => <Cable {...reglages(p)} />
+
+/** Diff en deux colonnes. */
+export const IconeCoteACote = (p: Props): React.JSX.Element => <DeuxColonnes {...reglages(p)} />
+
+/** Diff d'un seul tenant. */
+export const IconeUnifie = (p: Props): React.JSX.Element => <Rows3 {...reglages(p)} />
+
+/** Déplier ce qui est replié. */
+export const IconeDeplier = (p: Props): React.JSX.Element => <UnfoldVertical {...reglages(p)} />
+
+/** Replier ce qui est déplié. */
+export const IconeReplier = (p: Props): React.JSX.Element => <FoldVertical {...reglages(p)} />
 
 /** Fichier suivi et modifié. */
 export const IconeModifie = (p: Props): React.JSX.Element => <FilePen {...reglages(p)} />
@@ -86,6 +122,16 @@ export const IconeConversations = (p: Props): React.JSX.Element => (
 )
 
 /** L'arborescence des fichiers. */
+/** Les services d'un projet : ce qui tourne, par opposition à qui l'on parle. */
+export const IconeServices = (p: Props): React.JSX.Element => <Server {...reglages(p)} />
+
+/** Les gestes d'un service : lancer, arrêter, relancer, libérer son port. */
+export const IconeDemarrer = (p: Props): React.JSX.Element => <Play {...reglages(p)} />
+export const IconeArreter = (p: Props): React.JSX.Element => <Square {...reglages(p)} />
+export const IconeRelancer = (p: Props): React.JSX.Element => <RotateCcw {...reglages(p)} />
+export const IconeLiberer = (p: Props): React.JSX.Element => <Ban {...reglages(p)} />
+export const IconeSkill = (p: Props): React.JSX.Element => <FileCode2 {...reglages(p)} />
+
 export const IconeArborescence = (p: Props): React.JSX.Element => <FolderTree {...reglages(p)} />
 
 /** Replier ou déployer la colonne des projets. */
@@ -99,6 +145,24 @@ export const IconeNouveauGroupe = (p: Props): React.JSX.Element => <FolderPlus {
 
 /** Replier ou déployer un groupe. Pivotée d'un quart de tour une fois ouvert. */
 export const IconeChevron = (p: Props): React.JSX.Element => <ChevronRight {...reglages(p)} />
+
+/** Les consignes préparées pour un agent. */
+export const IconeTaches = (p: Props): React.JSX.Element => <ListTodo {...reglages(p)} />
+
+/** Le volet des consignes, à droite. */
+export const IconePanneauTaches = (p: Props): React.JSX.Element => <PanelRight {...reglages(p)} />
+
+/** Joindre une image à une consigne. */
+export const IconeJoindre = (p: Props): React.JSX.Element => <Paperclip {...reglages(p)} />
+
+/** Envoyer une consigne dans le terminal. */
+export const IconeEnvoyer = (p: Props): React.JSX.Element => <SendHorizontal {...reglages(p)} />
+
+/** Corriger ce qui est déjà écrit. */
+export const IconeModifier = (p: Props): React.JSX.Element => <Pencil {...reglages(p)} />
+
+/** Poignée de déplacement, prise à la souris. */
+export const IconePoignee = (p: Props): React.JSX.Element => <GripVertical {...reglages(p)} />
 
 /** Filtrer une liste. */
 export const IconeRecherche = (p: Props): React.JSX.Element => <Search {...reglages(p)} />

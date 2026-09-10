@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { fermer, glisser, lancer, nouveauTerminal, type Contexte } from './fixtures'
+import { fermer, glisser, HAUTEUR_ENTETE, lancer, nouveauTerminal, type Contexte } from './fixtures'
 
 /** Le dossier où Claude Code range les transcrits d'un projet. */
 function dossierTranscrits(projet: string): string {
@@ -29,7 +29,9 @@ const onglets = (page: Page): Locator => page.getByRole('button', { name: 'Termi
 
 /** Le rail des projets, et la ligne d'un projet donné. */
 const rail = (page: Page): Locator => page.getByLabel('Projets')
-const projet = (page: Page, nom: string): Locator => rail(page).locator('li', { hasText: nom })
+/** La ligne d'un projet : la plus profonde, s'il est rangé dans un groupe. */
+const projet = (page: Page, nom: string): Locator =>
+  rail(page).locator('li', { hasText: nom }).last()
 
 /** L'ordre des projets tel qu'il est affiché, lu sur leur hauteur à l'écran. */
 async function ordre(page: Page, ...noms: string[]): Promise<string[]> {
@@ -169,5 +171,58 @@ test.describe('les projets du rail', () => {
     // onglets, plutôt qu'une colonne vide.
     await expect(onglets(page)).toHaveCount(2)
     await expect(projet(page, 'Alpha')).toContainText('2')
+  })
+
+  test('les projets se rangent en groupes, qui se replient et se retiennent', async () => {
+    const { page } = ctx
+
+    // Un groupe créé avec un projet dedans, par le clic droit sur ce projet.
+    await projet(page, 'Alpha').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Nouveau groupe avec ce projet' }).click()
+
+    const nom = page.getByLabel('Nom du groupe')
+    await expect(nom).toBeVisible()
+    await nom.fill('Travail')
+    await nom.press('Enter')
+
+    const entete = page.getByRole('button', { name: 'Replier le groupe' })
+    await expect(entete).toBeVisible()
+    await expect(projet(page, 'Alpha')).toBeVisible()
+
+    // L'en-tête se peint d'un bord à l'autre du rail, comme celui d'un groupe
+    // de conversations : c'est lui le groupe, pas la pastille en retrait d'un
+    // projet. Il déborde donc de part et d'autre des projets qu'il coiffe.
+    const bandeau = await entete.locator('xpath=..').boundingBox()
+    const pastille = await projet(page, 'Alpha').boundingBox()
+    expect(bandeau).not.toBeNull()
+    expect(pastille).not.toBeNull()
+    expect(bandeau!.x).toBeLessThan(pastille!.x)
+    expect(bandeau!.x + bandeau!.width).toBeGreaterThan(pastille!.x + pastille!.width)
+    expect(bandeau!.height).toBe(HAUTEUR_ENTETE)
+
+    // Replié, le groupe cache son projet sans le perdre.
+    await entete.click()
+    await expect(projet(page, 'Alpha')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Déployer le groupe' }).click()
+    await expect(projet(page, 'Alpha')).toBeVisible()
+
+    // Le groupe se renomme, par son menu comme par un double-clic sur son nom.
+    // Le menu réécrivait le nom qu'il avait déjà au lieu d'ouvrir la saisie.
+    await page.getByRole('button', { name: 'Travail' }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Renommer le groupe' }).click()
+    await nom.fill('Chantier')
+    await nom.press('Enter')
+    await expect(page.getByRole('button', { name: 'Chantier' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Chantier' }).dblclick()
+    await nom.fill('Atelier')
+    await nom.press('Enter')
+    await expect(page.getByRole('button', { name: 'Atelier' })).toBeVisible()
+
+    // Le rangement est écrit : il survit à la fermeture.
+    await fermer(ctx, { nettoyer: false })
+    ctx = await lancer({ donnees: ctx.donnees, projet: ctx.projet })
+    await expect(ctx.page.getByRole('button', { name: 'Replier le groupe' })).toBeVisible()
+    await expect(ctx.page.getByText('Atelier')).toBeVisible()
   })
 })

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { fermer, lancer, type Contexte } from './fixtures'
 
 /** Violet : franchement distinct du terracotta, donc impossible à confondre. */
@@ -57,25 +57,56 @@ test.describe("la couleur du projet traverse l'application", () => {
     await fermer(ctx)
   })
 
-  test('le liseré de la conversation à l’écran prend la teinte du projet', async () => {
+  test('le liseré de la conversation ouverte la relie à son onglet', async () => {
+    // Ce liseré portait la couleur du projet, qui ne distinguait rien : toutes
+    // les conversations d'un projet la partagent. Il porte maintenant la teinte
+    // de l'onglet qui tient cette conversation, et l'onglet porte la même. La
+    // couleur du projet garde le rail et son compteur, où elle sépare vraiment.
     const ligne = ctx.page
       .getByLabel('Sessions et fichiers')
       .locator('li', { hasText: 'Refonte facturation' })
       .locator('button')
       .first()
-    await expect(ligne).toHaveCSS('border-left-color', VIOLET_RGB)
-  })
-
-  test('le mot « à l’écran » aussi', async () => {
-    await expect(ctx.page.getByText('à l’écran')).toHaveCSS('color', VIOLET_RGB)
-  })
-
-  test("la pastille de l'onglet actif aussi", async () => {
     const pastille = ctx.page
       .getByRole('button', { name: 'Refonte facturation' })
       .last()
       .locator('xpath=../span[@aria-hidden]')
-    await expect(pastille).toHaveCSS('background-color', VIOLET_RGB)
+
+    // Les deux portent une transition : mesurées à la volée, elles se lisent
+    // au milieu du fondu et diffèrent de quelques unités. On attend qu'elles
+    // se rejoignent.
+    await expect
+      .poll(async () => {
+        const [a, b] = await Promise.all([
+          ligne.evaluate((el) => getComputedStyle(el).borderLeftColor),
+          pastille.evaluate((el) => getComputedStyle(el).backgroundColor)
+        ])
+        return a === b ? a : null
+      })
+      .not.toBeNull()
+
+    // Et ce n'est plus la couleur du projet, qui ne disait pas quel onglet.
+    const liseré = await ligne.evaluate((el) => getComputedStyle(el).borderLeftColor)
+    expect(liseré).not.toBe(VIOLET_RGB)
+  })
+
+  test('la conversation à l’écran se lève comme le projet regardé', async () => {
+    // Creusée, elle s'enfonçait là où la ligne du rail ressort : deux marques
+    // du même état se lisaient à l'envers l'une de l'autre.
+    const conversation = ctx.page
+      .getByLabel('Sessions et fichiers')
+      .locator('li', { hasText: 'Refonte facturation' })
+      .locator('button')
+      .first()
+    const projet = ctx.page.getByLabel('Projets').locator('li').first().locator('button')
+
+    const fond = (cible: Locator): Promise<string> =>
+      cible.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(await fond(conversation)).toBe(await fond(projet))
+  })
+
+  test('le mot « à l’écran » aussi', async () => {
+    await expect(ctx.page.getByText('à l’écran')).toHaveCSS('color', VIOLET_RGB)
   })
 
   test('et le compteur du rail, qui appartient au même projet', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ClaudeSession, StatutSession } from '@shared/types'
+import { teintePour } from '@shared/teintes'
 import { quand } from '@shared/temps'
 import { IconeAttente, IconeBifurquer, IconeBranche, IconeFavori } from '../ui/Icones'
 
@@ -30,6 +31,8 @@ export interface Glisser {
 }
 
 interface Props {
+  /** Ce qui est ouvert dans la zone principale, dans l'ordre : la teinte en vient. */
+  ouverts: string[]
   session: ClaudeSession
   statut: StatutSession
   glisser?: Glisser
@@ -58,9 +61,14 @@ export function SessionRow({
   onBifurquer,
   onEtiqueter,
   onRenommer,
-  onMenu
+  onMenu,
+  ouverts
 }: Props): React.JSX.Element {
   const { libelle, couleur } = STATUTS[statut]
+  // La teinte de l'onglet qui porte cette conversation, quand il en est un.
+  // Elle prime sur la couleur du statut : c'est elle qui relie les deux
+  // moitiés de l'écran, et « dans un onglet » se dit déjà par l'infobulle.
+  const teinte = teintePour(session.id, ouverts)
   const active = statut === 'active'
   const dansUnOnglet = active || statut === 'ouverte'
   const [edition, setEdition] = useState<Champ | null>(null)
@@ -168,15 +176,21 @@ export function SessionRow({
         title={`${session.titre}\n${Math.round(session.octets / 1024)} Ko${
           session.gitBranch ? ` · ${session.gitBranch}` : ''
         }`}
-        // Le liseré plein ne va qu'à la conversation qu'on a sous les yeux ;
-        // celles qui patientent dans un autre onglet le portent en retrait.
+        // Le liseré porte la teinte de l'onglet qui tient cette conversation :
+        // c'est lui qui relie les deux moitiés de l'écran. Sans onglet, il
+        // reste un trait de séparation.
+        style={teinte ? { borderLeftColor: teinte } : undefined}
         className={`flex w-full flex-col gap-1 border-l-2 py-2.5 pr-10 pl-3.5 text-left transition-colors ${
           active
-            ? 'border-l-projet bg-fond-creux'
+            ? // Le même fond que le projet regardé dans le rail : creusée, la
+              // ligne à l'écran s'enfonçait là où celle du rail ressort, et
+              // deux marques du même état se lisaient à l'envers l'une de
+              // l'autre.
+              'bg-fond-eleve'
             : dansUnOnglet
-              ? 'border-l-bordure hover:bg-fond-survol'
+              ? 'hover:bg-fond-survol'
               : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'
-        }`}
+        } ${teinte ? '' : 'border-l-separateur'}`}
       >
         <span className="flex min-w-0 items-baseline gap-2">
           {statut === 'attente' && (

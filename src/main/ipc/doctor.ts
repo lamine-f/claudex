@@ -2,13 +2,15 @@ import { ipcMain } from 'electron'
 import type { DoctorCheck } from '@shared/types'
 import { applySettingsFix, check } from '../services/doctor'
 import { installer, retirer } from '../services/hooks'
+import { brancherAgents } from '../services/mcp'
 
 type Correctif = NonNullable<DoctorCheck['fix']>['action']
 
 const CORRECTIFS: Record<Correctif, () => Promise<{ ok: boolean; message: string }>> = {
   applySettingsFix,
   installerHooks: installer,
-  retirerHooks: retirer
+  retirerHooks: retirer,
+  brancherAgents
 }
 
 export function registerDoctorIpc(): void {
