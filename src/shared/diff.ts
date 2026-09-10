@@ -153,3 +153,46 @@ export function compter(diff: Diff): { ajoutees: number; retirees: number } {
     retirees: lignes.filter((l) => l.genre === 'retire').length
   }
 }
+
+/** Une étendue de rangées que l'on peut cacher, parce que rien n'y change. */
+export interface Repli {
+  /** Rang de la première rangée cachée, dans la liste des paires. */
+  debut: number
+  /** Rang de la première rangée qui n'est plus cachée. */
+  fin: number
+}
+
+/**
+ * Les étendues inchangées assez longues pour valoir un repli.
+ *
+ * Montrer un fichier entier donne le contexte, mais noie deux lignes changées
+ * dans quatre mille. Replier ce qui ne change pas garde les deux : le contexte
+ * reste à portée d'un clic, et l'œil va droit au changement.
+ *
+ * Le contexte demandé est laissé de chaque côté d'un changement, comme le fait
+ * `git diff -U`. Une étendue qui n'y survit pas n'est pas repliée : cacher
+ * deux lignes pour poser une barre à leur place ne gagne rien.
+ */
+export function replis(paires: Paire[], contexte = 3, minimum = 4): Repli[] {
+  const change = paires.map(
+    (p) => p.gauche?.genre !== 'contexte' || p.droite?.genre !== 'contexte'
+  )
+
+  const trouves: Repli[] = []
+  let debut = 0
+  for (let rang = 0; rang <= paires.length; rang++) {
+    if (rang < paires.length && !change[rang]) continue
+
+    // L'étendue court de `debut` à `rang`, exclus. On y laisse le contexte.
+    const de = debut === 0 ? 0 : debut + contexte
+    const a = rang === paires.length ? paires.length : rang - contexte
+    if (a - de >= minimum) trouves.push({ debut: de, fin: a })
+    debut = rang + 1
+  }
+  return trouves
+}
+
+/** Vrai quand ce rang tombe dans une étendue repliée. */
+export function estCache(rang: number, replies: Repli[]): boolean {
+  return replies.some((r) => rang >= r.debut && rang < r.fin)
+}

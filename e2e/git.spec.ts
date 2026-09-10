@@ -260,6 +260,15 @@ test.describe('vue de diff', () => {
     await run('git', ['-C', projet, 'commit', '-qm', 'long'])
     await writeFile(join(projet, 'long.txt'), corps([20, 100, 180]))
 
+    // Un fichier dont chaque ligne change : rien n'y est repliable, et le
+    // défilement s'y mesure sans dépendre de ce qui est plié.
+    const dense = (marque: string): string =>
+      Array.from({ length: 200 }, (_, n) => `dense ${n} ${marque}`).join('\n') + '\n'
+    await writeFile(join(projet, 'dense.txt'), dense('avant'))
+    await run('git', ['-C', projet, 'add', 'dense.txt'])
+    await run('git', ['-C', projet, 'commit', '-qm', 'dense'])
+    await writeFile(join(projet, 'dense.txt'), dense('après'))
+
     // Une ligne bien plus large que la colonne, comme un fichier minifié.
     await writeFile(join(projet, 'large.txt'), 'court\n')
     await run('git', ['-C', projet, 'add', 'large.txt'])
@@ -329,9 +338,15 @@ test.describe('vue de diff', () => {
     await expect(
       ctx.page.getByRole('button', { name: 'Ne montrer que les changements' })
     ).toBeVisible()
-    await expect
-      .poll(async () => ctx.page.getByLabel('Volet gauche').locator('tr').count())
-      .toBeGreaterThan(150)
+    await expect(ctx.page.getByLabel('Volet gauche').getByText(/^@@ /)).toHaveCount(0)
+  }
+
+  /** Déplie toutes les étendues repliées, pour retrouver le fichier en entier. */
+  const deplierTout = async (): Promise<void> => {
+    const barres = ctx.page.getByLabel('Volet gauche').getByTitle(/Déplier \d+ lignes/)
+    for (let reste = await barres.count(); reste > 0; reste = await barres.count()) {
+      await barres.first().click()
+    }
   }
 
   /** Ramène la vue aux seuls changements, d'où qu'elle parte. */
@@ -352,7 +367,7 @@ test.describe('vue de diff', () => {
     // Deux cents lignes changées tiennent plus que la fenêtre. Sans hauteur
     // bornée quelque part dans la chaîne, la vue pousse la fenêtre au lieu de
     // défiler, et le bas devient inatteignable.
-    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await ctx.page.getByTitle(/voir le diff de dense\.txt/).click()
     await montrerCoteACote()
 
     const zone = ctx.page.getByLabel('Volet gauche')
@@ -400,7 +415,7 @@ test.describe('vue de diff', () => {
   test('le défilement en hauteur reste partagé', async () => {
     // Le vertical, lui, est commun : sans quoi les deux côtés cesseraient de se
     // faire face, et la comparaison n'aurait plus de sens.
-    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await ctx.page.getByTitle(/voir le diff de dense\.txt/).click()
     await montrerCoteACote()
     const gauche = ctx.page.getByLabel('Volet gauche')
     const droit = ctx.page.getByLabel('Volet droit')
@@ -445,7 +460,9 @@ test.describe('vue de diff', () => {
     await deplier.click()
     await expect(replier).toBeVisible()
     await expect(coupures).toHaveCount(0)
-    await expect.poll(async () => zone.locator('tr').count()).toBeGreaterThan(150)
+    // Plus de coupures, et des barres de repli à leur place : le fichier entier
+    // est là, ce qui n'y change pas étant plié jusqu'à ce qu'on le demande.
+    await expect(zone.getByTitle(/Déplier \d+ lignes/).first()).toBeVisible()
 
     // Le choix se retient d'un fichier à l'autre, comme la forme.
     await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
@@ -461,6 +478,11 @@ test.describe('vue de diff', () => {
     const zone = ctx.page.getByLabel('Volet gauche')
     await expect(zone.locator('tr').first()).toBeVisible()
     await montrerTout()
+    // Déplié, le fichier porte ses trois changements bien espacés : c'est ce
+    // qui donne à la navigation de quoi sauter.
+    await deplierTout()
+    // Cliquer les barres a fait défiler : on repart du haut.
+    await zone.evaluate((el) => el.scrollTo(0, 0))
 
     const haut = async (): Promise<number> => zone.evaluate((el) => el.scrollTop)
     const suivant = ctx.page.getByRole('button', { name: 'Changement suivant' })
@@ -503,15 +525,15 @@ test.describe('vue de diff', () => {
     // Relire trente fichiers demandait de revenir à la liste après chacun.
     await ctx.page.getByTitle('Voir le diff de base.txt').click()
     const compteur = ctx.page.getByText(/^\d+\/\d+$/)
-    await expect(compteur).toHaveText('1/5')
+    await expect(compteur).toHaveText('1/6')
 
     await ctx.page.getByRole('button', { name: 'Fichier suivant' }).click()
-    await expect(compteur).toHaveText('2/5')
+    await expect(compteur).toHaveText('2/6')
     // La vue a changé de fichier, elle ne s'est pas dédoublée.
     await expect(ctx.page.getByRole('button', { name: 'Fichier suivant' })).toHaveCount(1)
 
     await ctx.page.getByRole('button', { name: 'Fichier précédent' }).click()
-    await expect(compteur).toHaveText('1/5')
+    await expect(compteur).toHaveText('1/6')
     // Au premier, on ne remonte plus.
     await expect(ctx.page.getByRole('button', { name: 'Fichier précédent' })).toBeDisabled()
   })
@@ -569,6 +591,46 @@ test.describe('vue de diff', () => {
       .locator('xpath=../div[@aria-hidden="true"]')
       .evaluate((el) => getComputedStyle(el).backgroundColor)
     expect(marge).toBe('rgb(33, 37, 43)')
+  })
+
+  test('marque dans la liste le fichier dont le diff est ouvert', async () => {
+    // Sans elle, rien ne dit quelle ligne produit ce qu'on regarde. La marque
+    // était calculée mais jamais posée : elle ne se voyait nulle part.
+    // La marque suit l'ouverture et la fermeture d'une même ligne. Comparer à
+    // une autre ligne ne dirait rien : les cas précédents laissent des vues
+    // ouvertes, et chacune porte la sienne.
+    const marque = (): Promise<string> =>
+      ctx.page
+        .getByTitle(/voir le diff de base\.txt/)
+        .locator('xpath=..')
+        .evaluate((el) => getComputedStyle(el).boxShadow)
+
+    await ctx.page.getByTitle(/voir le diff de base\.txt/).click()
+    await expect(ctx.page.getByLabel('Volet gauche')).toBeVisible()
+    expect(await marque()).not.toBe('none')
+
+    await ctx.page.getByTitle('Fermer la vue. Le fichier reste sur le disque.').click()
+    await expect.poll(marque).toBe('none')
+  })
+
+  test('replie les étendues inchangées, et les déplie une à une', async () => {
+    // Le fichier entier donne le contexte mais noie trois lignes changées dans
+    // deux cents. Les replier garde les deux : le contexte est à un clic.
+    await ctx.page.getByTitle(/voir le diff de long\.txt/).click()
+    await montrerCoteACote()
+    await montrerTout()
+
+    const zone = ctx.page.getByLabel('Volet gauche')
+    const barres = zone.getByTitle(/Déplier \d+ lignes/)
+    await expect(barres.first()).toBeVisible()
+
+    const combien = await barres.count()
+    const rangees = await zone.locator('tr').count()
+
+    await barres.first().click()
+    // Une barre de moins, et les lignes qu'elle cachait sont là.
+    await expect(barres).toHaveCount(combien - 1)
+    expect(await zone.locator('tr').count()).toBeGreaterThan(rangees)
   })
 
   test('un binaire le dit, plutôt que de rester vide', async () => {

@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { apparier, compter, lireDiff, type LigneDiff, type Paire, type Section } from '@shared/diff'
+import {
+  apparier,
+  compter,
+  lireDiff,
+  replis,
+  type LigneDiff,
+  type Paire,
+  type Section
+} from '@shared/diff'
 import { estNonSuivi } from '@shared/git'
 import { useStore } from '@renderer/state/store'
 import { vueDiff } from '@renderer/state/vues'
@@ -432,6 +440,11 @@ function DeuxVolets({
   // La coupure est une rangée de plus, non une rangée à la place. Posée à la
   // place, elle emportait la première ligne de chaque section : un diff d'une
   // seule ligne ne montrait que son en-tête.
+  // Les étendues inchangées, repliées sauf celles qu'on a dépliées. Montrer le
+  // fichier entier donne le contexte mais noie deux lignes changées dans quatre
+  // mille ; les replier garde les deux.
+  const [depliees, setDepliees] = useState<number[]>([])
+
   const rangees: Rangee[] = sections.flatMap((section) => {
     const paires = apparier(section)
     const lignes: Rangee[] = paires.map((paire, rang) => ({
@@ -446,9 +459,35 @@ function DeuxVolets({
     return coupures ? [{ genre: 'coupure', section } as Rangee, ...lignes] : lignes
   })
 
+  // Le repli ne vaut que sur le fichier entier : en contexte court, git a déjà
+  // coupé ce qui ne change pas, et les coupures disent où.
+  const etendues = coupures ? [] : replis(rangees.flatMap((r) => (r.genre === 'ligne' ? [r.paire] : [])))
+  const cachees = etendues.filter((_, rang) => !depliees.includes(rang))
+
+  /** Ce que chaque zone montre : les rangées visibles, et les barres de repli. */
+  const affichees: (Rangee | { genre: 'repli'; rang: number; lignes: number })[] = []
+  for (const [rang, rangee] of rangees.entries()) {
+    const dedans = cachees.findIndex((e) => rang >= e.debut && rang < e.fin)
+    if (dedans < 0) {
+      affichees.push(rangee)
+      continue
+    }
+    // Une seule barre par étendue, posée sur sa première rangée.
+    const etendue = cachees[dedans]!
+    if (rang === etendue.debut) {
+      affichees.push({
+        genre: 'repli',
+        rang: etendues.indexOf(etendue),
+        lignes: etendue.fin - etendue.debut
+      })
+    }
+  }
+
+  const deplier = (rang: number): void => setDepliees((d) => [...d, rang])
+
   return (
     <div className="flex min-h-0 flex-1 bg-fond-code">
-      <Volet cote="gauche" rangees={rangees} conteneur={zone} onDefiler={suivre} />
+      <Volet cote="gauche" rangees={affichees} conteneur={zone} onDefiler={suivre} onDeplier={deplier} />
 
       {/* Les numéros ne défilent qu'en hauteur. Emportés par le glissement
           latéral d'un volet, ils quitteraient l'écran juste quand on cherche à
@@ -460,8 +499,8 @@ function DeuxVolets({
       >
         <table className="border-collapse font-mono text-[12px] leading-[1.5]">
           <tbody>
-            {rangees.map((r, rang) =>
-              r.genre === 'coupure' ? (
+            {affichees.map((r, rang) =>
+              r.genre !== 'ligne' ? (
                 <tr key={rang} className={HAUTEUR_COUPURE}>
                   <td className={HAUTEUR_COUPURE} colSpan={2} />
                 </tr>
@@ -476,7 +515,7 @@ function DeuxVolets({
         </table>
       </div>
 
-      <Volet cote="droite" rangees={rangees} conteneur={droite} onDefiler={suivre} />
+      <Volet cote="droite" rangees={affichees} conteneur={droite} onDefiler={suivre} onDeplier={deplier} />
     </div>
   )
 }
@@ -486,17 +525,22 @@ type Rangee =
   | { genre: 'coupure'; section: Section }
   | { genre: 'ligne'; paire: Paire; debut: boolean }
 
+/** Une rangée telle qu'une zone la voit, barre de repli comprise. */
+type Affichee = Rangee | { genre: 'repli'; rang: number; lignes: number }
+
 /** Un des deux volets, avec son propre défilement latéral. */
 function Volet({
   cote,
   rangees,
   conteneur,
-  onDefiler
+  onDefiler,
+  onDeplier
 }: {
   cote: 'gauche' | 'droite'
-  rangees: Rangee[]
+  rangees: Affichee[]
   conteneur: React.MutableRefObject<HTMLDivElement | null>
   onDefiler: (source: HTMLDivElement | null) => void
+  onDeplier: (rang: number) => void
 }): React.JSX.Element {
   return (
     <div
@@ -512,6 +556,24 @@ function Volet({
       <table className="min-w-full border-collapse font-mono text-[12px] leading-[1.5]">
         <tbody>
           {rangees.map((r, rang) => {
+            if (r.genre === 'repli') {
+              return (
+                <tr key={rang} className={HAUTEUR_COUPURE}>
+                  <td className={`${HAUTEUR_COUPURE} p-0`}>
+                    {/* Une seule des deux zones porte le mot : répété, il se
+                        lirait deux fois pour une seule étendue. */}
+                    <button
+                      type="button"
+                      onClick={() => onDeplier(r.rang)}
+                      title={`Déplier ${r.lignes} lignes inchangées`}
+                      className="flex h-full w-full items-center gap-2 border-y border-separateur bg-fond-code-marge px-3 font-mono text-[10.5px] text-texte-tenu transition-colors hover:text-texte"
+                    >
+                      {cote === 'gauche' ? `⋯ ${r.lignes} lignes inchangées` : '⋯'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            }
             if (r.genre === 'coupure') {
               return (
                 <tr key={rang} className={HAUTEUR_COUPURE}>

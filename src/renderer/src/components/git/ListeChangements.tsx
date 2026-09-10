@@ -295,6 +295,13 @@ function Depot({
           return (
             <li
               key={fichier.chemin}
+              // La teinte du diff ouvert, s'il l'est : sans elle, rien ne dit
+              // quelle ligne de la liste produit ce qu'on regarde.
+              style={
+                teinteDe(fichier)
+                  ? { boxShadow: `inset 3px 0 0 ${teinteDe(fichier)}` }
+                  : undefined
+              }
               className="flex items-stretch gap-1.5 pr-2 pl-1.5 transition-colors hover:bg-fond-survol"
             >
               <Traits profondeur={2} />

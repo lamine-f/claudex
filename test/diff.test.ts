@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { apparier, compter, lireDiff } from '../src/shared/diff'
+import {
+  apparier,
+  compter,
+  estCache,
+  lireDiff,
+  replis,
+  type Paire
+} from '../src/shared/diff'
 
 /** Relevé sur un dépôt d'essai, deux sections et une fin sans retour à la ligne. */
 const DEUX_SECTIONS = `diff --git a/a.txt b/a.txt
@@ -123,5 +130,47 @@ describe('appariement pour la vue côte à côte', () => {
       ['c', 'c'],
       [undefined, 'D']
     ])
+  })
+})
+
+describe('replis des étendues inchangées', () => {
+  /** Une suite de paires, `.` pour inchangé et `x` pour changé. */
+  const suite = (motif: string): Paire[] =>
+    [...motif].map((c) =>
+      c === '.'
+        ? { gauche: { genre: 'contexte' as const, gauche: 1, droite: 1, texte: '' },
+            droite: { genre: 'contexte' as const, gauche: 1, droite: 1, texte: '' } }
+        : { gauche: { genre: 'retire' as const, gauche: 1, texte: '' } }
+    )
+
+  it('laisse le contexte demandé de chaque côté d’un changement', () => {
+    // Vingt lignes inchangées entre deux changements : on en cache quatorze,
+    // trois restant de chaque côté.
+    const trouves = replis(suite(`x${'.'.repeat(20)}x`), 3)
+    expect(trouves).toEqual([{ debut: 4, fin: 18 }])
+  })
+
+  it('ne replie pas une étendue trop courte', () => {
+    // Cacher deux lignes pour poser une barre à leur place ne gagne rien.
+    expect(replis(suite('x......x'), 3)).toEqual([])
+  })
+
+  it('replie le début et la fin du fichier sans y laisser de contexte', () => {
+    // Rien ne précède la première ligne : le contexte n'a pas de sens là.
+    const trouves = replis(suite(`${'.'.repeat(10)}x${'.'.repeat(10)}`), 3)
+    expect(trouves[0]).toEqual({ debut: 0, fin: 7 })
+    expect(trouves[1]).toEqual({ debut: 14, fin: 21 })
+  })
+
+  it('ne replie rien dans un diff sans contexte du tout', () => {
+    expect(replis(suite('xxxx'), 3)).toEqual([])
+  })
+
+  it('dit ce qui tombe dans une étendue repliée', () => {
+    const replies = [{ debut: 4, fin: 18 }]
+    expect(estCache(3, replies)).toBe(false)
+    expect(estCache(4, replies)).toBe(true)
+    expect(estCache(17, replies)).toBe(true)
+    expect(estCache(18, replies)).toBe(false)
   })
 })
