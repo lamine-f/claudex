@@ -8,6 +8,7 @@ import { DialogueEcart } from './components/workspaces/DialogueEcart'
 import { Diagnostic } from './components/layout/Diagnostic'
 import { FilAriane } from './components/layout/FilAriane'
 import { FilePreview } from './components/files/FilePreview'
+import { PanneauTaches } from './components/taches/PanneauTaches'
 import { Rail } from './components/rail/Rail'
 import { TerminalPane } from './components/terminal/TerminalPane'
 
@@ -122,23 +123,30 @@ export default function App(): React.JSX.Element {
           // gauche, le terminal débordant d'autant par la droite.
           <div className="flex min-h-0 min-w-0">
           {!layout.railReplie && <Rail />}
-          {layout.colonneRepliee ? (
-            // Sans cette enveloppe, le terminal garde sa largeur naturelle et
-            // laisse vide la place que le repli vient de libérer.
-            <div className="min-w-0 flex-1">
+          <Group orientation="horizontal" className="min-h-0 min-w-0 flex-1">
+            {!layout.colonneRepliee && (
+              <>
+                <Panel id="colonne" defaultSize="26%" minSize="16%" maxSize="42%">
+                  <ColonneLaterale />
+                </Panel>
+                <Poignee />
+              </>
+            )}
+            <Panel id="terminal" minSize="30%">
               <TerminalPane />
-            </div>
-          ) : (
-            <Group orientation="horizontal" className="min-h-0 min-w-0 flex-1">
-              <Panel defaultSize="26%" minSize="16%" maxSize="42%">
-                <ColonneLaterale />
-              </Panel>
-              <Poignee />
-              <Panel defaultSize="74%" minSize="40%">
-                <TerminalPane />
-              </Panel>
-            </Group>
-          )}
+            </Panel>
+            {/* Le volet des consignes n'est là que si on l'a demandé : c'est de
+                la largeur prise au terminal, et il ne sert qu'au moment où l'on
+                prépare la suite. */}
+            {layout.tachesOuvertes && (
+              <>
+                <Poignee />
+                <Panel id="taches" defaultSize="24%" minSize="14%" maxSize="40%">
+                  <PanneauTaches />
+                </Panel>
+              </>
+            )}
+          </Group>
         </div>
       ) : (
         <div className="flex items-center justify-center text-[12px] text-texte-faible">

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { dernierRegarde, voisin } from '@shared/onglets'
 import { rangerSelon } from '@shared/ordre'
 import { manquesDuPont } from '@shared/pont'
+import { deplacer as deplacerTache } from '@shared/taches'
 import {
   RANGEMENT_VIDE,
   creerGroupe,
@@ -24,6 +25,7 @@ import type {
   ServiceVu,
   Sollicitation,
   Tab,
+  Tache,
   Workspace
 } from '@shared/types'
 import type { Vue } from './vues'
@@ -128,6 +130,14 @@ interface EtatUi {
    * ne fait que l'afficher et demander l'extinction quand on revient dessus.
    */
   sollicitations: Record<string, Sollicitation>
+
+  /**
+   * Les consignes préparées, par conversation.
+   *
+   * La clé est celle de l'onglet : l'identifiant de sa conversation quand il en
+   * a une, le sien sinon.
+   */
+  taches: Record<string, Tache[]>
 
   /** Onglet de la colonne latérale : les conversations ou les fichiers. */
   panneau: 'sessions' | 'fichiers' | 'services' | 'git'
@@ -247,8 +257,17 @@ interface EtatUi {
   fermerOnglet: (id: string) => Promise<void>
   /** Ferme plusieurs onglets d'affilée, et leurs sessions avec eux. */
   fermerOnglets: (ids: string[]) => Promise<void>
+  /** Pose la file d'une conversation telle que le main vient de la rendre. */
+  poserTaches: (cle: string, liste: Tache[]) => void
+  chargerTaches: (cle: string) => Promise<void>
+  ajouterTache: (cle: string, texte: string, images?: string[]) => Promise<void>
+  modifierTache: (cle: string, id: string, patch: Partial<Omit<Tache, 'id'>>) => Promise<void>
+  retirerTache: (cle: string, id: string) => Promise<void>
+  rangerTache: (cle: string, id: string, vers: number) => Promise<void>
+  /** Envoie une consigne dans le terminal, et dit ce qui l'en a empêchée. */
+  envoyerTache: (cle: string, id: string, tabId: string) => Promise<string | undefined>
   enregistrerLayout: (layout: Partial<AppState['layout']>) => void
-  replier: (quoi: 'rail' | 'colonne') => void
+  replier: (quoi: 'rail' | 'colonne' | 'taches') => void
   ouvrirDiagnostic: (ouvert: boolean) => void
   relancerDiagnostic: () => Promise<void>
   appliquerCorrectif: (action: NonNullable<DoctorCheck['fix']>['action']) => Promise<string>
@@ -320,6 +339,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   rangements: {},
   rangementProjets: RANGEMENT_VIDE,
   sessionsEnCours: {},
+  taches: {},
   toutAfficher: {},
   sollicitations: {},
   arbre: {},
@@ -363,6 +383,7 @@ export const useStore = create<EtatUi>((set, get) => ({
       layout: etat.layout,
       activeWorkspaceId: etat.activeWorkspaceId,
       sollicitations: etat.sollicitations ?? {},
+      taches: etat.taches ?? {},
       diagnostics,
       // Le diagnostic ne s'impose que devant une panne ou une perte en cours.
       // Le reste se signale par la pastille de la barre du haut, et s'ouvre
@@ -871,6 +892,45 @@ export const useStore = create<EtatUi>((set, get) => ({
     for (const id of ids) await get().fermerOnglet(id)
   },
 
+  chargerTaches: async (cle) => {
+    get().poserTaches(cle, await window.claudex.taches.lire(cle))
+  },
+
+  ajouterTache: async (cle, texte, images = []) => {
+    get().poserTaches(cle, await window.claudex.taches.ajouter(cle, texte, images))
+  },
+
+  modifierTache: async (cle, id, patch) => {
+    get().poserTaches(cle, await window.claudex.taches.modifier(cle, id, patch))
+  },
+
+  retirerTache: async (cle, id) => {
+    get().poserTaches(cle, await window.claudex.taches.retirer(cle, id))
+  },
+
+  rangerTache: async (cle, id, vers) => {
+    // La file bouge à l'écran avant d'être écrite : un rangement doit se voir à
+    // l'instant où l'on lâche la souris.
+    get().poserTaches(cle, deplacerTache(get().taches[cle] ?? [], id, vers))
+    get().poserTaches(cle, await window.claudex.taches.ranger(cle, id, vers))
+  },
+
+  envoyerTache: async (cle, id, tabId) => {
+    const { envoye, raison, restantes } = await window.claudex.taches.envoyer(cle, id, tabId)
+    get().poserTaches(cle, restantes)
+    if (envoye) return undefined
+    return raison === 'terminal'
+      ? "Ce terminal n'est pas ouvert : la consigne est restée dans la file."
+      : 'Cette consigne a disparu de la file.'
+  },
+
+  poserTaches: (cle, liste) => {
+    const taches = { ...get().taches }
+    if (liste.length === 0) delete taches[cle]
+    else taches[cle] = liste
+    set({ taches })
+  },
+
   enregistrerLayout: (layout) => {
     set({ layout: { ...get().layout, ...layout } })
     void window.claudex.state.setLayout(layout)
@@ -878,11 +938,11 @@ export const useStore = create<EtatUi>((set, get) => ({
 
   replier: (quoi) => {
     const layout = get().layout
-    get().enregistrerLayout(
-      quoi === 'rail'
-        ? { railReplie: !layout.railReplie }
-        : { colonneRepliee: !layout.colonneRepliee }
-    )
+    if (quoi === 'rail') return get().enregistrerLayout({ railReplie: !layout.railReplie })
+    if (quoi === 'colonne') {
+      return get().enregistrerLayout({ colonneRepliee: !layout.colonneRepliee })
+    }
+    get().enregistrerLayout({ tachesOuvertes: !layout.tachesOuvertes })
   },
 
   ouvrirDiagnostic: (ouvert) => set({ diagnosticOuvert: ouvert }),

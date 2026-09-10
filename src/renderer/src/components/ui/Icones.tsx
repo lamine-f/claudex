@@ -1,5 +1,11 @@
 import {
   ChevronRight,
+  GripVertical,
+  ListTodo,
+  Paperclip,
+  Pencil,
+  PanelRight,
+  SendHorizontal,
   Columns2,
   FolderPlus,
   Hand,
@@ -139,6 +145,24 @@ export const IconeNouveauGroupe = (p: Props): React.JSX.Element => <FolderPlus {
 
 /** Replier ou déployer un groupe. Pivotée d'un quart de tour une fois ouvert. */
 export const IconeChevron = (p: Props): React.JSX.Element => <ChevronRight {...reglages(p)} />
+
+/** Les consignes préparées pour un agent. */
+export const IconeTaches = (p: Props): React.JSX.Element => <ListTodo {...reglages(p)} />
+
+/** Le volet des consignes, à droite. */
+export const IconePanneauTaches = (p: Props): React.JSX.Element => <PanelRight {...reglages(p)} />
+
+/** Joindre une image à une consigne. */
+export const IconeJoindre = (p: Props): React.JSX.Element => <Paperclip {...reglages(p)} />
+
+/** Envoyer une consigne dans le terminal. */
+export const IconeEnvoyer = (p: Props): React.JSX.Element => <SendHorizontal {...reglages(p)} />
+
+/** Corriger ce qui est déjà écrit. */
+export const IconeModifier = (p: Props): React.JSX.Element => <Pencil {...reglages(p)} />
+
+/** Poignée de déplacement, prise à la souris. */
+export const IconePoignee = (p: Props): React.JSX.Element => <GripVertical {...reglages(p)} />
 
 /** Filtrer une liste. */
 export const IconeRecherche = (p: Props): React.JSX.Element => <Search {...reglages(p)} />

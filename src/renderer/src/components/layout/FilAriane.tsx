@@ -10,6 +10,7 @@ import {
   IconeNonSuivi,
   IconePanneauColonne,
   IconePanneauProjets,
+  IconePanneauTaches,
   IconeTerminal
 } from '../ui/Icones'
 
@@ -123,6 +124,13 @@ export function FilAriane(): React.JSX.Element {
         titre={layout.colonneRepliee ? 'Afficher la colonne' : 'Masquer la colonne'}
         icone={<IconePanneauColonne taille={15} />}
         onBasculer={() => replier('colonne')}
+      />
+
+      <BoutonRepli
+        actif={!layout.tachesOuvertes}
+        titre={layout.tachesOuvertes ? 'Masquer les tâches' : 'Afficher les tâches'}
+        icone={<IconePanneauTaches taille={15} />}
+        onBasculer={() => replier('taches')}
       />
 
       {courant && (

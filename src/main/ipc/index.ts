@@ -4,6 +4,7 @@ import { registerFsIpc } from './fs'
 import { registerGitIpc } from './git'
 import { registerServicesIpc } from './services'
 import { registerStateIpc } from './state'
+import { registerTachesIpc } from './taches'
 import { registerTerminalIpc } from './terminal'
 import { registerWorkspaceIpc } from './workspace'
 
@@ -15,5 +16,6 @@ export function registerIpc(): void {
   registerFsIpc()
   registerGitIpc()
   registerServicesIpc()
+  registerTachesIpc()
   registerDoctorIpc()
 }

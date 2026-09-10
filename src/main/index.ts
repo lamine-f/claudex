@@ -9,6 +9,7 @@ import { toutArreter } from './services/session-watcher'
 import * as projetsServices from './services/projets-services'
 import * as pty from './services/pty'
 import * as scrollback from './services/scrollback'
+import * as taches from './services/taches'
 import * as store from './services/store'
 import { multiplexeur } from './services/multiplexeur'
 import { declarerSchema, servirMedias } from './services/media'
@@ -91,6 +92,10 @@ if (!app.requestSingleInstanceLock()) {
         )
       })
       .catch(() => null)
+
+    // Les images jointes à des consignes déjà envoyées ne servent plus, mais
+    // rien ne les efface au passage : le ménage se fait ici, à froid.
+    void taches.menage().catch(() => 0)
 
     // Le script de notification ne parle qu'à une application vivante : sans
     // cette marque, il se tait — et il faut donc la poser avant d'écouter.

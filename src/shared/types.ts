@@ -41,6 +41,27 @@ export interface Tab {
   lastActiveAt: number
 }
 
+/**
+ * Une consigne préparée pour un agent, en attente d'être envoyée.
+ *
+ * Elle vit avant d'être dite : on l'écrit quand l'idée vient, on la corrige, on
+ * la range, et on la donne quand l'agent est libre. Sans elle, chaque consigne
+ * demande d'être là au bon moment, et une conversation qui tourne vingt minutes
+ * laisse vingt minutes de battement.
+ */
+export interface Tache {
+  id: string
+  texte: string
+  /**
+   * Images jointes, par leur chemin sur le disque.
+   *
+   * Le chemin plutôt que l'image : c'est ainsi que Claude Code la lit, et une
+   * capture pesant deux mégaoctets n'a rien à faire dans le fichier d'état.
+   */
+  images?: string[]
+  creeeLe: number
+}
+
 export interface AppState {
   /**
    * Le jeton qui autorise un agent à joindre le serveur MCP.
@@ -51,6 +72,14 @@ export interface AppState {
   mcpJeton?: string
   /** Le port du serveur MCP, retenu pour que la configuration reste vraie. */
   mcpPort?: number
+  /**
+   * Les consignes en attente, par conversation.
+   *
+   * Rangées par l'identifiant de la conversation et non par onglet : ce qu'on
+   * prépare s'adresse à cet agent-là, et le retrouve quand on rouvre sa
+   * conversation.
+   */
+  taches?: Record<string, Tache[]>
   workspaces: Workspace[]
   /**
    * Groupes et ordre du rail, posés à la main.
@@ -105,6 +134,13 @@ export interface AppState {
     /** Panneaux repliés, pour rendre leur largeur au terminal. */
     railReplie?: boolean
     colonneRepliee?: boolean
+    /**
+     * Le volet des consignes, à droite.
+     *
+     * Dit ouvert et non replié, à l'inverse des deux autres : il est fermé tant
+     * qu'on ne l'a pas demandé, là où le rail et la colonne sont là d'emblée.
+     */
+    tachesOuvertes?: boolean
   }
   activeWorkspaceId?: string
   activeTabId?: string

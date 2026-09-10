@@ -4,6 +4,7 @@ import { Readable } from 'node:stream'
 import { protocol } from 'electron'
 import { SCHEMA_MEDIA, bornes, cheminDeLUrl, media } from '@shared/media'
 import { assertInsideWorkspace } from '../util/paths'
+import * as taches from './taches'
 import * as store from './store'
 
 /**
@@ -41,10 +42,13 @@ export function servirMedias(): void {
 
     let chemin: string
     try {
-      chemin = assertInsideWorkspace(
-        demande,
-        store.get().workspaces.map((w) => w.path)
-      )
+      // Le dossier des consignes rejoint les projets : les images qu'on y joint
+      // sont écrites hors des dépôts, pour qu'aucune capture ne se retrouve dans
+      // un `git status`, et la vignette doit pouvoir les atteindre quand même.
+      chemin = assertInsideWorkspace(demande, [
+        ...store.get().workspaces.map((w) => w.path),
+        taches.dossier()
+      ])
     } catch {
       return new Response('Chemin hors des projets', { status: 403 })
     }

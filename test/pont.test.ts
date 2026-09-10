@@ -38,6 +38,10 @@ describe('contrôle du pont', () => {
         etats: () => {}, demarrer: () => {}, arreter: () => {}, liberer: () => {}, modele: () => {},
         fenetreJournal: () => {}, journal: () => {}
       },
+      taches: {
+        lire: () => {}, ajouter: () => {}, modifier: () => {}, retirer: () => {},
+        ranger: () => {}, joindre: () => {}, choisirImages: () => {}, envoyer: () => {}
+      },
       git: { etat: () => {} },
       systeme: { plateforme: () => {} },
       doctor: { check: () => {}, appliquer: () => {} }

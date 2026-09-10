@@ -69,6 +69,14 @@ export function useShortcuts(): void {
         return
       }
 
+      // ⌘J / Ctrl+Maj+J : le volet des consignes, à droite. Fermé tant qu'on
+      // ne l'a pas demandé, à l'inverse des deux autres volets.
+      if (touche === 'j') {
+        evenement.preventDefault()
+        etat.replier('taches')
+        return
+      }
+
       // ⌘W / Ctrl+Maj+W : fermer l'onglet courant, et avec lui sa session.
       if (touche === 'w') {
         evenement.preventDefault()

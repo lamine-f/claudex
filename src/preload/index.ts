@@ -10,6 +10,7 @@ import type {
   ServiceVu,
   Sollicitation,
   Tab,
+  Tache,
   Workspace
 } from '@shared/types'
 
@@ -200,6 +201,30 @@ const api = {
       lots: { depot: string; fichiers: string[] }[]
     ): Promise<{ message?: string; erreur?: string }> =>
       ipcRenderer.invoke('git:rediger', workspaceId, lots)
+  },
+  taches: {
+    lire: (cle: string): Promise<Tache[]> => ipcRenderer.invoke('taches:lire', cle),
+    ajouter: (cle: string, texte: string, images: string[] = []): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:ajouter', cle, texte, images),
+    modifier: (cle: string, id: string, patch: Partial<Omit<Tache, 'id'>>): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:modifier', cle, id, patch),
+    retirer: (cle: string, id: string): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:retirer', cle, id),
+    /** Range une consigne à une nouvelle place dans la file. */
+    ranger: (cle: string, id: string, vers: number): Promise<Tache[]> =>
+      ipcRenderer.invoke('taches:ranger', cle, id, vers),
+    /** Écrit une image jointe sur le disque et rend son chemin. */
+    joindre: (donnees: Uint8Array, type: string): Promise<string> =>
+      ipcRenderer.invoke('taches:joindre', donnees, type),
+    /** Ouvre le dialogue du système et rend les chemins des copies faites. */
+    choisirImages: (): Promise<string[]> => ipcRenderer.invoke('taches:choisirImages'),
+    /** Envoie une consigne dans le terminal d'un onglet, et la retire de la file. */
+    envoyer: (
+      cle: string,
+      id: string,
+      tabId: string
+    ): Promise<{ envoye: boolean; raison?: string; restantes: Tache[] }> =>
+      ipcRenderer.invoke('taches:envoyer', cle, id, tabId)
   },
   systeme: {
     /**
