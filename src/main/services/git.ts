@@ -1,4 +1,5 @@
 import { execFile, spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -13,6 +14,7 @@ import {
 } from '@shared/git'
 import { construirePrompt, nettoyer, tronquer, type Apport } from '@shared/message-commit'
 import type { DepotGit, EtatGit } from '@shared/types'
+import { binaireClaude } from '../util/paths'
 
 const run = promisify(execFile)
 
@@ -434,6 +436,39 @@ export async function redigerMessage(
 }
 
 /**
+ * Ce qu'il faut lancer pour joindre Claude Code.
+ *
+ * Trois choses s'y ajoutent au simple nom de la commande.
+ *
+ * La variable la remplace : les cas de bout en bout y mettent un script, et une
+ * installation qui range le binaire ailleurs s'en sert aussi.
+ *
+ * Le binaire de `~/.local/bin` sert de recours quand le PATH ne porte pas la
+ * commande. L'installateur natif n'ajoute ce dossier au PATH qu'à la session
+ * suivante de l'utilisateur : sans ce repli, la rédaction échouait sur
+ * « commande introuvable » là où Claude Code est installé et fonctionne. L'écran
+ * d'état faisait déjà ce détour, la rédaction l'avait oublié.
+ *
+ * Reste la façon de le lancer, que `lancementClaude` tranche : sur Windows,
+ * `spawn` ne démarre directement qu'un vrai exécutable. Un `.cmd` — c'est la
+ * forme qu'installe npm — demande l'interpréteur de commandes, qui réclame à
+ * son tour que le chemin soit cité s'il porte un espace.
+ */
+export function claudeVoulu(): string {
+  if (process.env.CLAUDEX_CLAUDE) return process.env.CLAUDEX_CLAUDE
+  return existsSync(binaireClaude()) ? binaireClaude() : 'claude'
+}
+
+/** Comment `spawn` doit s'y prendre pour lancer ce qu'on lui nomme. */
+export function lancementClaude(
+  voulue: string,
+  plateforme: NodeJS.Platform = process.platform
+): { commande: string; shell: boolean } {
+  const directement = plateforme !== 'win32' || voulue.toLowerCase().endsWith('.exe')
+  return directement ? { commande: voulue, shell: false } : { commande: `"${voulue}"`, shell: true }
+}
+
+/**
  * Envoie un prompt à `claude -p` et rend sa réponse.
  *
  * Le prompt passe par l'entrée standard, non en argument : un diff de cinquante
@@ -445,9 +480,8 @@ function appelerClaude(
   dossier: string
 ): Promise<{ message?: string; erreur?: string }> {
   return new Promise((resoudre) => {
-    // La commande est réglable : les cas de bout en bout la remplacent par un
-    // script, et une installation qui la range ailleurs s'en sert aussi.
-    const enfant = spawn(process.env.CLAUDEX_CLAUDE || 'claude', ['-p'], { cwd: dossier })
+    const { commande, shell } = lancementClaude(claudeVoulu())
+    const enfant = spawn(commande, ['-p'], { cwd: dossier, shell })
     let sortie = ''
     let plainte = ''
     let fini = false

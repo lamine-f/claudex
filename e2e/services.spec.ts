@@ -50,8 +50,15 @@ test.describe('services du projet', () => {
     // Un profil de shell jetable, qui pose une variable que seuls les shells de
     // connexion voient. C'est ainsi que l'environnement d'un développeur arrive
     // à ses services : JAVA_HOME, nvm, sdkman vivent tous là.
+    //
+    // Les trois fichiers, parce que le shell de connexion n'est pas le même
+    // partout : zsh sur macOS, bash sur Debian, et bash ne lit ni `.zprofile`
+    // ni `ZDOTDIR`. Le cas tombait là-bas sur une variable restée vide, faute
+    // d'avoir écrit dans le fichier que ce shell-là ouvre.
     const zdotdir = await mkdtemp(join(tmpdir(), 'claudex-zdot-'))
-    await writeFile(join(zdotdir, '.zprofile'), 'export MARQUE_PROFIL=vu\n')
+    for (const nom of ['.zprofile', '.bash_profile', '.profile']) {
+      await writeFile(join(zdotdir, nom), 'export MARQUE_PROFIL=vu\n')
+    }
 
     // Posé sur ce processus, et non seulement passé à l'application : c'est la
     // sentinelle du serveur tmux qui part la première, depuis ici, et un pane
@@ -77,15 +84,18 @@ services:
   - nom: variable
     commande: echo "salut $QUI"; sleep 30
     env: { QUI: le monde }
-  # Ce que seul un shell de connexion sait : la variable vient d'un .zprofile.
+  # Ce que seul un shell de connexion sait : la variable vient d'un profil.
+  # La maison est déclarée sur le service, et non posée sur la suite : les
+  # variables sont exportées avant le shell de connexion, qui va donc lire le
+  # profil jetable au lieu de celui de qui lance les tests.
   - nom: connexion
     commande: echo "profil $MARQUE_PROFIL"; sleep 30
+    env: { HOME: ${JSON.stringify(zdotdir)}, ZDOTDIR: ${JSON.stringify(zdotdir)} }
   # Il écoute vraiment son port : un service qui le déclare sans l'ouvrir
   # resterait « démarre » pour toujours, et le cas mesurerait autre chose.
   - nom: squatte
     port: 47821
-    commande: >-
-      node -e "require('node:net').createServer().listen(47821, '127.0.0.1')"
+    commande: ${JSON.stringify(`"${process.execPath}" -e "require('node:net').createServer().listen(47821, '127.0.0.1')"`)}
 `
     )
     // Les journaux d'une exécution précédente fausseraient les attentes : ils
@@ -397,6 +407,6 @@ services:
     expect(geste).not.toBeNull()
     expect(geste!.x).toBeGreaterThanOrEqual(bandeau!.x)
     expect(geste!.x + geste!.width).toBeLessThanOrEqual(bandeau!.x + bandeau!.width)
-    expect(bandeau!.height).toBe(HAUTEUR_ENTETE)
+    expect(bandeau!.height).toBeCloseTo(HAUTEUR_ENTETE, 1)
   })
 })

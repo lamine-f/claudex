@@ -224,15 +224,76 @@ export async function fermerEcranEtat(page: Page): Promise<void> {
 export async function fermer(contexte: Contexte, options = { nettoyer: true }): Promise<void> {
   await contexte.app.close()
   if (options.nettoyer) {
-    await rm(contexte.donnees, { recursive: true, force: true })
-    await rm(contexte.projet, { recursive: true, force: true })
+    await effacer(contexte.donnees)
+    await effacer(contexte.projet)
     // Déplier un projet fait créer son dossier de transcrits : les tests ne
     // doivent rien laisser dans le vrai ~/.claude/projects.
-    await rm(
-      join(homedir(), '.claude', 'projects', contexte.projet.replace(/[^a-zA-Z0-9-]/g, '-')),
-      { recursive: true, force: true }
+    await effacer(
+      join(homedir(), '.claude', 'projects', contexte.projet.replace(/[^a-zA-Z0-9-]/g, '-'))
     )
   }
+}
+
+/**
+ * Écrit un faux `claude`, lançable là où la suite tourne.
+ *
+ * Appeler le vrai prendrait quarante secondes et dépendrait du réseau, et ce
+ * que ces cas vérifient est le geste, non la réponse.
+ *
+ * La logique est en JavaScript et non en shell : un `#!/bin/sh` avec son bit
+ * d'exécution ne veut rien dire sur Windows, où les quatre cas de rédaction
+ * tombaient d'un coup. Un lanceur par plateforme la donne à `node`, dont le
+ * chemin absolu est celui qui exécute cette suite — il n'a donc pas à être sur
+ * le PATH, ce qu'un `node` installé par nvm n'est pas dans un shell de connexion.
+ */
+export async function fauxClaude(
+  dossier: string,
+  quoi: { entreeVers?: string; sortie?: string; plainte?: string; code?: number }
+): Promise<string> {
+  const script = join(dossier, 'faux-claude.mjs')
+  await writeFile(
+    script,
+    `import { writeFileSync } from 'node:fs'\n` +
+      `const quoi = ${JSON.stringify(quoi)}\n` +
+      `let entree = ''\n` +
+      `process.stdin.setEncoding('utf8')\n` +
+      `process.stdin.on('data', (bloc) => { entree += bloc })\n` +
+      `process.stdin.on('end', () => {\n` +
+      `  if (quoi.entreeVers) writeFileSync(quoi.entreeVers, entree)\n` +
+      `  if (quoi.sortie) process.stdout.write(quoi.sortie)\n` +
+      `  if (quoi.plainte) process.stderr.write(quoi.plainte)\n` +
+      `  process.exit(quoi.code ?? 0)\n` +
+      `})\n`
+  )
+
+  // Un `.cmd` d'un côté, un script à bit d'exécution de l'autre : ce sont les
+  // deux seules formes que `spawn` sait lancer sans qu'on lui explique comment.
+  if (SUR_WINDOWS) {
+    const lanceur = join(dossier, 'faux-claude.cmd')
+    await writeFile(lanceur, `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`)
+    return lanceur
+  }
+
+  const lanceur = join(dossier, 'faux-claude.sh')
+  await writeFile(lanceur, `#!/bin/sh\nexec "${process.execPath}" "${script}" "$@"\n`, {
+    mode: 0o755
+  })
+  return lanceur
+}
+
+/**
+ * Efface un dossier, en laissant le système lâcher ce qu'il tient encore.
+ *
+ * Un dossier reste verrouillé un instant après la mort du processus qui l'avait
+ * pour répertoire courant, et `rm` répond alors `EBUSY` — sur Windows d'abord,
+ * mais rien ne le lui réserve. C'est la cause de l'échec intermittent de
+ * `sessions.spec.ts`, signalé deux fois avant d'être compris : l'application
+ * n'y était pour rien, le nettoyage arrivait trop tôt.
+ *
+ * `conpty.integration.test.ts` portait déjà ce remède depuis le portage.
+ */
+async function effacer(dossier: string): Promise<void> {
+  await rm(dossier, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
 }
 
 /**
@@ -354,3 +415,13 @@ export async function glisser(
  * dans leurs mesures, et rien ne le dit mieux qu'un nombre partagé.
  */
 export const HAUTEUR_ENTETE = 36
+
+/**
+ * Les mesures se comparent à la décimale près, jamais à l'exact.
+ *
+ * `getBoundingClientRect` rend une hauteur calculée en pixels physiques puis
+ * reconvertie. Le compte ne tombe juste que si le facteur d'échelle est entier :
+ * il vaut 2 sur un écran Retina, 1,25 sur une session Windows à 125 %, et une
+ * égalité stricte y reçoit 36,00000762939453 — deux puissance moins dix-sept de
+ * trop. Relevé sur Debian comme sur Windows, jamais sur macOS.
+ */

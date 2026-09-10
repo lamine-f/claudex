@@ -150,7 +150,7 @@ test.describe('ranger les conversations à la main', () => {
   test('replier le groupe cache son contenu sans le perdre', async () => {
     // Les conversations donnent la mesure que les deux autres listes suivent.
     const bandeau = await ctx.page.getByLabel('Replier le groupe').locator('xpath=..').boundingBox()
-    expect(bandeau?.height).toBe(HAUTEUR_ENTETE)
+    expect(bandeau?.height).toBeCloseTo(HAUTEUR_ENTETE, 1)
 
     await ctx.page.getByLabel('Replier le groupe').click()
     await expect(colonne(ctx.page).getByText('Beta')).toHaveCount(0)

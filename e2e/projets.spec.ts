@@ -198,7 +198,7 @@ test.describe('les projets du rail', () => {
     expect(pastille).not.toBeNull()
     expect(bandeau!.x).toBeLessThan(pastille!.x)
     expect(bandeau!.x + bandeau!.width).toBeGreaterThan(pastille!.x + pastille!.width)
-    expect(bandeau!.height).toBe(HAUTEUR_ENTETE)
+    expect(bandeau!.height).toBeCloseTo(HAUTEUR_ENTETE, 1)
 
     // Replié, le groupe cache son projet sans le perdre.
     await entete.click()

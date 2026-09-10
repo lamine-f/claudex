@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test, type Locator } from '@playwright/test'
-import { fermer, lancer, nouveauTerminal, type Contexte } from './fixtures'
+import { fauxClaude, fermer, lancer, nouveauTerminal, type Contexte } from './fixtures'
 
 const run = promisify(execFile)
 
@@ -904,16 +904,11 @@ test.describe('rédaction du message de commit', () => {
     await depot(projet, 'local')
     await writeFile(join(projet, 'base.txt'), 'deux\n')
 
-    // Un faux `claude` : appeler le vrai prendrait quarante secondes et
-    // dépendrait du réseau. Ce qu'on vérifie ici est le geste, non sa réponse.
     // Il recopie son entrée dans un fichier, pour qu'on lise le prompt reçu.
-    faux = join(projet, 'faux-claude.sh')
-    await writeFile(
-      faux,
-      `#!/bin/sh\ncat > "${join(projet, 'prompt-recu.txt')}"\n` +
-        `printf 'fix(essai): le message rédigé\\n\\nUn corps qui explique.\\n'\n`,
-      { mode: 0o755 }
-    )
+    faux = await fauxClaude(projet, {
+      entreeVers: join(projet, 'prompt-recu.txt'),
+      sortie: 'fix(essai): le message rédigé\n\nUn corps qui explique.\n'
+    })
 
     ctx = await lancer({ projet, env: { CLAUDEX_CLAUDE: faux } })
     await ctx.page.getByRole('button', { name: 'Git', exact: true }).click()
@@ -970,9 +965,9 @@ test.describe('rédaction du message de commit', () => {
   })
 
   test('dit ce que la commande a répondu quand elle échoue', async () => {
-    await writeFile(faux, '#!/bin/sh\ncat > /dev/null\necho "rien à dire" >&2\nexit 1\n', {
-      mode: 0o755
-    })
+    // Réécrit au même endroit : la variable d'environnement a été posée au
+    // lancement de l'application, et le chemin ne peut plus changer.
+    await fauxClaude(ctx.projet, { plainte: 'rien à dire\n', code: 1 })
     await ctx.page.getByLabel('Message du commit').fill('')
 
     await bouton().click()
