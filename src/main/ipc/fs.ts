@@ -1,4 +1,4 @@
-import { ipcMain, shell, type WebContents } from 'electron'
+import { clipboard, ipcMain, shell, type WebContents } from 'electron'
 import { stat } from 'node:fs/promises'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { borner } from '@shared/attente'
@@ -34,6 +34,16 @@ function verifier(chemin: string): string {
 }
 
 export function registerFsIpc(): void {
+  /**
+   * Met un texte dans le presse-papiers.
+   *
+   * Par le processus principal : la fenêtre est en sandbox, et l'API du
+   * navigateur y demande une permission que Claudex n'accorde pas.
+   */
+  ipcMain.handle('fs:copier', (_evenement, texte: string) => {
+    clipboard.writeText(texte)
+  })
+
   ipcMain.handle('fs:lireDossier', (_evenement, chemin: string): Promise<Entree[]> =>
     lireDossier(verifier(chemin))
   )

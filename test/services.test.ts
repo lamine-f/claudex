@@ -194,3 +194,76 @@ describe('le cas Olive', () => {
     expect(infra.sante).toBeTruthy()
   })
 })
+
+describe('modèles nommés, séparés des groupes', () => {
+  it('fait hériter du modèle cité, sans toucher au groupe', () => {
+    // Un front qui se lance autrement que ses voisins devait former un groupe
+    // à lui seul : la page en montrait deux là où il n'y a qu'une famille.
+    const declaration = lire(`
+modeles:
+  angular:
+    commande: npm start
+  angular_public:
+    commande: npm run start-public-local
+
+services:
+  - { nom: front,        modele: angular,        groupe: front, port: 4200 }
+  - { nom: front_public, modele: angular_public, groupe: front, port: 4300 }
+  - { nom: front_admin,  modele: angular,        groupe: front, port: 4201 }
+`)
+    const { services, reproches } = resoudre(declaration)
+
+    expect(reproches).toEqual([])
+    expect(services.map((s) => s.commande)).toEqual([
+      'npm start',
+      'npm run start-public-local',
+      'npm start'
+    ])
+    // Un seul groupe, quel que soit le nombre de modèles.
+    expect(new Set(services.map((s) => s.groupe))).toEqual(new Set(['front']))
+  })
+
+  it('dit qu’un modèle cité n’existe pas', () => {
+    // Silencieux, le service serait simplement écarté faute de commande, et
+    // l'on chercherait la faute dans le mauvais champ.
+    const { services, reproches } = resoudre(
+      lire(`
+modeles:
+  angular: { commande: npm start }
+services:
+  - { nom: front, modele: angulaire }
+`)
+    )
+    expect(services).toEqual([])
+    expect(reproches[0]?.message).toContain('angulaire')
+  })
+
+  it('garde le bloc du groupe pour les fichiers écrits avant', () => {
+    // La première façon de faire marche sans être reprise.
+    const { services } = resoudre(
+      lire(`
+defaut:
+  back: { commande: ./mvnw spring-boot:run }
+services:
+  - { nom: coeur, groupe: back, port: 8081 }
+`)
+    )
+    expect(services[0]?.commande).toBe('./mvnw spring-boot:run')
+  })
+
+  it('ne consulte pas le bloc du groupe quand un modèle est cité', () => {
+    // Deux sources pour un même champ se contrediraient un jour. Celle qu'on a
+    // nommée l'emporte.
+    const { services } = resoudre(
+      lire(`
+modeles:
+  neuf: { commande: la bonne }
+defaut:
+  back: { commande: l’ancienne }
+services:
+  - { nom: coeur, modele: neuf, groupe: back }
+`)
+    )
+    expect(services[0]?.commande).toBe('la bonne')
+  })
+})

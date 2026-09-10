@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { fermer, lancer, type Contexte } from './fixtures'
 
 /** Violet : franchement distinct du terracotta, donc impossible à confondre. */
@@ -88,6 +88,21 @@ test.describe("la couleur du projet traverse l'application", () => {
     // Et ce n'est plus la couleur du projet, qui ne disait pas quel onglet.
     const liseré = await ligne.evaluate((el) => getComputedStyle(el).borderLeftColor)
     expect(liseré).not.toBe(VIOLET_RGB)
+  })
+
+  test('la conversation à l’écran se lève comme le projet regardé', async () => {
+    // Creusée, elle s'enfonçait là où la ligne du rail ressort : deux marques
+    // du même état se lisaient à l'envers l'une de l'autre.
+    const conversation = ctx.page
+      .getByLabel('Sessions et fichiers')
+      .locator('li', { hasText: 'Refonte facturation' })
+      .locator('button')
+      .first()
+    const projet = ctx.page.getByLabel('Projets').locator('li').first().locator('button')
+
+    const fond = (cible: Locator): Promise<string> =>
+      cible.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(await fond(conversation)).toBe(await fond(projet))
   })
 
   test('le mot « à l’écran » aussi', async () => {

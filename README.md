@@ -205,6 +205,40 @@ les configure. L'agent n'écrit rien dans le dépôt, il remplit le champ, et un
 message déjà écrit n'est pas remplacé sans qu'on le demande. Compter une demi-
 minute. La commande appelée est `claude`, réglable par `CLAUDEX_CLAUDE`.
 
+### Services
+
+- [x] Lancer les services d'un projet, dans l'ordre de leurs dépendances
+- [x] Verser leur sortie dans un fichier, que les agents lisent
+- [x] Des modèles nommés, séparés des groupes d'affichage
+- [ ] Détecter les services d'un projet sans déclaration
+- [ ] Surveiller la santé et relancer ce qui tombe
+
+Un projet déclare ses services dans `.claudex/services.yml` :
+
+```yaml
+# Ce dont un service tient ses réglages. Nommé, donc cité par qui veut.
+modeles:
+  spring:
+    commande: ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+    sante: http://localhost:{port}/actuator/health
+    depend_de: [infra]
+  angular:
+    commande: npm start
+
+services:
+  - { nom: infra, commande: docker compose up -d, detache: true }
+  - { nom: coeur, modele: spring,  groupe: back,  port: 8081, dossier: olive_core }
+  - { nom: front, modele: angular, groupe: front, port: 4200, dossier: olive_front }
+```
+
+Le modèle dit d'où viennent les réglages, le groupe dit où le service s'affiche.
+Les séparer permet à un front qui se lance autrement que ses voisins de rester
+dans leur famille, au lieu de former un groupe à lui seul.
+
+Les fichiers écrits avant les modèles marchent sans être repris : un bloc
+`defaut:` s'applique toujours par nom de groupe, et un service qui cite un
+modèle ne le consulte pas.
+
 ### Agents
 
 - [x] Un skill écrit dans le projet, qui dit où sont les journaux

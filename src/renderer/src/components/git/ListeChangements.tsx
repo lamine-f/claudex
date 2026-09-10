@@ -177,9 +177,9 @@ function Racine({
           className="flex min-w-0 flex-1 items-center gap-1.5 py-0.5 text-left"
         >
           <Chevron replie={replie} />
-          <span className="min-w-0 truncate text-[13px] font-semibold text-texte">
-            {TITRES[section]}
-          </span>
+          {/* Sans gras : la taille et la couleur suffisent à poser le niveau,
+              et un titre appuyé pèse plus lourd que ce qu'il annonce. */}
+          <span className="min-w-0 truncate text-[13px] text-texte">{TITRES[section]}</span>
           <span className="ml-auto shrink-0 font-mono text-[10.5px] text-texte-tenu">
             {fichiers}
           </span>

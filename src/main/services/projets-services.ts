@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import { createConnection } from 'node:net'
 import { promisify } from 'node:util'
 import { access, mkdir, open, readFile, rename, stat, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { parse } from 'yaml'
 import { resoudre, vagues, type Declaration, type Reproche, type Service } from '@shared/services'
 import type { EtatService, ServiceVu } from '@shared/types'
@@ -33,10 +33,34 @@ const LIGNES = 48
  * Le préfixe le sépare des onglets, nommés `cdx_`. Un service n'est pas une
  * conversation : il ne doit jamais se retrouver dans la barre d'onglets, et
  * un nom distinct rend la confusion impossible plutôt qu'improbable.
+ *
+ * tmux traite `.` et `:` comme des séparateurs de cible : le nom est donc
+ * réduit à ce qui ne l'embarrasse pas. Réduire seul ferait toutefois collisionner
+ * deux noms distincts, « front public » et « frontpublic » donnant le même, et
+ * démarrer l'un piloterait l'autre. Une empreinte du nom d'origine est donc
+ * ajoutée dès qu'il a fallu le réduire. Un nom déjà propre garde le sien, pour
+ * que les sessions ouvertes avant ce jour se retrouvent.
  */
 export function nomSession(workspaceId: string, service: string): string {
-  const propre = (v: string): string => v.replace(/[^a-zA-Z0-9]/g, '')
-  return `svc_${propre(workspaceId)}_${propre(service)}`
+  return `svc_${sur(workspaceId)}_${sur(service)}`
+}
+
+/** Un nom que tmux accepte, qui reste propre à celui dont il vient. */
+function sur(valeur: string): string {
+  const reduit = valeur.replace(/[^a-zA-Z0-9]/g, '')
+  return reduit === valeur ? reduit : `${reduit}${empreinte(valeur)}`
+}
+
+/**
+ * Quatre caractères tirés du nom entier.
+ *
+ * Assez pour séparer les quelques services d'un projet, et assez courts pour
+ * que le nom de session reste lisible dans un `tmux ls`.
+ */
+function empreinte(valeur: string): string {
+  let somme = 0
+  for (let i = 0; i < valeur.length; i++) somme = (somme * 31 + valeur.charCodeAt(i)) >>> 0
+  return somme.toString(36).padStart(4, '0').slice(-4)
 }
 
 export function cheminJournal(projet: string, service: string): string {
@@ -254,61 +278,6 @@ export async function demarrerPlusieurs(
 }
 
 /**
- * Écrit le skill qui dit aux agents où sont les journaux.
- *
- * Un fichier neuf plutôt qu'une ligne ajoutée au `CLAUDE.md` du projet : Claudex
- * ne modifie pas un fichier versionné que quelqu'un d'autre tient.
- */
-export async function ecrireSkill(projet: string): Promise<string> {
-  const { services } = await charger(projet)
-  const dossier = join(projet, '.claude', 'skills', 'services-du-projet')
-  await mkdir(dossier, { recursive: true })
-
-  const lignes = services
-    .map((s) => `- \`${s.nom}\`${s.port ? ` sur le port ${s.port}` : ''} : \`${JOURNAUX}/${s.nom}.log\``)
-    .join('\n')
-
-  const contenu = `---
-name: services-du-projet
-description: Les services de ce projet et leurs journaux. À lire avant de chercher pourquoi un appel échoue, avant de supposer qu'un service tourne, ou pour retrouver une trace d'erreur.
----
-
-# Les services de ce projet
-
-Claudex lance ces services et verse leur sortie dans des fichiers. Ils sont
-déclarés dans \`${FICHIER}\`.
-
-${lignes || '_Aucun service déclaré._'}
-
-## Lire un journal
-
-Le fichier porte la sortie brute, séquences de couleur comprises.
-
-\`\`\`sh
-tail -200 ${JOURNAUX}/<service>.log
-grep -n "ERROR" ${JOURNAUX}/<service>.log | tail -40
-\`\`\`
-
-Ne pas le lire en entier : un service Java écrit vite, et le fichier bascule en
-\`.log.1\` au-delà de dix mégaoctets. La fin du fichier porte ce qui vient de se
-produire, le \`.log.1\` porte le démarrage précédent.
-
-## Agir sur un service
-
-Si les outils \`mcp__claudex__*\` sont disponibles, les préférer à tout le reste.
-\`journal\` filtre à la source et rend deux cents lignes utiles là où \`cat\` en
-rendrait cent mille ; \`relancer\` est le geste à faire après une correction.
-
-Sans eux, ne pas démarrer ni arrêter un service à la main : ils sont pilotés
-depuis Claudex, et les relancer ailleurs ferait tourner deux instances du même
-service.
-`
-  const chemin = join(dossier, 'SKILL.md')
-  await writeFile(chemin, contenu)
-  return chemin
-}
-
-/**
  * Qui écoute sur ce port.
  *
  * `lsof` sur les systèmes POSIX, `netstat` sur Windows. Rien de tout cela n'est
@@ -335,17 +304,6 @@ async function occupants(port: number): Promise<number[]> {
   return [...new Set(stdout.split('\n').map(Number).filter((n) => Number.isInteger(n) && n > 0))]
 }
 
-/**
- * Libère le port d'un service déclaré.
- *
- * Le port doit figurer dans la déclaration du projet : c'est le garde-fou. Tuer
- * ce qui écoute sur un port quelconque serait un pouvoir qu'une interface n'a
- * pas à donner, et l'erreur de frappe y coûterait cher.
- *
- * On demande d'abord, on impose ensuite. Un service Java qui reçoit `TERM`
- * ferme ses connexions et vide ses tampons ; `KILL` ne lui laisserait pas le
- * temps, et le port resterait parfois pris quelques secondes de plus.
- */
 export async function liberer(projet: string, nom: string): Promise<number[]> {
   const { services } = await charger(projet)
   const service = services.find((s) => s.nom === nom)
@@ -538,4 +496,53 @@ export async function rafraichirMcp(
 function aLeJeton(entree: Record<string, unknown>, jeton: string): boolean {
   const entetes = entree.headers as Record<string, string> | undefined
   return entetes?.Authorization === `Bearer ${jeton}`
+}
+
+/** Ce qu'un projet neuf trouve dans son `services.yml`, à remplir. */
+const MODELE = `# Les services de ce projet, tels que Claudex les lance.
+#
+# Les chemins sont relatifs à ce fichier, qui vit à la racine du projet.
+# Ce que Claudex verse dans .claudex/logs/, les agents le lisent.
+
+# Ce dont un service tient ses réglages. Nommé, donc cité par qui veut.
+modeles:
+  spring:
+    commande: ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+    sante: http://localhost:{port}/actuator/health
+    depend_de: [infra]
+  angular:
+    commande: npm start
+
+# Le groupe ne dit que l'endroit où le service s'affiche. Deux services qui se
+# lancent autrement peuvent rester dans la même famille.
+services:
+  # Une infrastructure rend la main sans s'arrêter : \`detache\` le dit, sans quoi
+  # elle paraîtrait éteinte alors qu'elle tourne.
+  - { nom: infra, commande: docker compose up -d, detache: true }
+
+  # - { nom: coeur, modele: spring,  groupe: back,  port: 8081, dossier: mon_service }
+  # - { nom: front, modele: angular, groupe: front, port: 4200, dossier: mon_front }
+`
+
+/**
+ * Pose un modèle de déclaration à la racine du projet.
+ *
+ * Un fichier vide devant soi ne dit pas ce qu'on peut y écrire. Celui-ci porte
+ * les deux formes qu'on utilise ici, un service Spring et un front Angular, et
+ * l'infrastructure détachée qui les précède.
+ *
+ * Un fichier déjà là n'est jamais touché : ce serait effacer une déclaration
+ * qui marche pour la remplacer par un exemple.
+ */
+export async function ecrireModele(projet: string): Promise<string | null> {
+  const fichier = join(projet, FICHIER)
+  const existe = await access(fichier).then(
+    () => true,
+    () => false
+  )
+  if (existe) return null
+
+  await mkdir(dirname(fichier), { recursive: true })
+  await writeFile(fichier, MODELE)
+  return fichier
 }

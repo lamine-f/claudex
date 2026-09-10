@@ -39,7 +39,7 @@ const ATTENDU: Record<string, string[]> = {
     'demarrer',
     'arreter',
     'liberer',
-    'skill',
+    'modele',
     'fenetreJournal',
     'journal'
   ],

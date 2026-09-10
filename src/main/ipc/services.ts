@@ -45,10 +45,16 @@ export function registerServicesIpc(): void {
     return chemin ? services.liberer(chemin, nom) : []
   })
 
-  /** Écrit le skill qui dit aux agents où sont les journaux. Rend son chemin. */
-  ipcMain.handle('services:skill', async (_evenement, workspaceId: string) => {
+  /**
+   * Pose un modèle de déclaration, si le projet n'en a pas.
+   *
+   * Le skill qu'écrivait ce geste disait aux agents où lire les journaux. Le
+   * serveur MCP le fait mieux, et pour tous les projets à la fois : ce qui
+   * manque désormais à un projet neuf est le fichier lui-même.
+   */
+  ipcMain.handle('services:modele', async (_evenement, workspaceId: string) => {
     const chemin = projet(workspaceId)
-    return chemin ? services.ecrireSkill(chemin) : null
+    return chemin ? services.ecrireModele(chemin) : null
   })
 
   /** Pose le serveur MCP dans le projet, pour que les agents y agissent. */

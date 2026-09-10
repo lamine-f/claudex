@@ -182,7 +182,11 @@ export function SessionRow({
         style={teinte ? { borderLeftColor: teinte } : undefined}
         className={`flex w-full flex-col gap-1 border-l-2 py-2.5 pr-10 pl-3.5 text-left transition-colors ${
           active
-            ? 'bg-fond-creux'
+            ? // Le même fond que le projet regardé dans le rail : creusée, la
+              // ligne à l'écran s'enfonçait là où celle du rail ressort, et
+              // deux marques du même état se lisaient à l'envers l'une de
+              // l'autre.
+              'bg-fond-eleve'
             : dansUnOnglet
               ? 'hover:bg-fond-survol'
               : 'border-l-separateur hover:border-l-bordure hover:bg-fond-survol'

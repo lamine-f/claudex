@@ -150,8 +150,8 @@ const api = {
     /** Tue ce qui écoute sur le port d'un service déclaré. Rend les PID visés. */
     liberer: (workspaceId: string, nom: string): Promise<number[]> =>
       ipcRenderer.invoke('services:liberer', workspaceId, nom),
-    skill: (workspaceId: string): Promise<string | null> =>
-      ipcRenderer.invoke('services:skill', workspaceId),
+    modele: (workspaceId: string): Promise<string | null> =>
+      ipcRenderer.invoke('services:modele', workspaceId),
     mcp: (workspaceId: string, portee: 'projet' | 'utilisateur'): Promise<string | null> =>
       ipcRenderer.invoke('services:mcp', workspaceId, portee),
     /** Ouvre une fenêtre qui suit le journal d'un service. */
@@ -162,6 +162,7 @@ const api = {
       ipcRenderer.invoke('services:journal', chemin, depuis)
   },
 
+  copier: (texte: string): Promise<void> => ipcRenderer.invoke('fs:copier', texte),
   git: {
     etat: (workspaceId: string): Promise<EtatGit | null> =>
       ipcRenderer.invoke('git:etat', workspaceId),

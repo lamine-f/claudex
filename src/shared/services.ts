@@ -13,6 +13,15 @@
 /** Ce qu'un service déclare, tel qu'il est écrit dans le fichier. */
 export interface ServiceDeclare {
   nom: string
+  /**
+   * Le modèle dont ce service tient ses réglages.
+   *
+   * Séparé du groupe, qui ne dit que l'endroit où le service s'affiche. Sans
+   * cette séparation, un front qui se lance autrement que ses voisins devait
+   * former un groupe à lui seul, et la page en montrait deux là où il n'y a
+   * qu'une famille.
+   */
+  modele?: string
   groupe?: string
   dossier?: string
   commande?: string
@@ -40,7 +49,20 @@ export interface Service extends ServiceDeclare {
 }
 
 export interface Declaration {
-  /** Valeurs par défaut, par groupe. */
+  /**
+   * Réglages nommés, dont un service hérite en les citant.
+   *
+   * Onze services Spring partagent la même commande et la même URL de santé,
+   * au port près. Un modèle les porte une fois.
+   */
+  modeles?: Record<string, Partial<ServiceDeclare>>
+  /**
+   * Valeurs par défaut, par nom de groupe.
+   *
+   * La première façon de faire, gardée telle quelle : les fichiers écrits
+   * avant les modèles marchent sans être repris. Un service qui cite un modèle
+   * ne la consulte pas.
+   */
   defaut?: Record<string, Partial<ServiceDeclare>>
   services?: ServiceDeclare[]
 }
@@ -63,6 +85,7 @@ const CHAMPS_HERITES = ['commande', 'dossier', 'sante', 'depend_de', 'env', 'det
 export function resoudre(declaration: Declaration): { services: Service[]; reproches: Reproche[] } {
   const reproches: Reproche[] = []
   const defauts = declaration.defaut ?? {}
+  const modeles = declaration.modeles ?? {}
   const vus = new Set<string>()
   const services: Service[] = []
 
@@ -77,7 +100,20 @@ export function resoudre(declaration: Declaration): { services: Service[]; repro
     }
     vus.add(brut.nom)
 
-    const defaut = (brut.groupe && defauts[brut.groupe]) || {}
+    // Le modèle cité prime sur le bloc du groupe : c'est lui qu'on a nommé.
+    let defaut: Partial<ServiceDeclare> = {}
+    if (brut.modele) {
+      const modele = modeles[brut.modele]
+      if (modele) defaut = modele
+      else {
+        reproches.push({
+          service: brut.nom,
+          message: `Le modèle « ${brut.modele} » n'est déclaré nulle part.`
+        })
+      }
+    } else if (brut.groupe) {
+      defaut = defauts[brut.groupe] ?? {}
+    }
     const fusionne: ServiceDeclare = { ...brut }
     for (const champ of CHAMPS_HERITES) {
       if (fusionne[champ] === undefined && defaut[champ] !== undefined) {

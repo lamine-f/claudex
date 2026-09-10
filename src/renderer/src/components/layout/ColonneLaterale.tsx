@@ -68,7 +68,7 @@ export function ColonneLaterale(): React.JSX.Element {
 
   const annoncer = async (quoi: Promise<string | null>): Promise<void> => {
     const chemin = await quoi.catch(() => null)
-    setEcrit(chemin ? `écrit dans ${abreger(chemin)}` : 'rien n’a pu être écrit')
+    setEcrit(chemin ? `écrit dans ${abreger(chemin)}` : 'ce projet en a déjà un')
     setTimeout(() => setEcrit(null), 6000)
   }
 
@@ -184,12 +184,12 @@ export function ColonneLaterale(): React.JSX.Element {
               void rafraichirArbre(courant.path)
             )}
 
-          {/* Le skill vit dans le projet, et se pose donc ici. Brancher les
-              agents sur Claudex ne dépend d'aucun projet : c'est un réglage de
-              l'application, et il a rejoint l'écran d'état. */}
+          {/* Ce qui manque à un projet neuf est le fichier lui-même : le skill
+              qu'écrivait ce geste disait aux agents où lire, et le serveur MCP
+              le fait mieux, pour tous les projets à la fois. */}
           {panneau === 'services' &&
-            outil('Écrire le skill des services', <IconeSkill taille={15} />, () =>
-              void annoncer(window.claudex.services.skill(courant.id))
+            outil('Poser un modèle de déclaration', <IconeSkill taille={15} />, () =>
+              void annoncer(window.claudex.services.modele(courant.id))
             )}
 
           {panneau === 'git' &&

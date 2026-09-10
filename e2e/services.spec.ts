@@ -190,16 +190,17 @@ services:
     await expect(ctx.page.getByTitle(/Services en marche/)).toBeVisible()
   })
 
-  test('le skill s’écrit sur demande, et dit où sont les journaux', async () => {
+  test('le modèle ne remplace pas la déclaration qui est là', async () => {
+    // Le geste écrivait un skill disant aux agents où lire les journaux. Le
+    // serveur MCP le fait mieux et pour tous les projets ; ce qui manque à un
+    // projet neuf est le fichier lui-même. Un fichier déjà là ne s'écrase pas.
     await ctx.page.getByRole('button', { name: 'Services', exact: true }).click()
-    await ctx.page.getByRole('button', { name: 'Écrire le skill des services' }).click()
+    const declaration = join(ctx.projet, '.claudex', 'services.yml')
+    const avant = await readFile(declaration, 'utf8')
 
-    const skill = join(ctx.projet, '.claude', 'skills', 'services-du-projet', 'SKILL.md')
-    await expect.poll(async () => readFile(skill, 'utf8').catch(() => '')).toContain(
-      '.claudex/logs/veilleuse.log'
-    )
-    // Il dit aussi ce qu'il ne faut pas faire : relancer un service à la main.
-    expect(await readFile(skill, 'utf8')).toContain('deux instances')
+    await ctx.page.getByRole('button', { name: 'Poser un modèle de déclaration' }).click()
+    await expect(ctx.page.getByText('ce projet en a déjà un')).toBeVisible()
+    expect(await readFile(declaration, 'utf8')).toBe(avant)
   })
 
   test('libérer le port tue ce qui le tient hors de Claudex', async () => {

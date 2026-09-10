@@ -3,6 +3,15 @@ import { json } from '@codemirror/lang-json'
 import { javascript } from '@codemirror/lang-javascript'
 import { markdown } from '@codemirror/lang-markdown'
 import { python } from '@codemirror/lang-python'
+import { yaml } from '@codemirror/lang-yaml'
+import { java } from '@codemirror/lang-java'
+import { html } from '@codemirror/lang-html'
+import { css } from '@codemirror/lang-css'
+import { xml } from '@codemirror/lang-xml'
+import { sql } from '@codemirror/lang-sql'
+import { rust } from '@codemirror/lang-rust'
+import { go } from '@codemirror/lang-go'
+import { php } from '@codemirror/lang-php'
 import { oneDark } from '@codemirror/theme-one-dark'
 import CodeMirror from '@uiw/react-codemirror'
 import { useStore } from '@renderer/state/store'
@@ -15,6 +24,14 @@ const poids = (octets: number): string =>
       ? `${Math.round(octets / 1024)} Ko`
       : `${(octets / 1024 / 1024).toFixed(1)} Mo`
 
+/**
+ * Ce que CodeMirror sait colorer, par langage détecté.
+ *
+ * Treize des dix-huit langages reconnus n'avaient rien ici : un `.yml`, un
+ * `.java` ou un `.html` s'affichait en gris uniforme, alors que le langage
+ * était bien reconnu de l'autre côté. Un cas veille désormais à ce que les deux
+ * listes ne divergent plus.
+ */
 function extensionLangage(langage: string): ReturnType<typeof javascript>[] {
   switch (langage) {
     case 'typescript':
@@ -27,6 +44,28 @@ function extensionLangage(langage: string): ReturnType<typeof javascript>[] {
       return [markdown()]
     case 'python':
       return [python()]
+    case 'yaml':
+      return [yaml()]
+    case 'java':
+    case 'kotlin':
+      return [java()]
+    case 'html':
+      return [html()]
+    case 'css':
+      return [css()]
+    case 'xml':
+      return [xml()]
+    case 'sql':
+      return [sql()]
+    case 'rust':
+      return [rust()]
+    case 'go':
+      return [go()]
+    case 'php':
+      return [php()]
+    // Un TOML se lit comme un fichier de réglages, un shell et un Ruby comme du
+    // texte : aucun n'a de coloriseur ici, et cela se dit plutôt que de se
+    // découvrir devant un fichier gris.
     default:
       return []
   }

@@ -35,7 +35,7 @@ describe('contrôle du pont', () => {
         apaiser: () => {}
       },
       services: {
-        etats: () => {}, demarrer: () => {}, arreter: () => {}, liberer: () => {}, skill: () => {},
+        etats: () => {}, demarrer: () => {}, arreter: () => {}, liberer: () => {}, modele: () => {},
         fenetreJournal: () => {}, journal: () => {}
       },
       git: { etat: () => {} },

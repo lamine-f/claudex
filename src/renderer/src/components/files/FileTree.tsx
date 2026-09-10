@@ -106,6 +106,12 @@ export function FileTree(): React.JSX.Element {
           ? `Ouvrir dans ${GESTIONNAIRE_FICHIERS}`
           : `Afficher dans ${GESTIONNAIRE_FICHIERS}`,
         onChoisir: () => void window.claudex.fs.montrer(entree.chemin)
+      },
+      // Le chemin entier, pour le donner à un agent ou le coller ailleurs.
+      // L'arbre le connaît, et rien ne permettait de le sortir de là.
+      {
+        libelle: 'Copier le chemin absolu',
+        onChoisir: () => void window.claudex.copier(entree.chemin)
       }
     ]
   }
