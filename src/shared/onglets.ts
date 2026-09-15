@@ -34,3 +34,26 @@ export function voisin<T extends { id: string }>(
   const depart = rang === -1 ? 0 : rang
   return onglets[(depart + pas + onglets.length) % onglets.length]
 }
+
+/**
+ * La commande qui relance la conversation d'un onglet qu'on redémarre.
+ *
+ * Redémarrer détruit la session et tout ce qui y tournait, puis en recrée une au
+ * même endroit. Un onglet de conversation doit y retrouver son agent : c'est pour
+ * lui qu'on redémarre, le plus souvent quand il ne répond plus ou qu'il doit
+ * relire sa configuration.
+ *
+ * `-r` ne vaut que si Claude Code a déjà écrit le transcrit. Une conversation
+ * ouverte à l'instant et jamais sollicitée n'en a pas : `-r` y répondrait
+ * « aucune conversation trouvée », alors que `--session-id` la démarre sous
+ * l'identifiant que l'onglet porte déjà.
+ *
+ * Un onglet sans conversation repart sur un shell neuf, et rien d'autre.
+ */
+export function commandeDeRedemarrage(
+  claudeSessionId: string | undefined,
+  transcritExiste: boolean
+): string | undefined {
+  if (!claudeSessionId) return undefined
+  return transcritExiste ? `claude -r ${claudeSessionId}` : `claude --session-id ${claudeSessionId}`
+}

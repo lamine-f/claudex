@@ -17,6 +17,7 @@ interface Props {
   onChoisir: (id: string) => void
   onFermer: (id: string) => void
   onFermerPlusieurs: (ids: string[]) => void
+  onRedemarrer: (id: string) => void
   onNouveau: () => void
   onBifurquer: (tab: Tab) => void
 }
@@ -35,6 +36,7 @@ export function TerminalTabs({
   onChoisir,
   onFermer,
   onFermerPlusieurs,
+  onRedemarrer,
   onNouveau,
   onBifurquer
 }: Props): React.JSX.Element {
@@ -57,6 +59,10 @@ export function TerminalTabs({
     const pluriel = (n: number): string => (n > 1 ? 's' : '')
 
     return [
+      // En tête, et non parmi les fermetures : l'onglet reste, seule sa session
+      // repart. C'est le geste d'un agent qui ne répond plus, ou qui doit relire
+      // sa configuration après qu'on a branché un serveur MCP.
+      { libelle: 'Redémarrer la session', onChoisir: () => onRedemarrer(tab.id) },
       { libelle: `Fermer (${raccourci('W')})`, ecarte: true, onChoisir: () => onFermer(tab.id) },
       ...(autres.length > 0
         ? [

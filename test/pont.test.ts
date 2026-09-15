@@ -17,7 +17,8 @@ describe('contrôle du pont', () => {
       term: {
         list: () => {}, comptes: () => {}, create: () => {}, open: () => {}, focus: () => {},
         input: () => {},
-        resize: () => {}, detach: () => {}, close: () => {}, rename: () => {}
+        resize: () => {}, detach: () => {}, close: () => {}, redemarrer: () => {},
+        rename: () => {}
       },
       fs: {
         lireDossier: () => {}, lireApercu: () => {}, montrer: () => {},

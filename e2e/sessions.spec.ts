@@ -1,8 +1,20 @@
+import { execFile } from 'node:child_process'
 import { mkdir, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { commandesDeDepart, FERMER_ONGLET, fermer, lancer, type Contexte } from './fixtures'
+import {
+  commandesDeDepart,
+  FERMER_ONGLET,
+  fermer,
+  lancer,
+  SOCKET_TEST,
+  SUR_WINDOWS,
+  type Contexte
+} from './fixtures'
+
+const run = promisify(execFile)
 
 const ligne = (o: unknown): string => `${JSON.stringify(o)}\n`
 
@@ -182,6 +194,53 @@ test.describe('sessions Claude Code dans la colonne de gauche', () => {
 
     await expect(ctx.page.getByRole('dialog')).toHaveCount(0)
     await expect(ctx.page.locator('.xterm')).toHaveCount(avant)
+  })
+
+  test('redémarrer une conversation relance son agent sur la reprise', async () => {
+    test.skip(SUR_WINDOWS, 'le processus d’un pane se lit dans tmux')
+
+    // La session de cet onglet-là, par son nom exact. Le socket de test garde
+    // des panes d'exécutions précédentes lancés sur la même reprise : chercher
+    // par la commande en trouvait un autre dès que celle-ci disparaissait, et le
+    // cas passait sans avoir rien prouvé.
+    const onglets = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+    const onglet = onglets.find(
+      (t) => t.claudeSessionId === 'aaaaaaaa-1111-1111-1111-111111111111' && !t.forkedFrom
+    )
+    expect(onglet).toBeTruthy()
+
+    // Le processus du pane : un redémarrage réel en change, là où un simple
+    // rattachement garderait le même.
+    const porteur = async (): Promise<string> => {
+      const { stdout } = await run('tmux', [
+        '-L',
+        SOCKET_TEST,
+        'display-message',
+        '-p',
+        '-t',
+        `=${onglet!.tmuxSession}:`,
+        '#{pane_pid} #{pane_start_command}'
+      ]).catch(() => ({ stdout: '' }))
+      return stdout.trim()
+    }
+
+    const avant = await porteur()
+    expect(avant).toContain('claude -r aaaaaaaa-1111-1111-1111-111111111111')
+
+    await ctx.page
+      .getByRole('button', { name: 'Refonte facturation', exact: true })
+      .last()
+      .click({ button: 'right' })
+    await ctx.page.getByRole('menu').getByRole('menuitem', { name: 'Redémarrer la session' }).click()
+
+    // Un autre processus, sur la même reprise : le transcrit existe, donc la
+    // conversation revient avec son contexte et non sous une session vide.
+    await expect
+      .poll(async () => {
+        const maintenant = await porteur()
+        return maintenant !== '' && maintenant !== avant ? maintenant : ''
+      }, { timeout: 20_000 })
+      .toContain('claude -r aaaaaaaa-1111-1111-1111-111111111111')
   })
 })
 

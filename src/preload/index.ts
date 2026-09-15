@@ -66,6 +66,9 @@ const api = {
       ipcRenderer.send('term:resize', tabId, cols, rows),
     detach: (tabId: string): Promise<void> => ipcRenderer.invoke('term:detach', tabId),
     close: (tabId: string): Promise<Tab[]> => ipcRenderer.invoke('term:close', tabId),
+    /** Détruit la session d'un onglet et prépare sa recréation, sans fermer l'onglet. */
+    redemarrer: (tabId: string): Promise<Tab | undefined> =>
+      ipcRenderer.invoke('term:redemarrer', tabId),
     rename: (tabId: string, titre: string): Promise<Tab | undefined> =>
       ipcRenderer.invoke('term:rename', tabId, titre),
 

@@ -20,6 +20,7 @@ const ATTENDU: Record<string, string[]> = {
     'resize',
     'detach',
     'close',
+    'redemarrer',
     'rename'
   ],
   fs: ['lireDossier', 'lireApercu', 'montrer', 'observer', 'cesserObservation'],

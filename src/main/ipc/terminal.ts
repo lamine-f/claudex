@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { ipcMain } from 'electron'
-import { dernierRegarde } from '@shared/onglets'
+import { commandeDeRedemarrage, dernierRegarde } from '@shared/onglets'
 import type { Tab } from '@shared/types'
-import { tmuxSessionName } from '../util/paths'
+import { claudeProjectPath, tmuxSessionName } from '../util/paths'
 import { multiplexeur } from '../services/multiplexeur'
 import * as pty from '../services/pty'
 import * as scrollback from '../services/scrollback'
@@ -197,6 +199,44 @@ export function registerTerminalIpc(): void {
       }
     })
     return store.get().tabs
+  })
+
+  /**
+   * Redémarre la session d'un onglet sans fermer l'onglet.
+   *
+   * La session est détruite avec ce qui y tournait, puis l'onglet reçoit la
+   * commande qui la recréera à son prochain attachement. Le renderer remonte le
+   * terminal juste après : c'est ce remontage qui attache, et donc qui recrée.
+   *
+   * L'ordre compte. Détacher avant de détruire retire l'onglet du registre des
+   * pty : la mort du client ne se signale alors à personne, et l'écran ne passe
+   * pas par « ce terminal s'est arrêté » le temps d'un éclair. Oublier l'écran
+   * sauvegardé évite que la session neuve ne réaffiche l'ancienne et ne propose
+   * de reprendre ce qu'on vient justement d'abandonner.
+   */
+  ipcMain.handle('term:redemarrer', async (_evenement, tabId: string) => {
+    const tab = trouverTab(tabId)
+    if (!tab) throw new Error(`Onglet inconnu : ${tabId}`)
+
+    pty.detach(tabId)
+    await multiplexeur.detruire(tab.tmuxSession)
+    await scrollback.oublier(tabId)
+
+    const workspace = store.get().workspaces.find((w) => w.id === tab.workspaceId)
+    const dossier = tab.claudeProjectDir ?? (workspace ? claudeProjectPath(workspace.path) : '')
+    const transcrit = Boolean(
+      tab.claudeSessionId && dossier && existsSync(join(dossier, `${tab.claudeSessionId}.jsonl`))
+    )
+
+    store.update((etat) => {
+      const cible = etat.tabs.find((t) => t.id === tabId)
+      if (!cible) return
+      const commande = commandeDeRedemarrage(cible.claudeSessionId, transcrit)
+      if (commande) cible.commandeInitiale = commande
+      else delete cible.commandeInitiale
+      cible.lastActiveAt = Date.now()
+    })
+    return trouverTab(tabId)
   })
 
   ipcMain.handle('term:rename', (_evenement, tabId: string, titre: string) => {

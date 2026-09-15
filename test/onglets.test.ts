@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dernierRegarde, voisin } from '../src/shared/onglets'
+import { commandeDeRedemarrage, dernierRegarde, voisin } from '../src/shared/onglets'
 
 describe('dernier onglet regardé', () => {
   it('désigne le plus récemment visité, pas le dernier ouvert', () => {
@@ -45,5 +45,21 @@ describe('onglet voisin', () => {
 
   it('ne désigne rien quand il n’y a pas d’onglet', () => {
     expect(voisin([], 'a', 1)).toBeUndefined()
+  })
+})
+
+describe('commande de redémarrage', () => {
+  it('reprend une conversation dont le transcrit existe', () => {
+    expect(commandeDeRedemarrage('aaaa-1111', true)).toBe('claude -r aaaa-1111')
+  })
+
+  it('démarre sous son identifiant une conversation jamais écrite', () => {
+    // `-r` y répondrait « aucune conversation trouvée » : Claude Code n'écrit
+    // son transcrit qu'au premier échange.
+    expect(commandeDeRedemarrage('aaaa-1111', false)).toBe('claude --session-id aaaa-1111')
+  })
+
+  it('ne relance rien dans un onglet sans conversation', () => {
+    expect(commandeDeRedemarrage(undefined, false)).toBeUndefined()
   })
 })

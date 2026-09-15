@@ -14,6 +14,8 @@ export function TerminalPane(): React.JSX.Element {
   const choisirOnglet = useStore((e) => e.choisirOnglet)
   const fermerOnglet = useStore((e) => e.fermerOnglet)
   const fermerOnglets = useStore((e) => e.fermerOnglets)
+  const redemarrerOnglet = useStore((e) => e.redemarrerOnglet)
+  const redemarrages = useStore((e) => e.redemarrages)
   const demanderBifurcation = useStore((e) => e.demanderBifurcation)
   const sollicitations = useStore((e) => e.sollicitations)
   const vues = useStore((e) => (e.activeWorkspaceId ? e.vues[e.activeWorkspaceId] : undefined))
@@ -46,6 +48,7 @@ export function TerminalPane(): React.JSX.Element {
         onChoisir={choisirOnglet}
         onFermer={(id) => void fermerOnglet(id)}
         onFermerPlusieurs={(ids) => void fermerOnglets(ids)}
+        onRedemarrer={(id) => void redemarrerOnglet(id)}
         onNouveau={() => void nouvelOnglet()}
         onBifurquer={(tab) =>
           tab.claudeSessionId &&
@@ -74,7 +77,9 @@ export function TerminalPane(): React.JSX.Element {
         ) : (
           tabs.map((tab) => (
             <TerminalInstance
-              key={tab.id}
+              // Le compte des redémarrages entre dans la clé : le changer remonte
+              // le terminal, qui se rattache alors à la session neuve.
+              key={`${tab.id}:${redemarrages[tab.id] ?? 0}`}
               tab={tab}
               actif={tab.id === activeTabId}
               onFermer={() => void fermerOnglet(tab.id)}

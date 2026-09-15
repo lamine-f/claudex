@@ -68,4 +68,25 @@ test.describe('terminaux', () => {
     await menu.getByRole('menuitem', { name: 'Fermer les 2 autres' }).click()
     await expect(ctx.page.locator('.xterm')).toHaveCount(1, { timeout: 20_000 })
   })
+
+  test('redémarrer un onglet repart d’une session neuve, sans fermer l’onglet', async () => {
+    await taper(ctx.page, 0, 'echo AVANT_REDEMARRAGE', 'AVANT_REDEMARRAGE')
+    const avant = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+
+    await ctx.page.getByRole('button', { name: 'Terminal', exact: true }).first().click({ button: 'right' })
+    await ctx.page.getByRole('menu').getByRole('menuitem', { name: 'Redémarrer la session' }).click()
+
+    // L'onglet reste à son rang, sous le même identifiant : c'est la session qui
+    // change, non la barre.
+    await expect(ctx.page.locator('.xterm')).toHaveCount(1)
+    const apres = await ctx.page.evaluate(() => window.claudex.term.list('ws1'))
+    expect(apres.map((t) => t.id)).toEqual(avant.map((t) => t.id))
+
+    // Le shell neuf répond, et son écran ne garde rien de l'ancien. Un
+    // redémarrage qui se contenterait de rattacher l'onglet laisserait la
+    // marque d'avant à l'écran.
+    await taper(ctx.page, 0, 'echo APRES_REDEMARRAGE', 'APRES_REDEMARRAGE')
+    const ecran = (await lireTerminaux(ctx.page))[0]!.lignes.join('\n')
+    expect(ecran).not.toContain('AVANT_REDEMARRAGE')
+  })
 })

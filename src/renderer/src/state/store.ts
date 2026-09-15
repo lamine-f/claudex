@@ -257,6 +257,16 @@ interface EtatUi {
   fermerOnglet: (id: string) => Promise<void>
   /** Ferme plusieurs onglets d'affilée, et leurs sessions avec eux. */
   fermerOnglets: (ids: string[]) => Promise<void>
+  /**
+   * Combien de fois chaque onglet a été redémarré.
+   *
+   * Sert de clé au terminal à l'écran : la changer le remonte, et c'est ce
+   * remontage qui rattache l'onglet à sa session neuve. Garder le même terminal
+   * laisserait l'écran de la session qu'on vient de détruire.
+   */
+  redemarrages: Record<string, number>
+  /** Détruit la session d'un onglet et la recrée à sa place, agent compris. */
+  redemarrerOnglet: (id: string) => Promise<void>
   /** Pose la file d'une conversation telle que le main vient de la rendre. */
   poserTaches: (cle: string, liste: Tache[]) => void
   chargerTaches: (cle: string) => Promise<void>
@@ -339,6 +349,7 @@ export const useStore = create<EtatUi>((set, get) => ({
   rangements: {},
   rangementProjets: RANGEMENT_VIDE,
   sessionsEnCours: {},
+  redemarrages: {},
   taches: {},
   toutAfficher: {},
   sollicitations: {},
@@ -890,6 +901,20 @@ export const useStore = create<EtatUi>((set, get) => ({
     // L'un après l'autre : chaque fermeture détruit une session, et les mener
     // de front laisserait l'onglet regardé se décider au hasard des retours.
     for (const id of ids) await get().fermerOnglet(id)
+  },
+
+  redemarrerOnglet: async (id) => {
+    // L'agent qui réclamait quelque chose disparaît avec sa session : sa
+    // demande n'a plus personne pour y répondre, comme à la fermeture.
+    const uuid = get().tabs.find((t) => t.id === id)?.claudeSessionId
+    if (uuid && get().sollicitations[uuid]) void window.claudex.claude.apaiser(uuid)
+
+    const tab = await window.claudex.term.redemarrer(id)
+    if (!tab) return
+    set({
+      tabs: get().tabs.map((t) => (t.id === id ? tab : t)),
+      redemarrages: { ...get().redemarrages, [id]: (get().redemarrages[id] ?? 0) + 1 }
+    })
   },
 
   chargerTaches: async (cle) => {
